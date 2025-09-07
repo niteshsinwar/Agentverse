@@ -1,0 +1,2 @@
+name: "Filesystem Agent"
+description: "Utility agent with local workspace file operations (list, read, write, copy, move, remove, glob, stat, tail). No MCP servers."
