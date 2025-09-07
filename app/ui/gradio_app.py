@@ -190,17 +190,26 @@ def ui_list_agents():
 
 
 def ui_group_members(group_id: str) -> List[Tuple[str, str, str]]:
-    if not group_id:
+    """Get group members with proper error handling."""
+    if not group_id or isinstance(group_id, (list, tuple)):
         return []
-    keys = session_store.list_group_agents(group_id)
-    out = []
-    for k in keys:
-        spec = agent_catalog.get(k)
-        if spec:
-            out.append((k, spec.name, spec.description))
-        else:
-            out.append((k, k, ""))
-    return out
+    
+    try:
+        if not _initialization_complete:
+            return [("⏳", "Loading agents...", "")]
+        
+        keys = session_store.list_group_agents(group_id)
+        out = []
+        for k in keys:
+            spec = agent_catalog.get(k)
+            if spec:
+                out.append((k, spec.name, spec.description))
+            else:
+                out.append((k, k, "Unknown agent"))
+        return out
+    except Exception as e:
+        print(f"Error loading group members: {e}")
+        return [("❌", "Error loading agents", str(e))]
 
 
 def render_events(evts: List[Dict[str, Any]]) -> str:
@@ -241,11 +250,23 @@ def on_refresh_groups():
             choices = [("⏳ Initializing...", "")]
         else:
             choices = ui_list_groups()
+        # Set value to first choice if available, otherwise None
         current_value = choices[0][1] if choices else None
         return gr.Dropdown(choices=choices, value=current_value)
     except Exception as e:
         print(f"Error refreshing groups: {e}")
         return gr.Dropdown(choices=[("❌ Error", "")], value="")
+
+
+def refresh_groups_choices():
+    """Get groups choices without creating a Dropdown object"""
+    try:
+        if not _initialization_complete:
+            return [("⏳ Initializing...", "")]
+        return ui_list_groups()
+    except Exception as e:
+        print(f"Error getting group choices: {e}")
+        return [("❌ Error", "")]
 
 
 def on_rename_group(gid: str, new_name: str):
@@ -263,17 +284,33 @@ def on_delete_group(gid: str):
 
 
 def on_add_agent(gid: str, agent_key: str):
-    if gid and agent_key:
-        session_store.add_agent_to_group(gid, agent_key)
-    rows = [[k, n, d] for (k, n, d) in ui_group_members(gid)]
-    return rows
+    """Add agent to group with proper error handling."""
+    try:
+        if gid and agent_key:
+            session_store.add_agent_to_group(gid, agent_key)
+        # Return updated member list and updated dropdown choices
+        member_rows = [[k, n, d] for (k, n, d) in ui_group_members(gid)]
+        available_agents = ui_available_agents(gid)
+        group_agents = ui_group_agent_choices(gid)
+        return member_rows, available_agents, group_agents
+    except Exception as e:
+        print(f"Error adding agent: {e}")
+        return [["❌", f"Error adding agent: {str(e)}", ""]], [], []
 
 
 def on_remove_agent(gid: str, agent_key: str):
-    if gid and agent_key:
-        session_store.remove_agent_from_group(gid, agent_key)
-    rows = [[k, n, d] for (k, n, d) in ui_group_members(gid)]
-    return rows
+    """Remove agent from group with proper error handling."""
+    try:
+        if gid and agent_key:
+            session_store.remove_agent_from_group(gid, agent_key)
+        # Return updated member list and updated dropdown choices
+        member_rows = [[k, n, d] for (k, n, d) in ui_group_members(gid)]
+        available_agents = ui_available_agents(gid)
+        group_agents = ui_group_agent_choices(gid)
+        return member_rows, available_agents, group_agents
+    except Exception as e:
+        print(f"Error removing agent: {e}")
+        return [["❌", f"Error removing agent: {str(e)}", ""]], [], []
 
 
 def ui_list_groups():
@@ -296,12 +333,51 @@ def ui_list_agents():
         return [("❌ Error loading agents", "")]
 
 
+def ui_available_agents(group_id: str):
+    """Get agents that can be added to the group (not already members)."""
+    try:
+        if not _initialization_complete:
+            return [("⏳ Loading agents...", "")]
+        
+        if not group_id or isinstance(group_id, (list, tuple)):
+            return ui_list_agents()
+        
+        group_members = set(session_store.list_group_agents(group_id))
+        available = [(f"@{k} — {spec.name}", k) for k, spec in agent_catalog.items() 
+                    if k not in group_members]
+        return available if available else [("No agents available", "")]
+    except Exception as e:
+        return [("❌ Error loading agents", "")]
+
+
+def ui_group_agent_choices(group_id: str):
+    """Get agents that can be removed from the group (current members only)."""
+    try:
+        if not _initialization_complete:
+            return [("⏳ Loading agents...", "")]
+        
+        if not group_id or isinstance(group_id, (list, tuple)):
+            return []
+        
+        group_members = session_store.list_group_agents(group_id)
+        choices = []
+        for k in group_members:
+            spec = agent_catalog.get(k)
+            if spec:
+                choices.append((f"@{k} — {spec.name}", k))
+            else:
+                choices.append((f"@{k}", k))
+        return choices if choices else [("No agents in group", "")]
+    except Exception as e:
+        return [("❌ Error loading agents", "")]
+
+
 def load_history(gid: str):
     """Load chat history with error handling."""
     try:
         if not _initialization_complete:
             return [["⏳ Loading...", None]]
-        if not gid:
+        if not gid or isinstance(gid, (list, tuple)):
             return []
         hist = session_store.get_history(gid)
         return to_chat_pairs(hist)
@@ -510,17 +586,25 @@ def build_app() -> gr.Blocks:
                     rename_to = gr.Textbox(label="Rename to")
                     gr.Button("Rename").click(on_rename_group, inputs=[grp, rename_to], outputs=[grp])
                     delete_btn = gr.Button("Delete", variant="stop")
+                
+                # Create both dropdowns first
+                pick = gr.Dropdown(label="Add agent", choices=[], allow_custom_value=False)
+                rm = gr.Dropdown(label="Remove agent", choices=[], allow_custom_value=False)
+                
+                # Then create the buttons with the dropdowns already defined
                 with gr.Row():
-                    pick = gr.Dropdown(label="Add agent", choices=ui_list_agents())
-                    gr.Button("Add").click(on_add_agent, inputs=[grp, pick], outputs=[members])
+                    gr.Button("Add").click(on_add_agent, inputs=[grp, pick], outputs=[members, pick, rm])
                 with gr.Row():
-                    rm = gr.Dropdown(label="Remove agent", choices=ui_list_agents())
-                    gr.Button("Remove").click(on_remove_agent, inputs=[grp, rm], outputs=[members])
-                # Update roster on group change
+                    gr.Button("Remove").click(on_remove_agent, inputs=[grp, rm], outputs=[members, pick, rm])
+                # Update roster and dropdowns on group change
                 def _refresh_members(gid: str):
-                    rows = [[k, n, d] for (k, n, d) in ui_group_members(gid)]
-                    return rows
-                grp.change(_refresh_members, inputs=[grp], outputs=[members])
+                    if not gid or isinstance(gid, (list, tuple)):
+                        return [], [], []
+                    member_rows = [[k, n, d] for (k, n, d) in ui_group_members(gid)]
+                    available_agents = ui_available_agents(gid)
+                    group_agents = ui_group_agent_choices(gid)
+                    return member_rows, available_agents, group_agents
+                grp.change(_refresh_members, inputs=[grp], outputs=[members, pick, rm])
 
             with gr.Column(scale=9):
                 # Initialize chat with empty history (will load dynamically when group is selected)
@@ -540,9 +624,28 @@ def build_app() -> gr.Blocks:
         # Initialize everything when page loads
         async def on_app_load():
             await ensure_initialization()
-            return on_refresh_groups()
+            
+            # Get the actual choices for groups
+            group_choices = refresh_groups_choices()
+            first_group_id = group_choices[0][1] if group_choices and len(group_choices[0]) > 1 else None
+            
+            # Get agent choices for the first group (if any)
+            if first_group_id and isinstance(first_group_id, str):
+                available_agents = ui_available_agents(first_group_id)
+                group_agents = ui_group_agent_choices(first_group_id)
+            else:
+                # No group selected, show all agents for add, none for remove
+                available_agents = ui_list_agents()
+                group_agents = []
+            
+            # Return the proper choices and values
+            return (
+                gr.Dropdown(choices=group_choices, value=first_group_id),
+                gr.Dropdown(choices=available_agents, value=None),
+                gr.Dropdown(choices=group_agents, value=None)
+            )
         
-        demo.load(on_app_load, outputs=[grp])
+        demo.load(on_app_load, outputs=[grp, pick, rm])
 
     return demo
 
