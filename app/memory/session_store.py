@@ -36,6 +36,12 @@ CREATE TABLE IF NOT EXISTS messages (
   created_at REAL NOT NULL,
   FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE
 );
+
+-- Performance indexes for efficient queries
+CREATE INDEX IF NOT EXISTS idx_messages_group_id ON messages(group_id);
+CREATE INDEX IF NOT EXISTS idx_messages_group_role ON messages(group_id, role);
+CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(created_at);
+CREATE INDEX IF NOT EXISTS idx_group_agents_group_id ON group_agents(group_id);
 """
 
 def _cxn(db_path: str = DEFAULT_DB_PATH) -> sqlite3.Connection:
@@ -47,6 +53,9 @@ def _cxn(db_path: str = DEFAULT_DB_PATH) -> sqlite3.Connection:
 _cxn = _cxn()
 _cxn.executescript(SCHEMA)
 _cxn.commit()
+
+# Export connection for other modules that expect _db_conn
+_db_conn = _cxn
 
 # -------- Groups --------
 
@@ -146,3 +155,81 @@ def get_history(group_id: str, limit: int = 200) -> List[Dict[str, Any]]:
             }
         )
     return out
+
+
+def append_document_message(
+    group_id: str,
+    sender: str,
+    filename: str,
+    document_id: str,
+    target_agent: str,
+    file_size: int,
+    file_extension: str,
+    original_prompt: str = "",
+    extracted_content: str = "",
+    content_summary: str = ""
+) -> int:
+    """Store a document upload as a special message type"""
+    now = time.time()
+    
+    # Create document-specific content
+    content = f"📄 **Document uploaded**: {filename}\n**Target Agent**: @{target_agent}"
+    if content_summary:
+        content += f"\n**Summary**: {content_summary}"
+    
+    # Store rich metadata for document viewing
+    metadata = {
+        "message_type": "document_upload",
+        "document_id": document_id,
+        "filename": filename,
+        "target_agent": target_agent,
+        "file_size": file_size,
+        "file_extension": file_extension,
+        "original_prompt": original_prompt,
+        "extracted_content": extracted_content,
+        "content_summary": content_summary,
+        "upload_timestamp": now
+    }
+    
+    return append_message(group_id, sender, "system", content, metadata)
+
+
+def get_group_documents(group_id: str) -> List[Dict[str, Any]]:
+    """Get all document uploads for a group"""
+    cur = _cxn.execute(
+        "SELECT sender, content, metadata, created_at FROM messages WHERE group_id=? AND role='system' ORDER BY id DESC",
+        (group_id,)
+    )
+    
+    documents = []
+    for sender, content, metadata, ts in cur.fetchall():
+        meta = json.loads(metadata or "{}")
+        if meta.get("message_type") == "document_upload":
+            documents.append({
+                "sender": sender,
+                "content": content,
+                "metadata": meta,
+                "created_at": ts
+            })
+    
+    return documents
+
+
+def get_document_details(group_id: str, document_id: str) -> Optional[Dict[str, Any]]:
+    """Get detailed information about a specific document"""
+    cur = _cxn.execute(
+        "SELECT sender, content, metadata, created_at FROM messages WHERE group_id=? AND role='system'",
+        (group_id,)
+    )
+    
+    for sender, content, metadata, ts in cur.fetchall():
+        meta = json.loads(metadata or "{}")
+        if meta.get("document_id") == document_id:
+            return {
+                "sender": sender,
+                "content": content,
+                "metadata": meta,
+                "created_at": ts
+            }
+    
+    return None

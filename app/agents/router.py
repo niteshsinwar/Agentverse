@@ -1,5 +1,5 @@
 # =========================================
-# File: app/agent/router.py
+# File: app/agents/router.py
 # Purpose: Route user messages that must @mention a group member
 # =========================================
 from __future__ import annotations
@@ -61,9 +61,8 @@ class Router:
         session_store.append_message(group_id, sender="user", role="user", content=text)
         await emit_message(group_id, sender="user", role="user", content=text)
 
-        # Get agent response
-        agent = self.o.get_agent(agent_key)
-        reply = await agent.respond(content, group_id=group_id, orchestrator=self.o)
+        # Get agent response with document context
+        reply = await self.o.process_user_message(group_id, agent_key, content)
 
         # Save agent response only if it's not empty (post_message returns empty string)
         if str(reply).strip():

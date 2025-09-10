@@ -1,0 +1,18 @@
+name: "Your Agent Name"
+description: "Brief description of what this agent specializes in"
+emoji: "🔧"  # Choose an emoji that represents this agent
+
+# Document processing configuration
+document_access:
+  enabled: true
+  supported_formats: ["txt", "csv", "json", "pdf", "docx", "md"]  # Add formats your agent needs
+  max_file_size_mb: 10
+  ai_extraction:
+    enabled: true
+    generate_summary: true
+
+# Agent behavior settings (optional)
+behavior:
+  max_iterations: 5
+  temperature: 0.2
+  model_override: null  # Override default model if needed

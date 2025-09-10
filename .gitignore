@@ -127,3 +127,19 @@ dmypy.json
 
 .env
 .ve
+
+# macOS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Additional local/dev/irrelevant folders
+.claude/
+documents/
+loga/
+sessions/
+node_modules/

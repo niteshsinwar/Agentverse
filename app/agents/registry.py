@@ -1,4 +1,4 @@
-# File: app/agent/registry.py
+# File: app/agents/registry.py
 # Purpose: Discover + construct agents from folders (agent.yaml + mcp.json + tools.py)
 # =========================================
 from __future__ import annotations
@@ -19,6 +19,7 @@ class AgentSpec:
     description: str
     folder: str
     mcp_config: Dict[str, Any]
+    emoji: str = "🔧"  # Default emoji if not specified
     tools_module: Optional[str] = None
 
 
@@ -30,7 +31,11 @@ def _load_yaml(p: str) -> Dict[str, Any]:
 def _import_tools_py(path: str):
     if not os.path.exists(path):
         return None
-    spec = importlib.util.spec_from_file_location("agent_tools_" + os.path.basename(os.path.dirname(path)), path)
+    # Use unique module name with timestamp to avoid caching issues
+    import time
+    agent_dir = os.path.basename(os.path.dirname(path))
+    module_name = f"agent_tools_{agent_dir}_{int(time.time() * 1000)}"
+    spec = importlib.util.spec_from_file_location(module_name, path)
     mod = importlib.util.module_from_spec(spec)
     assert spec.loader is not None
     spec.loader.exec_module(mod)
@@ -58,17 +63,23 @@ def discover_agents() -> Dict[str, AgentSpec]:
                 description=meta.get("description", ""),
                 folder=full,
                 mcp_config=mcp,
+                emoji=meta.get("emoji", "🔧"),  # Read emoji from agent.yaml
                 tools_module=tools_py if os.path.exists(tools_py) else None,
             )
     return agents
 
 
-def build_agent(spec: AgentSpec) -> BaseAgent:
+async def build_agent(spec: AgentSpec) -> BaseAgent:
     agent = BaseAgent(agent_id=spec.key)
     agent.load_metadata(name=spec.name, description=spec.description, folder_path=spec.folder)
     # Attach a dedicated MCP manager (per-agent JSON)
     mcp_manager = MCPManager.from_config(spec.mcp_config)
     agent.attach_mcp(mcp_manager)
+    
+    # Auto-start MCP servers to discover tools at initialization
+    if mcp_manager.servers:
+        await mcp_manager.start_all()
+    
     if spec.tools_module:
         mod = _import_tools_py(spec.tools_module)
         if mod:

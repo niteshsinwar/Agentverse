@@ -21,6 +21,33 @@ def _safe_path(p: str) -> Path:
         raise ValueError(f"Path escapes workspace: {candidate}")
     return candidate
 
+def _file_info(p: Path) -> Dict[str, Any]:
+    """Get file/directory information."""
+    try:
+        stat = p.stat()
+        return {
+            "name": p.name,
+            "path": str(p.relative_to(BASE_ROOT)),
+            "is_dir": p.is_dir(),
+            "is_file": p.is_file(),
+            "size": stat.st_size,
+            "modified": stat.st_mtime,
+            "permissions": oct(stat.st_mode)[-3:],
+            "exists": True
+        }
+    except Exception as e:
+        return {
+            "name": p.name,
+            "path": str(p.relative_to(BASE_ROOT)),
+            "is_dir": False,
+            "is_file": False,
+            "size": 0,
+            "modified": 0,
+            "permissions": "000",
+            "exists": False,
+            "error": str(e)
+        }
+
 @agent_tool
 def get_workspace_info() -> Dict[str, Any]:
     """Get information about the workspace sandbox directory."""
@@ -31,7 +58,6 @@ def get_workspace_info() -> Dict[str, Any]:
         "description": f"All file operations are sandboxed to: {BASE_ROOT}"
     }
 
-@agent_tool
 @agent_tool
 def get_absolute_path(relative_path: str = ".") -> str:
     """Get the absolute path of a file/folder within the workspace sandbox.

@@ -1,2 +1,17 @@
-name: "Salesforce Development Agent"
-description: "Expert in Salesforce development including Apex, LWC, schema design, and deployment"
+name: "Development Agent"
+description: "Expert in software development, code analysis, testing, and best practices across multiple programming languages"
+emoji: "🤖"
+
+# Document processing configuration
+document_access:
+  enabled: true
+  supported_formats: ["txt", "py", "js", "java", "cpp", "cs", "go", "rs", "php", "rb", "swift", "kt", "ts", "jsx", "tsx", "vue", "md", "json", "yaml", "yml", "xml", "csv", "pdf", "docx"]
+  max_file_size_mb: 15
+  ai_extraction:
+    enabled: true
+    generate_summary: true
+
+# Agent behavior settings
+behavior:
+  max_iterations: 5
+  temperature: 0.2

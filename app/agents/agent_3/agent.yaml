@@ -1,2 +1,12 @@
 name: "Filesystem Agent"
 description: "Utility agent with local workspace file operations (list, read, write, copy, move, remove, glob, stat, tail). No MCP servers."
+emoji: "📁"
+
+# Document processing configuration
+document_access:
+  enabled: true
+  supported_formats: ["txt", "csv", "pdf", "docx", "pptx", "jpg", "jpeg", "png", "gif"]
+  max_file_size_mb: 5
+  ai_extraction:
+    enabled: true
+    generate_summary: true

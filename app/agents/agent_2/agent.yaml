@@ -1,2 +1,17 @@
-name: "UI Testing Agent"
-description: "Specialist in browser automation, UI testing, and end-to-end testing workflows"
+name: "Web & UI Agent" 
+description: "Expert in web development, UI/UX analysis, browser automation, and web application testing"
+emoji: "⚡"
+
+# Document processing configuration
+document_access:
+  enabled: true
+  supported_formats: ["html", "css", "js", "ts", "jsx", "tsx", "vue", "svelte", "php", "asp", "jsp", "txt", "md", "json", "xml", "csv", "pdf", "jpg", "jpeg", "png", "gif", "svg"]
+  max_file_size_mb: 20
+  ai_extraction:
+    enabled: true
+    generate_summary: true
+
+# Agent behavior settings
+behavior:
+  max_iterations: 4
+  temperature: 0.3
