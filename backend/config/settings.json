@@ -1,0 +1,40 @@
+{
+  "app_name": "Agentverse Backend",
+  "version": "1.0.0",
+  "environment": "development",
+  "debug": false,
+  "host": "0.0.0.0",
+  "port": 8000,
+  "allowed_origins": [
+    "http://localhost:1420",
+    "https://tauri.localhost"
+  ],
+  "openai_api_key": "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",
+  "anthropic_api_key": null,
+  "gemini_api_key": "",
+  "github_token": "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",
+  "database_url": "sqlite:///./agentic.db",
+  "max_upload_size_mb": 10,
+  "supported_file_formats": [
+    "txt",
+    "csv",
+    "json",
+    "pdf",
+    "docx",
+    "md",
+    "png"
+  ],
+  "max_agent_iterations": 5,
+  "default_temperature": 0.2,
+  "default_max_tokens": 4096,
+  "llm_provider": "openai",
+  "llm_model": null,
+  "llm_temperature": 0.2,
+  "llm_max_tokens": 4096,
+  "llm_fallback_provider": null,
+  "secret_key": "dev-key-change-in-production",
+  "session_timeout_hours": 24,
+  "log_level": "INFO",
+  "enable_file_logging": true,
+  "log_file_max_size_mb": 10
+}

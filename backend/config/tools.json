@@ -1,0 +1,26 @@
+{
+  "file_operations": {
+    "name": "file_operations_tool",
+    "description": "Comprehensive file system operations including read, write, list, copy, move, and search",
+    "category": "filesystem",
+    "code": "import os\nimport re\nfrom src.core.agents.base_agent import agent_tool\n\n@agent_tool\ndef read_file(file_path: str) -> str:\n    \"\"\"Read content from a file\"\"\"\n    with open(file_path, 'r', encoding='utf-8') as f:\n        return f.read()\n\n@agent_tool\ndef write_file(file_path: str, content: str) -> bool:\n    \"\"\"Write content to a file\"\"\"\n    try:\n        with open(file_path, 'w', encoding='utf-8') as f:\n            f.write(content)\n        return True\n    except Exception as e:\n        print(f\"Error writing file: {e}\")\n        return False\n\n@agent_tool\ndef list_files(directory: str = '.') -> list:\n    \"\"\"List files in a directory\"\"\"\n    return [f for f in os.listdir(directory) if os.path.isfile(os.path.join(directory, f))]\n\n@agent_tool\ndef search_in_files(pattern: str, directory: str = '.') -> list:\n    \"\"\"Search for pattern in files\"\"\"\n    results = []\n    for root, dirs, files in os.walk(directory):\n        for file in files:\n            try:\n                file_path = os.path.join(root, file)\n                with open(file_path, 'r', encoding='utf-8') as f:\n                    content = f.read()\n                    if re.search(pattern, content, re.IGNORECASE):\n                        results.append(file_path)\n            except:\n                continue\n    return results",
+    "functions": [
+      "read_file",
+      "write_file",
+      "list_files",
+      "search_in_files"
+    ]
+  },
+  "web_scraping": {
+    "name": "web_scraping_tool",
+    "description": "Extract data from web pages, APIs, and online resources",
+    "category": "web",
+    "code": "import requests\nfrom bs4 import BeautifulSoup\nimport json\nfrom src.core.agents.base_agent import agent_tool\n\n@agent_tool\ndef fetch_webpage(url: str) -> str:\n    \"\"\"Fetch webpage content\"\"\"\n    try:\n        response = requests.get(url, timeout=10)\n        response.raise_for_status()\n        return response.text\n    except Exception as e:\n        return f\"Error fetching webpage: {e}\"\n\n@agent_tool\ndef extract_text(html_content: str) -> str:\n    \"\"\"Extract text from HTML content\"\"\"\n    soup = BeautifulSoup(html_content, 'html.parser')\n    return soup.get_text(strip=True)\n\n@agent_tool\ndef fetch_api_data(url: str, headers: dict = None) -> dict:\n    \"\"\"Fetch data from REST API\"\"\"\n    try:\n        response = requests.get(url, headers=headers or {}, timeout=10)\n        response.raise_for_status()\n        return response.json()\n    except Exception as e:\n        return {\"error\": str(e)}\n\n@agent_tool\ndef extract_links(html_content: str) -> list:\n    \"\"\"Extract all links from HTML content\"\"\"\n    soup = BeautifulSoup(html_content, 'html.parser')\n    return [a.get('href') for a in soup.find_all('a', href=True)]",
+    "functions": [
+      "fetch_webpage",
+      "extract_text",
+      "fetch_api_data",
+      "extract_links"
+    ]
+  }
+}

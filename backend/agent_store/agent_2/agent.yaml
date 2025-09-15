@@ -1,0 +1,36 @@
+behavior:
+  max_iterations: 4
+  temperature: 0.3
+description: Expert in web development, UI/UX analysis, browser automation, and web
+  application testing
+document_access:
+  ai_extraction:
+    enabled: true
+    generate_summary: true
+  enabled: true
+  max_file_size_mb: 20
+  supported_formats:
+  - html
+  - css
+  - js
+  - ts
+  - jsx
+  - tsx
+  - vue
+  - svelte
+  - php
+  - asp
+  - jsp
+  - txt
+  - md
+  - json
+  - xml
+  - csv
+  - pdf
+  - jpg
+  - jpeg
+  - png
+  - gif
+  - svg
+emoji: "\u26A1"
+name: Web & UI Agent

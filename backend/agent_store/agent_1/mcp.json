@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "salesforce-mcp-server-local": {
+      "command": "/bin/bash",
+      "args": [
+        "-lc",
+        "cd '/Users/niteshsinwar/Desktop/My Stuff/My Projects/Salesforce MCP Server/sfmcp' && source venv/bin/activate && python -m app.main --mcp-stdio"
+      ]
+    }
+  }
+}
