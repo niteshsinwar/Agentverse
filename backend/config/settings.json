@@ -9,7 +9,7 @@
     "http://localhost:1420",
     "https://tauri.localhost"
   ],
-  "openai_api_key": "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",
+  "openai_api_key": "sk-proj",
   "anthropic_api_key": null,
   "gemini_api_key": "",
   "github_token": "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",

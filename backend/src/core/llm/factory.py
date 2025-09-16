@@ -79,16 +79,30 @@ def create_llm_config(provider: LLMProvider, model: Optional[str] = None, **kwar
     # Default API key environment variables
     api_key_env_vars = {
         LLMProvider.OPENAI: "OPENAI_API_KEY",
-        LLMProvider.GEMINI: "GEMINI_API_KEY", 
+        LLMProvider.GEMINI: "GEMINI_API_KEY",
         LLMProvider.CLAUDE: "ANTHROPIC_API_KEY"
     }
-    
+
+    # Settings API key attributes
+    settings_api_key_attrs = {
+        LLMProvider.OPENAI: "openai_api_key",
+        LLMProvider.GEMINI: "gemini_api_key",
+        LLMProvider.CLAUDE: "anthropic_api_key"
+    }
+
     # Get configuration values
     model_name = model or getattr(settings, 'LLM_MODEL', default_models[provider])
     temperature = kwargs.get('temperature', getattr(settings, 'LLM_TEMPERATURE', 0.2))
     max_tokens = kwargs.get('max_tokens', getattr(settings, 'LLM_MAX_TOKENS', 4096))
     timeout = kwargs.get('timeout', 30.0)
-    api_key = kwargs.get('api_key') or os.getenv(api_key_env_vars[provider])
+
+    # Check API key in order: kwargs -> settings object -> environment variables
+    api_key = (
+        kwargs.get('api_key') or
+        getattr(settings, settings_api_key_attrs[provider], None) or
+        os.getenv(api_key_env_vars[provider])
+    )
+
     base_url = kwargs.get('base_url')
     
     return LLMConfig(
