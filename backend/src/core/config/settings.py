@@ -112,7 +112,9 @@ class Settings(BaseSettings):
             timeout=30.0,
             max_retries=3,
             health_check_interval=60.0,
-            enable_health_checks=True
+            enable_health_checks=True,
+            buffer_size_mb=1,  # 1MB buffer size for large JSON responses
+            max_message_size_mb=10  # 10MB max message size limit
         )
 
     # Legacy support for old LLM format

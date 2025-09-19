@@ -99,13 +99,15 @@ class MCPServerHandle:
                 last_error: Optional[Exception] = None
                 for attempt in range(1, max_retries + 1):
                     try:
-                        # Start process
+                        # Start process with configurable buffer sizes
+                        buffer_limit = int(settings.mcp.buffer_size_mb * 1024 * 1024)
                         self.proc = await asyncio.create_subprocess_exec(
                             command, *args,
                             stdin=asyncio.subprocess.PIPE,
                             stdout=asyncio.subprocess.PIPE,
                             stderr=asyncio.subprocess.PIPE,
-                            env=env
+                            env=env,
+                            limit=buffer_limit
                         )
                         # Perform handshake
                         if await self._handshake():
@@ -209,13 +211,21 @@ class MCPServerHandle:
                 "id": 2,
                 "method": "tools/list"
             }
-            
+
             await self._send_message(tools_request)
-            response = await self._receive_message()
-            
+
+            # Use longer timeout for tool discovery as response can be large
+            response = await self._receive_message(timeout=60.0)
+
             if response and "result" in response and "tools" in response["result"]:
                 self.tools_cache = []
-                for tool_data in response["result"]["tools"]:
+                tools_data = response["result"]["tools"]
+
+                # Log the size of the response for debugging
+                response_size = len(json.dumps(response))
+                logger.debug(f"Tool discovery response size for {self.name}: {response_size} bytes")
+
+                for tool_data in tools_data:
                     tool = MCPTool(
                         name=tool_data.get("name", ""),
                         description=tool_data.get("description", ""),
@@ -223,11 +233,15 @@ class MCPServerHandle:
                         server_name=self.name
                     )
                     self.tools_cache.append(tool)
-                
+
                 logger.info(f"Discovered {len(self.tools_cache)} tools for {self.name}")
-            
+            else:
+                logger.warning(f"No tools found or invalid response from {self.name}: {response}")
+
         except Exception as e:
             logger.error(f"Tool discovery failed for {self.name}: {e}")
+            # Continue without tools rather than failing completely
+            self.tools_cache = []
 
     async def _send_message(self, message: Dict[str, Any]) -> None:
         """Send JSON-RPC message to MCP server"""
@@ -239,37 +253,62 @@ class MCPServerHandle:
         await self.proc.stdin.drain()
 
     async def _receive_message(self, timeout: float = 30.0) -> Optional[Dict[str, Any]]:
-        """Receive JSON-RPC message from MCP server"""
+        """Receive JSON-RPC message from MCP server with support for large messages"""
         if not self.proc or not self.proc.stdout:
             return None
-        
+
         try:
-            # Read lines until a parsable JSON object is found or timeout
+            # Collect lines until we have a complete JSON object
             end_time = time.time() + timeout
+            accumulated_data = ""
+
             while time.time() < end_time:
-                line = await asyncio.wait_for(self.proc.stdout.readline(), timeout=max(0.05, end_time - time.time()))
+                try:
+                    line = await asyncio.wait_for(
+                        self.proc.stdout.readline(),
+                        timeout=max(0.1, end_time - time.time())
+                    )
+                except asyncio.TimeoutError:
+                    # If we have accumulated data, try to parse it
+                    if accumulated_data.strip():
+                        try:
+                            return json.loads(accumulated_data.strip())
+                        except json.JSONDecodeError:
+                            pass
+                    logger.error(f"Timeout waiting for response from {self.name}")
+                    return None
+
                 if not line:
                     # Check if process crashed
                     if self.proc.returncode is not None:
                         logger.error(f"MCP server {self.name} exited with code {self.proc.returncode}")
                         return None
                     continue
+
                 text = line.decode(errors="ignore").strip()
                 if not text:
                     continue
+
+                # Accumulate data
+                accumulated_data += text
+
+                # Try to parse as JSON - if successful, we have a complete message
                 try:
-                    return json.loads(text)
+                    return json.loads(accumulated_data)
                 except json.JSONDecodeError:
-                    # Skip non-JSON noise lines
+                    # Not complete yet, continue accumulating
+                    # But prevent infinite accumulation using configurable limit
+                    max_size = int(settings.mcp.max_message_size_mb * 1024 * 1024)
+                    if len(accumulated_data) > max_size:
+                        logger.error(f"Message too large from {self.name} ({len(accumulated_data)} bytes > {max_size} bytes), truncating")
+                        return None
                     continue
+
             logger.error(f"Timeout waiting for response from {self.name}")
             return None
-            
-        except asyncio.TimeoutError:
-            logger.error(f"Timeout waiting for response from {self.name}")
-            return None
-        except json.JSONDecodeError as e:
-            logger.error(f"Invalid JSON from {self.name}: {e}")
+
+        except Exception as e:
+            logger.error(f"Error receiving message from {self.name}: {e}")
             return None
 
     async def call_tool(self, tool_name: str, parameters: Dict[str, Any]) -> Dict[str, Any]:

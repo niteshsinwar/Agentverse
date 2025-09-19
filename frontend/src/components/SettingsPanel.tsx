@@ -123,8 +123,8 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
       // Merge backend settings with local UI settings
       const localSettings = JSON.parse(localStorage.getItem('app_settings') || '{}');
 
-      if (response && response.settings) {
-        setSettings({ ...defaultSettings, ...response.settings, ...localSettings });
+      if (response && (response as any).settings) {
+        setSettings({ ...defaultSettings, ...(response as any).settings, ...localSettings });
       } else {
         setSettings({ ...defaultSettings, ...localSettings });
       }
@@ -223,7 +223,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
 
   const validateSettings = async () => {
     try {
-      const validation = await apiService.validateSettings();
+      const validation = await apiService.validateSettings() as any;
       if (validation.valid) {
         toast.success('All settings are valid');
       } else {

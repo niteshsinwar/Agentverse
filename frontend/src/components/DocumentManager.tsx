@@ -11,6 +11,7 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
   groupId,
   agents,
 }) => {
+  console.log(`Document manager for group: ${groupId}`);
   const [documents, setDocuments] = useState<Document[]>([]);
   const [selectedAgent, setSelectedAgent] = useState<string>('');
   const [uploading, setUploading] = useState(false);
@@ -34,12 +35,15 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
       // In a real implementation, you'd call your API here
       // For now, we'll just simulate the upload
       const newDocs: Document[] = files.map(file => ({
-        id: Math.random().toString(36),
+        document_id: Math.random().toString(36),
         filename: file.name,
         size: file.size,
-        upload_time: Date.now() / 1000,
-        agent_id: selectedAgent,
-        group_id: groupId,
+        created_at: Date.now() / 1000,
+        target_agent: selectedAgent,
+        sender: 'user',
+        size_str: `${Math.round(file.size / 1024)}KB`,
+        date_str: 'Just now',
+        file_extension: file.name.split('.').pop() || 'unknown'
       }));
       
       setDocuments([...documents, ...newDocs]);
@@ -126,7 +130,7 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
           <div className="space-y-2">
             {documents.map((doc) => (
               <div
-                key={doc.id}
+                key={doc.document_id}
                 className="p-2 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-lg"
               >
                 <div className="flex items-start justify-between">
@@ -135,10 +139,10 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
                       {doc.filename}
                     </div>
                     <div className="text-xs text-gray-600 dark:text-gray-400">
-                      {formatFileSize(doc.size)} • {getAgentName(doc.agent_id)}
+                      {formatFileSize(doc.size)} • {getAgentName(doc.target_agent)}
                     </div>
                     <div className="text-xs text-gray-500 dark:text-gray-400">
-                      {new Date(doc.upload_time * 1000).toLocaleString()}
+                      {new Date(doc.created_at * 1000).toLocaleString()}
                     </div>
                   </div>
                   
@@ -156,7 +160,7 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
                     <button
                       onClick={() => {
                         if (confirm(`Delete "${doc.filename}"?`)) {
-                          setDocuments(documents.filter(d => d.id !== doc.id));
+                          setDocuments(documents.filter(d => d.document_id !== doc.document_id));
                         }
                       }}
                       className="p-1 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"

@@ -7,9 +7,7 @@ import {
   ChevronRightIcon,
   ChevronDownIcon,
   FolderIcon,
-  CalendarIcon,
-  UserIcon,
-  ExclamationTriangleIcon
+  CalendarIcon
 } from '@heroicons/react/24/outline';
 import { Document, Agent } from '../types';
 import { apiService } from '../services/api';
@@ -57,6 +55,7 @@ export const DocumentsListPanel: React.FC<DocumentsListPanelProps> = ({
     try {
       // Note: We'll need to add a delete endpoint to the API service
       // await apiService.deleteDocument(groupId, documentId);
+      console.log(`Deleting document: ${documentId}`);
       toast.success(`Document "${filename}" deleted successfully`);
       await loadDocuments(); // Refresh the list
     } catch (error) {
@@ -69,6 +68,7 @@ export const DocumentsListPanel: React.FC<DocumentsListPanelProps> = ({
     try {
       // Note: We'll need to add a download endpoint to the API service
       // const blob = await apiService.downloadDocument(groupId, documentId);
+      console.log(`Downloading document: ${documentId}`);
       // const url = window.URL.createObjectURL(blob);
       // const a = document.createElement('a');
       // a.style.display = 'none';
