@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Cog6ToothIcon,
   XMarkIcon,
@@ -9,12 +9,14 @@ import {
   CircleStackIcon,
   DocumentIcon,
   ShieldCheckIcon,
-  SwatchIcon
+  SwatchIcon,
+  ChartBarIcon
 } from '@heroicons/react/24/outline';
 import { Tab } from '@headlessui/react';
 import { toast } from 'react-hot-toast';
 import { apiService } from '../services/api';
 import { useTheme } from '../contexts/ThemeContext';
+import { ComprehensiveLogPanel } from './ComprehensiveLogPanel';
 
 interface SettingsConfig {
   // Application Core Settings
@@ -107,6 +109,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
   const [settings, setSettings] = useState<SettingsConfig>(defaultSettings);
   const [isDirty, setIsDirty] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [logPanelOpen, setLogPanelOpen] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -259,7 +262,8 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
     { name: 'Database', icon: CircleStackIcon },
     { name: 'Documents', icon: DocumentIcon },
     { name: 'Security', icon: ShieldCheckIcon },
-    { name: 'Interface', icon: SwatchIcon }
+    { name: 'Interface', icon: SwatchIcon },
+    { name: 'Log Management', icon: ChartBarIcon }
   ];
 
   if (!isOpen) return null;
@@ -784,6 +788,80 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                     </div>
                   </div>
                 </Tab.Panel>
+
+                {/* Log Management */}
+                <Tab.Panel className="space-y-6">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                      Log Management & Monitoring
+                    </h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+                      Monitor system logs, user activity, performance metrics, and error tracking in real-time.
+                    </p>
+
+                    <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 p-6 rounded-xl border border-blue-200 dark:border-blue-800">
+                      <div className="flex items-start space-x-4">
+                        <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
+                          <ChartBarIcon className="w-6 h-6 text-white" />
+                        </div>
+                        <div className="flex-1">
+                          <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                            Comprehensive Log Center
+                          </h4>
+                          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                            Access detailed system logs, user activity tracking, performance analytics, and error monitoring.
+                          </p>
+                          <div className="grid grid-cols-2 gap-4 text-sm mb-4">
+                            <div className="flex items-center space-x-2 text-blue-700 dark:text-blue-300">
+                              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                              <span>User Activity Dashboard</span>
+                            </div>
+                            <div className="flex items-center space-x-2 text-blue-700 dark:text-blue-300">
+                              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                              <span>Real-time Session Logs</span>
+                            </div>
+                            <div className="flex items-center space-x-2 text-blue-700 dark:text-blue-300">
+                              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                              <span>Performance Metrics</span>
+                            </div>
+                            <div className="flex items-center space-x-2 text-blue-700 dark:text-blue-300">
+                              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                              <span>Error Tracking & Analysis</span>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => setLogPanelOpen(true)}
+                            className="px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg hover:from-blue-600 hover:to-purple-700 transition-all transform hover:scale-105 flex items-center space-x-2"
+                          >
+                            <ChartBarIcon className="w-4 h-4" />
+                            <span>Open Log Management Center</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+                      <div className="p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                        <h5 className="font-medium text-gray-900 dark:text-white mb-2">Current Log Level</h5>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                          Logging level: <span className="font-mono text-blue-600 dark:text-blue-400">{settings.log_level}</span>
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          File logging: {settings.enable_file_logging ? 'Enabled' : 'Disabled'}
+                        </p>
+                      </div>
+                      <div className="p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                        <h5 className="font-medium text-gray-900 dark:text-white mb-2">Log File Settings</h5>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                          Max file size: <span className="font-mono text-blue-600 dark:text-blue-400">{settings.log_file_max_size_mb}MB</span>
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          Configure in Documents tab
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </Tab.Panel>
               </Tab.Panels>
               </div>
             </div>
@@ -823,6 +901,16 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
           </div>
         </div>
       </motion.div>
+
+      {/* Log Management Panel */}
+      <AnimatePresence>
+        {logPanelOpen && (
+          <ComprehensiveLogPanel
+            isOpen={logPanelOpen}
+            onClose={() => setLogPanelOpen(false)}
+          />
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 };

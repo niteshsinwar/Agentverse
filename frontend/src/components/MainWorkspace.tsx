@@ -136,42 +136,146 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = ({
 
   if (!selectedGroup) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center max-w-md mx-auto p-8"
-        >
-          <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-6">
-            <BoltIcon className="w-8 h-8 text-white" />
-          </div>
+      <div className="flex flex-col h-full bg-white dark:bg-gray-900">
+        {/* Header with Global Settings - Always visible */}
+        <div className="border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+          <div className="px-6 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-3">
+                  <div className="w-2 h-2 bg-gray-400 rounded-full" />
+                  <div>
+                    <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
+                      Agentic Platform
+                    </h1>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      No workspace selected
+                    </p>
+                  </div>
+                </div>
+              </div>
 
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-            Welcome to Agentic Platform
-          </h2>
-          <p className="text-gray-600 dark:text-gray-400 mb-6">
-            Create or select a workspace to start orchestrating your AI agents and unlock the power of multi-agent collaboration.
-          </p>
+              <div className="flex items-center space-x-3">
+                <button
+                  onClick={onOpenCommandPalette}
+                  className="flex items-center space-x-2 px-3 py-1.5 text-sm text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                >
+                  <CommandLineIcon className="w-4 h-4" />
+                  <span>⌘K</span>
+                </button>
 
-          <div className="grid grid-cols-2 gap-4 text-sm text-gray-500 dark:text-gray-400">
-            <div className="flex items-center space-x-2">
-              <CpuChipIcon className="w-4 h-4" />
-              <span>Multi-Agent Teams</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <CommandLineIcon className="w-4 h-4" />
-              <span>Command Palette</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <ChartBarIcon className="w-4 h-4" />
-              <span>Real-time Analytics</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <DocumentTextIcon className="w-4 h-4" />
-              <span>Smart Context</span>
+                <Menu as="div" className="relative">
+                  <Menu.Button className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+                    <Cog6ToothIcon className="w-5 h-5" />
+                  </Menu.Button>
+                  <Transition
+                    enter="transition duration-100 ease-out"
+                    enterFrom="transform scale-95 opacity-0"
+                    enterTo="transform scale-100 opacity-100"
+                    leave="transition duration-75 ease-in"
+                    leaveFrom="transform scale-100 opacity-100"
+                    leaveTo="transform scale-95 opacity-0"
+                  >
+                    <Menu.Items className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 z-50">
+                      <div className="py-1">
+                        <Menu.Item>
+                          {({ active }) => (
+                            <button
+                              onClick={onOpenSettings}
+                              className={`w-full text-left px-3 py-2 text-sm transition-colors ${
+                                active
+                                  ? 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white'
+                                  : 'text-gray-700 dark:text-gray-300'
+                              }`}
+                            >
+                              <div className="flex items-center space-x-2">
+                                <Cog6ToothIcon className="w-4 h-4" />
+                                <span>Application Settings</span>
+                              </div>
+                            </button>
+                          )}
+                        </Menu.Item>
+                        <Menu.Item>
+                          {({ active }) => (
+                            <button
+                              onClick={onOpenToolsManagement}
+                              className={`w-full text-left px-3 py-2 text-sm transition-colors ${
+                                active
+                                  ? 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white'
+                                  : 'text-gray-700 dark:text-gray-300'
+                              }`}
+                            >
+                              <div className="flex items-center space-x-2">
+                                <CodeBracketIcon className="w-4 h-4" />
+                                <span>Manage Tools</span>
+                              </div>
+                            </button>
+                          )}
+                        </Menu.Item>
+                        <Menu.Item>
+                          {({ active }) => (
+                            <button
+                              onClick={onOpenMcpManagement}
+                              className={`w-full text-left px-3 py-2 text-sm transition-colors ${
+                                active
+                                  ? 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white'
+                                  : 'text-gray-700 dark:text-gray-300'
+                              }`}
+                            >
+                              <div className="flex items-center space-x-2">
+                                <ServerIcon className="w-4 h-4" />
+                                <span>Manage MCP Servers</span>
+                              </div>
+                            </button>
+                          )}
+                        </Menu.Item>
+                      </div>
+                    </Menu.Items>
+                  </Transition>
+                </Menu>
+              </div>
             </div>
           </div>
-        </motion.div>
+        </div>
+
+        {/* Welcome Content */}
+        <div className="flex-1 flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center max-w-md mx-auto p-8"
+          >
+            <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-6">
+              <BoltIcon className="w-8 h-8 text-white" />
+            </div>
+
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+              Welcome to Agentic Platform
+            </h2>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
+              Create or select a workspace to start orchestrating your AI agents and unlock the power of multi-agent collaboration.
+            </p>
+
+            <div className="grid grid-cols-2 gap-4 text-sm text-gray-500 dark:text-gray-400">
+              <div className="flex items-center space-x-2">
+                <CpuChipIcon className="w-4 h-4" />
+                <span>Multi-Agent Teams</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <CommandLineIcon className="w-4 h-4" />
+                <span>Command Palette</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <ChartBarIcon className="w-4 h-4" />
+                <span>Real-time Analytics</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <DocumentTextIcon className="w-4 h-4" />
+                <span>Smart Context</span>
+              </div>
+            </div>
+          </motion.div>
+        </div>
       </div>
     );
   }

@@ -128,6 +128,7 @@ class BaseAgent:
             return {"isError": True, "tool": tool_name, "error": "Unknown tool", "error_type": "UnknownTool"}
 
         from src.core.telemetry.session_logger import session_logger
+        from src.core.telemetry.events import emit_tool_call, emit_tool_result, emit_error
         from src.core.memory import session_store
         import time
         import json as _json
@@ -148,7 +149,7 @@ class BaseAgent:
                 res = await res
             
             duration_ms = (time.time() - start_time) * 1000
-            
+
             # Log successful tool call
             session_logger.log_tool_call(
                 session_id=group_id,
@@ -158,6 +159,10 @@ class BaseAgent:
                 duration_ms=duration_ms,
                 result=res
             )
+
+            # Emit real-time events for UI
+            await emit_tool_call(group_id, self.agent_id, tool_name, "success", {"duration_ms": duration_ms})
+            await emit_tool_result(group_id, self.agent_id, tool_name, str(res)[:100], {"duration_ms": duration_ms})
             # Persist tool result to conversation history
             session_store.append_message(
                 group_id=group_id,
@@ -181,6 +186,9 @@ class BaseAgent:
                 duration_ms=duration_ms,
                 error=str(e)
             )
+
+            # Emit real-time error event for UI
+            await emit_error(group_id, f"tool_call:{tool_name}", str(e), {"agent_id": self.agent_id, "duration_ms": duration_ms})
             # Persist tool error to conversation history
             session_store.append_message(
                 group_id=group_id,
@@ -223,48 +231,34 @@ class BaseAgent:
             roster = orchestrator.group_roster(group_id)
         roster_lines = "\n".join([f"- @{k} — {n}: {d}" for (k, n, d) in roster]) or "- (no other members)"
 
-        # ENHANCED CONVERSATION CONTEXT with caching and rich history
-        try:
-            from .conversation_manager import conversation_manager
-            
-            # Get optimized conversation context (cached, rich, up to 50 messages)
-            history_context = conversation_manager.get_enhanced_conversation_context(
-                group_id=group_id, 
-                for_agent=self.agent_id,
-                force_rebuild=False  # Use cache when available
+        # CONVERSATION CONTEXT - Get recent conversation history
+        from src.core.memory import session_store
+        def build_history_context() -> str:
+            hist = session_store.get_history(group_id) if group_id else []
+            if not hist:
+                return ""
+            recent = hist[-20:]  # Get last 20 messages
+            lines: List[str] = []
+            for msg in recent:
+                role = msg.get("role", "unknown")
+                sender = msg.get("sender", "unknown")
+                content = msg.get("content", "")
+                if role == "user":
+                    lines.append(f"User: {content}")
+                elif role == "agent":
+                    agent_key = msg.get("metadata", {}).get("agent_key", sender)
+                    lines.append(f"{agent_key}: {content}")
+                elif role == "system":
+                    lines.append(f"[System]: {content}")
+                elif role in ("tool_call", "tool_result", "tool_error", "mcp_call", "mcp_result"):
+                    lines.append(f"[{role}]: {content}")
+            return (
+                "\n\n=== CONVERSATION HISTORY (Last 20 messages) ===\n"
+                + "\n".join(lines)
+                + "\n=== END HISTORY ===\n\n"
             )
-            print(f"✅ Using enhanced conversation context for {self.agent_id}")
-            
-        except Exception as e:
-            print(f"⚠️ Falling back to basic history for {self.agent_id}: {e}")
-            # Fallback to original simple history (but expanded to 20 messages)
-            from src.core.memory import session_store
-            def build_history_context() -> str:
-                hist = session_store.get_history(group_id) if group_id else []
-                if not hist:
-                    return ""
-                recent = hist[-20:]  # Increased from 10 to 20
-                lines: List[str] = []
-                for msg in recent:
-                    role = msg.get("role", "unknown")
-                    sender = msg.get("sender", "unknown")
-                    content = msg.get("content", "")
-                    if role == "user":
-                        lines.append(f"User: {content}")
-                    elif role == "agent":
-                        agent_key = msg.get("metadata", {}).get("agent_key", sender)
-                        lines.append(f"{agent_key}: {content}")
-                    elif role == "system":
-                        lines.append(f"[System]: {content}")
-                    elif role in ("tool_call", "tool_result", "tool_error", "mcp_call", "mcp_result"):
-                        lines.append(f"[{role}]: {content}")
-                return (
-                    "\n\n=== CONVERSATION HISTORY (Enhanced: Last 20 messages) ===\n"
-                    + "\n".join(lines)
-                    + "\n=== END HISTORY ===\n\n"
-                )
 
-            history_context = build_history_context()
+        history_context = build_history_context()
 
         # INTEGRATE PERSONAL MEMORY - Recall relevant memories based on prompt
         personal_memory_context = ""
@@ -350,50 +344,41 @@ class BaseAgent:
         if self.agent_id == "agent_4":
             print(f"🔍 DEBUG Agent_4 tools: {list(self.tools.keys())}")
         
-        # USE ENHANCED PROMPT BUILDER for better collaboration
-        try:
-            from .prompt_builder import advanced_prompt_builder
-            sys = advanced_prompt_builder.build_collaborative_prompt(
-                self.agent_id, group_id, prompt, orchestrator
-            )
-            print(f"✅ Using enhanced prompt for {self.agent_id}")
-        except Exception as e:
-            print(f"⚠️ Falling back to basic prompt for {self.agent_id}: {e}")
-            # Fallback to original prompt structure  
-            sys = (
-                f"Agent: {self.agent_id} ({self.metadata.get('name')})\n"
-                f"Specialty: {self.metadata.get('description', 'General purpose')}\n"
-                f"CAPABILITIES: {self.get_capabilities_summary()}\n"
-                f"{mcp_tools_detail}"
-                f"Group: {roster_lines}\n"
-                f"{history_context}"
-                f"{personal_memory_context}"
-                f"Action loop - return JSON only:\n"
-                f"- final: {{\"action\":\"final\",\"text\":\"response\"}} - USE THIS for normal conversation\n"
-                f"- call_tool: {{\"action\":\"call_tool\",\"tool_name\":\"<tool_name>\",\"kwargs\":{{...}}}} - Only for specific tool requests\n"
-                f"- call_mcp: {{\"action\":\"call_mcp\",\"server\":\"<server>\",\"tool\":\"<tool>\",\"params\":{{...}}}} - Only for MCP operations\n\n"
-                f"Rules:\n"
-                f"- DEFAULT to 'final' action for all normal conversation and responses\n"
-                f"- Only use tools registered under you; if another agent has the tool, delegate by replying 'final' and tagging that agent with clear instructions\n"
-                f"- NEVER invent or call unknown tools. If a tool is unavailable or fails, proceed using the provided document context to answer, or delegate to the right agent via 'final'\n"
-                f"- When the user mentions an 'image', 'photo', or 'picture', analyze the injected document content directly if no tool is available: describe visible damage, probable parts, and a reasonable cost estimate with assumptions\n"
-                f"- 🤖 COLLABORATION STRATEGY:\n"
-                f"  • PREFER agent-to-agent collaboration over returning to user when other agents can help\n"
-                f"  • You can ONLY interact with agents present in this group (listed above in Group section)\n"
-                f"  • Study other agents' specialties and delegate appropriately to create efficient workflows\n"
-                f"  • Continue multi-step processes with other agents rather than breaking to user\n"
-                f"- 🎯 INTELLIGENT TAGGING:\n"
-                f"  • Tag '@user' ONLY when: conversation is complete, user input needed, or error requires user attention\n"
-                f"  • Tag '@agent_name' when: delegating tasks, asking for help, continuing workflows, or collaborating\n"
-                f"  • Think: 'Can another agent in this group help?' before defaulting to @user\n"
-                f"  • NEVER tag agents not listed in the Group section above\n"
-                f"- When tagged by another agent (@{self.agent_id}), engage collaboratively and continue the workflow\n"
-                f"- ⚠️ IMPORTANT: Call tools ONE AT A TIME - never return multiple JSON actions in one response\n"
-                f"- If you need multiple operations, call one tool, then the system will ask for next action\n"
-                f"- Only use call_tool/call_mcp when explicitly asked to perform specific operations\n"
-                f"- MUST quote CAPABILITIES section when asked about tools/MCP\n"
-                f"- Return JSON only - NEVER return multiple JSON objects"
-            )
+        # BUILD COLLABORATIVE PROMPT
+        sys = (
+            f"Agent: {self.agent_id} ({self.metadata.get('name')})\n"
+            f"Specialty: {self.metadata.get('description', 'General purpose')}\n"
+            f"CAPABILITIES: {self.get_capabilities_summary()}\n"
+            f"{mcp_tools_detail}"
+            f"Group: {roster_lines}\n"
+            f"{history_context}"
+            f"{personal_memory_context}"
+            f"Action loop - return JSON only:\n"
+            f"- final: {{\"action\":\"final\",\"text\":\"response\"}} - USE THIS for normal conversation\n"
+            f"- call_tool: {{\"action\":\"call_tool\",\"tool_name\":\"<tool_name>\",\"kwargs\":{{...}}}} - Only for specific tool requests\n"
+            f"- call_mcp: {{\"action\":\"call_mcp\",\"server\":\"<server>\",\"tool\":\"<tool>\",\"params\":{{...}}}} - Only for MCP operations\n\n"
+            f"Rules:\n"
+            f"- DEFAULT to 'final' action for all normal conversation and responses\n"
+            f"- Only use tools registered under you; if another agent has the tool, delegate by replying 'final' and tagging that agent with clear instructions\n"
+            f"- NEVER invent or call unknown tools. If a tool is unavailable or fails, proceed using the provided document context to answer, or delegate to the right agent via 'final'\n"
+            f"- When the user mentions an 'image', 'photo', or 'picture', analyze the injected document content directly if no tool is available: describe visible damage, probable parts, and a reasonable cost estimate with assumptions\n"
+            f"- 🤖 COLLABORATION STRATEGY:\n"
+            f"  • PREFER agent-to-agent collaboration over returning to user when other agents can help\n"
+            f"  • You can ONLY interact with agents present in this group (listed above in Group section)\n"
+            f"  • Study other agents' specialties and delegate appropriately to create efficient workflows\n"
+            f"  • Continue multi-step processes with other agents rather than breaking to user\n"
+            f"- 🎯 INTELLIGENT TAGGING:\n"
+            f"  • Tag '@user' ONLY when: conversation is complete, user input needed, or error requires user attention\n"
+            f"  • Tag '@agent_name' when: delegating tasks, asking for help, continuing workflows, or collaborating\n"
+            f"  • Think: 'Can another agent in this group help?' before defaulting to @user\n"
+            f"  • NEVER tag agents not listed in the Group section above\n"
+            f"- When tagged by another agent (@{self.agent_id}), engage collaboratively and continue the workflow\n"
+            f"- ⚠️ IMPORTANT: Call tools ONE AT A TIME - never return multiple JSON actions in one response\n"
+            f"- If you need multiple operations, call one tool, then the system will ask for next action\n"
+            f"- Only use call_tool/call_mcp when explicitly asked to perform specific operations\n"
+            f"- MUST quote CAPABILITIES section when asked about tools/MCP\n"
+            f"- Return JSON only - NEVER return multiple JSON objects"
+        )
 
         observations: List[Dict[str, Any]] = []
         last_tool: Optional[str] = None

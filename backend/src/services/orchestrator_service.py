@@ -98,6 +98,12 @@ class OrchestratorService:
         except Exception as e:
             # Log error and store error message
             error_msg = f"Error processing message: {str(e)}"
+            print(f"❌ Service error processing message: {e}")
+            print(f"📍 Error type: {type(e).__name__}")
+            print(f"📝 Original message: {message[:100]}...")
+            import traceback
+            print(f"🔍 Traceback: {traceback.format_exc()}")
+
             session_store.append_message(
                 group_id=group_id,
                 sender="system",

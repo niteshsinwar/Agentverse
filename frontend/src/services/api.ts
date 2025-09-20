@@ -1,32 +1,133 @@
-// API service for communicating with Python FastAPI backend
+// Enhanced API service with comprehensive logging and error tracking
 const API_BASE_URL = 'http://localhost:8000';
 
+interface LogEntry {
+  timestamp: string;
+  level: 'INFO' | 'WARNING' | 'ERROR' | 'DEBUG';
+  message: string;
+  context?: Record<string, any>;
+}
+
 class ApiService {
+  private logs: LogEntry[] = [];
+  private maxLogs = 1000;
+
+  private log(level: LogEntry['level'], message: string, context?: Record<string, any>) {
+    const entry: LogEntry = {
+      timestamp: new Date().toISOString(),
+      level,
+      message,
+      context
+    };
+
+    this.logs.unshift(entry);
+    if (this.logs.length > this.maxLogs) {
+      this.logs = this.logs.slice(0, this.maxLogs);
+    }
+
+    // Also log to console in development
+    if (process.env.NODE_ENV === 'development') {
+      console[level.toLowerCase() as 'info' | 'warn' | 'error' | 'debug']?.(
+        `[API] ${message}`,
+        context ? context : ''
+      );
+    }
+  }
+
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+    const startTime = Date.now();
     const url = `${API_BASE_URL}${endpoint}`;
-    const response = await fetch(url, {
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
-      ...options,
+    const method = options.method || 'GET';
+
+    this.log('DEBUG', `${method} ${endpoint}`, {
+      url,
+      headers: options.headers,
+      bodySize: options.body ? new Blob([options.body as string]).size : 0
     });
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => null);
-      const error = new Error(`API request failed: ${response.statusText}`);
+    try {
+      const response = await fetch(url, {
+        headers: {
+          'Content-Type': 'application/json',
+          ...options.headers,
+        },
+        ...options,
+      });
 
-      // Attach validation errors if present
-      if (errorData?.detail?.validation_errors) {
-        (error as any).validation_errors = errorData.detail.validation_errors;
-      } else if (errorData?.detail && typeof errorData.detail === 'object') {
-        (error as any).validation_errors = errorData.detail;
+      const duration = Date.now() - startTime;
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        const error = new Error(`API request failed: ${response.statusText}`);
+
+        // Enhanced error logging
+        this.log('ERROR', `API Error: ${method} ${endpoint}`, {
+          status: response.status,
+          statusText: response.statusText,
+          duration,
+          errorData,
+          endpoint,
+          method,
+          requestBody: options.body
+        });
+
+        // Attach validation errors if present
+        if (errorData?.detail?.validation_errors) {
+          (error as any).validation_errors = errorData.detail.validation_errors;
+        } else if (errorData?.detail && typeof errorData.detail === 'object') {
+          (error as any).validation_errors = errorData.detail;
+        }
+
+        throw error;
       }
+
+      // Log successful requests
+      this.log('INFO', `${method} ${endpoint} - ${response.status}`, {
+        status: response.status,
+        duration,
+        endpoint,
+        method
+      });
+
+      // Performance warning for slow requests
+      if (duration > 2000) {
+        this.log('WARNING', `Slow API request: ${method} ${endpoint}`, {
+          duration,
+          threshold: 2000,
+          endpoint,
+          method
+        });
+      }
+
+      return response.json();
+
+    } catch (error) {
+      const duration = Date.now() - startTime;
+
+      // Log network or other errors
+      this.log('ERROR', `Request failed: ${method} ${endpoint}`, {
+        error: error instanceof Error ? error.message : String(error),
+        duration,
+        endpoint,
+        method,
+        type: 'network_error'
+      });
 
       throw error;
     }
+  }
 
-    return response.json();
+  // Get API logs for debugging
+  getLogs(level?: LogEntry['level']): LogEntry[] {
+    if (level) {
+      return this.logs.filter(log => log.level === level);
+    }
+    return [...this.logs];
+  }
+
+  // Clear logs
+  clearLogs(): void {
+    this.logs = [];
   }
 
   // Groups
@@ -286,6 +387,83 @@ class ApiService {
 
   async getMcpTemplates() {
     return this.request('/api/v1/config/validate/templates/mcp/');
+  }
+
+  // Logs API
+  async getLogSessions() {
+    return this.request('/api/v1/logs/sessions');
+  }
+
+  async getSessionLogs(sessionId: string, options: {
+    format?: 'json' | 'human';
+    limit?: number;
+    level?: string;
+    event_type?: string;
+    agent_id?: string;
+    from_timestamp?: string;
+    to_timestamp?: string;
+  } = {}) {
+    const params = new URLSearchParams();
+    Object.entries(options).forEach(([key, value]) => {
+      if (value !== undefined) {
+        params.append(key, String(value));
+      }
+    });
+
+    const endpoint = `/api/v1/logs/sessions/${sessionId}`;
+    return this.request(`${endpoint}?${params.toString()}`);
+  }
+
+  async getSessionSummary(sessionId: string) {
+    return this.request(`/api/v1/logs/sessions/${sessionId}/summary`);
+  }
+
+  async getSessionPerformance(sessionId: string) {
+    return this.request(`/api/v1/logs/sessions/${sessionId}/performance`);
+  }
+
+  async deleteSessionLogs(sessionId: string) {
+    return this.request(`/api/v1/logs/sessions/${sessionId}`, { method: 'DELETE' });
+  }
+
+  async exportSessionLogs(sessionId: string, format: 'json' | 'zip' = 'json') {
+    const endpoint = `/api/v1/logs/export/${sessionId}?format=${format}`;
+
+    if (format === 'zip') {
+      // Handle file download
+      const response = await fetch(`${API_BASE_URL}${endpoint}`);
+      return response.blob();
+    } else {
+      return this.request(endpoint);
+    }
+  }
+
+  async getApplicationLogs(limit: number = 100, level?: string) {
+    const params = new URLSearchParams({ limit: String(limit) });
+    if (level) params.append('level', level);
+
+    return this.request(`/api/v1/logs/application?${params.toString()}`);
+  }
+
+  async getStartupLogs() {
+    return this.request('/api/v1/logs/startup');
+  }
+
+  // Frontend error logging
+  async logFrontendError(errorData: {
+    error_id: string;
+    timestamp: string;
+    message: string;
+    stack?: string;
+    component_stack?: string;
+    user_agent: string;
+    url: string;
+    context?: Record<string, any>;
+  }) {
+    return this.request('/api/v1/logs/frontend-error', {
+      method: 'POST',
+      body: JSON.stringify(errorData)
+    });
   }
 
   // Events (Server-Sent Events)

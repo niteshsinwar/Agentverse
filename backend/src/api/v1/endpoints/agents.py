@@ -1,20 +1,26 @@
 
 """
 Agents API Endpoints
-RESTful endpoints for agent management with full CRUD operations
+RESTful endpoints for agent management with full CRUD operations and user action tracking
 """
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Request
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 import os
 import json
 import yaml
 import shutil
+import time
 
 from src.services.orchestrator_service import OrchestratorService
 from src.api.v1.dependencies import get_orchestrator_service
 from src.core.validation.agent_validator import AgentValidator
+from src.core.telemetry.user_actions import (
+    user_action_tracker,
+    track_agent_creation,
+    UserActionType
+)
 
 router = APIRouter()
 
@@ -151,15 +157,34 @@ async def refresh_agents(
 @router.post("/create/")
 async def create_agent(
     request: CreateAgentRequest,
+    http_request: Request,
     service: OrchestratorService = Depends(get_orchestrator_service)
 ):
     """
     Create a new agent with tools and MCP configuration with validation.
+    Includes comprehensive user action tracking.
 
     Creates agent folder structure with agent.yaml, mcp.json, and tools.py files.
     """
     agent_key = None
     agent_dir = None
+
+    # Get session context from headers or create one
+    session_id = http_request.headers.get('X-Session-ID', 'default_session')
+
+    # Get user context
+    user_context = {
+        'user_agent': http_request.headers.get('User-Agent'),
+        'ip_address': http_request.client.host if http_request.client else None,
+        'page_url': str(http_request.url)
+    }
+
+    # Start tracking agent creation
+    operation_id = track_agent_creation(
+        session_id=session_id,
+        agent_data=request.dict(),
+        user_context=user_context
+    )
 
     try:
         # Generate agent key if not provided
@@ -180,6 +205,18 @@ async def create_agent(
         )
 
         if not validation_result.valid:
+            # Track validation errors
+            user_action_tracker.complete_operation(
+                session_id=session_id,
+                operation_id=operation_id,
+                action_type=UserActionType.AGENT_CREATE_START,
+                success=False,
+                resource_type="agent",
+                resource_id=agent_key,
+                error_message="Agent configuration validation failed",
+                validation_errors=[validation_result.to_dict()]
+            )
+
             raise HTTPException(
                 status_code=400,
                 detail={
@@ -224,6 +261,24 @@ async def create_agent(
         # Refresh agents to pick up the new agent
         service.refresh_agents()
 
+        # Track successful completion
+        user_action_tracker.complete_operation(
+            session_id=session_id,
+            operation_id=operation_id,
+            action_type=UserActionType.AGENT_CREATE_START,
+            success=True,
+            resource_type="agent",
+            resource_id=agent_key,
+            resource_name=request.name,
+            result_data={
+                "agent_dir": agent_dir,
+                "has_tools": bool(request.tools_code and request.tools_code.strip()),
+                "has_mcp_config": bool(request.mcp_config),
+                "selected_tools_count": len(request.selected_tools or []),
+                "selected_mcps_count": len(request.selected_mcps or [])
+            }
+        )
+
         return {
             "message": f"Agent '{request.name}' created successfully",
             "agent_key": agent_key,
@@ -231,9 +286,30 @@ async def create_agent(
             "validation_passed": True
         }
 
-    except HTTPException:
+    except HTTPException as e:
+        # Track HTTP errors (validation, conflicts, etc.)
+        user_action_tracker.complete_operation(
+            session_id=session_id,
+            operation_id=operation_id,
+            action_type=UserActionType.AGENT_CREATE_START,
+            success=False,
+            resource_type="agent",
+            resource_id=agent_key,
+            error_message=str(e.detail)
+        )
         raise
     except Exception as e:
+        # Track system errors and clean up
+        user_action_tracker.complete_operation(
+            session_id=session_id,
+            operation_id=operation_id,
+            action_type=UserActionType.AGENT_CREATE_START,
+            success=False,
+            resource_type="agent",
+            resource_id=agent_key,
+            error_message=f"System error during agent creation: {str(e)}"
+        )
+
         # Clean up if creation failed
         if agent_dir and os.path.exists(agent_dir):
             shutil.rmtree(agent_dir)

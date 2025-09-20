@@ -112,4 +112,9 @@ class AgentOrchestrator:
         try:
             return await agent.respond(enhanced_message, group_id=group_id, orchestrator=self)
         except Exception as e:
-            return f"[error] Agent response failed: {e}"
+            error_msg = f"[error] Agent response failed: {e}"
+            print(f"❌ Agent {agent_id} error: {e}")
+            print(f"📍 Error type: {type(e).__name__}")
+            import traceback
+            print(f"🔍 Traceback: {traceback.format_exc()}")
+            return error_msg
