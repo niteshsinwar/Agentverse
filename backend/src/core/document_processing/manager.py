@@ -36,28 +36,33 @@ class DocumentManager:
         config = self.agent_configs.get(agent_id, {})
         doc_access = config.get('document_access', {})
         
-        if not doc_access.get('enabled', False):
-            return False, f"Agent {agent_id} doesn't have document processing enabled"
+        # All agents now have mandatory document processing capability
+        # No need to check enabled status anymore
         
-        # Check file size
-        max_size = doc_access.get('max_file_size_mb', 10)
+        # Use global document extraction settings from settings.json
+        from src.core.config.settings import get_settings
+        settings = get_settings()
+        doc_config = settings.document_extraction
+
+        # Check file size against global limit
+        max_size = doc_config.max_file_size_mb
         if file_size_mb > max_size:
             return False, f"File size ({file_size_mb:.1f}MB) exceeds limit ({max_size}MB)"
-        
-        # Check supported formats (remove dot from extension for comparison)
-        supported_formats = doc_access.get('supported_formats', [])
+
+        # Check supported formats against global list
+        supported_formats = doc_config.supported_formats
         file_ext_no_dot = file_extension.lower().lstrip('.')
         if file_ext_no_dot not in [fmt.lower() for fmt in supported_formats]:
             return False, f"File type '{file_extension}' not supported. Supported: {', '.join(supported_formats)}"
         
         return True, "File can be processed"
     
-    def process_and_store_document(self, 
-                                 uploaded_file,
-                                 group_id: str,
-                                 agent_id: str,
-                                 sender_type: str = "user",
-                                 sender_id: Optional[str] = None) -> Dict[str, Any]:
+    async def process_and_store_document(self,
+                                       uploaded_file,
+                                       group_id: str,
+                                       agent_id: str,
+                                       sender_type: str = "user",
+                                       sender_id: Optional[str] = None) -> Dict[str, Any]:
         """Process uploaded file and store with metadata"""
         
         try:
@@ -93,22 +98,23 @@ class DocumentManager:
                     'document_id': None
                 }
             
-            # Process document content
-            agent_config = self.agent_configs.get(agent_id, {})
-            ai_extraction = agent_config.get('document_access', {}).get('ai_extraction', {})
-            
+            # Process document content using global settings
+            from src.core.config.settings import get_settings
+            settings = get_settings()
+            doc_config = settings.document_extraction
+
             extracted_content = ""
             content_summary = ""
-            
-            if ai_extraction.get('enabled', False):
+
+            if doc_config.ai_analysis_enabled:
                 try:
                     # Use AI analysis for better content extraction
-                    extracted_content = self.processor.process_file(
-                        temp_path, 
-                        file_extension, 
+                    extracted_content = await self.processor.process_file(
+                        temp_path,
+                        file_extension,
                         use_ai_analysis=True
                     )
-                    if extracted_content and ai_extraction.get('generate_summary', False):
+                    if extracted_content and doc_config.generate_summary:
                         # The AI analysis already includes comprehensive analysis
                         # but we can generate a shorter summary if needed
                         content_summary = self._generate_summary(extracted_content, max_length=300)
@@ -127,7 +133,7 @@ class DocumentManager:
                 content_summary=content_summary,
                 metadata={
                     'file_size_mb': file_size_mb,
-                    'processing_enabled': ai_extraction.get('enabled', False),
+                    'processing_enabled': doc_config.ai_analysis_enabled,
                     'upload_source': 'chat_interface'
                 }
             )

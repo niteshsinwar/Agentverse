@@ -470,6 +470,7 @@ class ApiService {
   createEventStream(groupId: string): EventSource {
     return new EventSource(`${API_BASE_URL}/api/v1/groups/${groupId}/events/`);
   }
+
 }
 
 export const apiService = new ApiService();

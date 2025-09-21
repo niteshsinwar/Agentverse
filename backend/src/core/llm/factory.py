@@ -94,7 +94,7 @@ def create_llm_config(provider: LLMProvider, model: Optional[str] = None, **kwar
     model_name = model or getattr(settings, 'LLM_MODEL', default_models[provider])
     temperature = kwargs.get('temperature', getattr(settings, 'LLM_TEMPERATURE', 0.2))
     max_tokens = kwargs.get('max_tokens', getattr(settings, 'LLM_MAX_TOKENS', 4096))
-    timeout = kwargs.get('timeout', 30.0)
+    timeout = kwargs.get('timeout', 60.0)  # Increased to 60 seconds for agent chains
 
     # Check API key in order: kwargs -> settings object -> environment variables
     api_key = (
@@ -102,6 +102,14 @@ def create_llm_config(provider: LLMProvider, model: Optional[str] = None, **kwar
         getattr(settings, settings_api_key_attrs[provider], None) or
         os.getenv(api_key_env_vars[provider])
     )
+
+    # Debug API key loading
+    if provider == LLMProvider.GEMINI:
+        print(f"🔍 Debug Gemini API Key:")
+        print(f"  - kwargs api_key: {kwargs.get('api_key', 'None')}")
+        print(f"  - settings.gemini_api_key: {getattr(settings, 'gemini_api_key', 'None')}")
+        print(f"  - GEMINI_API_KEY env: {os.getenv('GEMINI_API_KEY', 'None')}")
+        print(f"  - Final api_key: {api_key[:20] if api_key else 'None'}...")
 
     base_url = kwargs.get('base_url')
     

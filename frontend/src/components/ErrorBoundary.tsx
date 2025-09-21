@@ -116,12 +116,9 @@ class FrontendErrorLogger {
 
   private async sendToBackend(errorEntry: any) {
     try {
-      await fetch('/api/v1/logs/frontend-error', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      // Use centralized API service instead of direct fetch
+      const { apiService } = await import('../services/api');
+      await apiService.logFrontendError({
           error_id: errorEntry.id,
           timestamp: errorEntry.timestamp,
           message: errorEntry.error.message,
@@ -130,8 +127,7 @@ class FrontendErrorLogger {
           user_agent: errorEntry.userAgent,
           url: errorEntry.url,
           context: errorEntry.context
-        })
-      });
+        });
     } catch (sendError) {
       console.error('Failed to send error to backend:', sendError);
     }

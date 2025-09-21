@@ -59,9 +59,6 @@ class OrchestratorService:
 
     async def cleanup(self) -> None:
         """Clean up resources"""
-        if self.orchestrator:
-            # Perform any necessary cleanup
-            pass
         self._initialized = False
 
     def is_ready(self) -> bool:
@@ -88,21 +85,17 @@ class OrchestratorService:
         self.orchestrator.refresh_agents()
 
     # Message Processing Methods
-    async def process_message(self, group_id: str, message: str) -> None:
-        """Process a user message through the router"""
+    async def process_message(self, group_id: str, message: str, sender: str = "user") -> None:
+        """Process a message through the router (user or agent)"""
         if not self.is_ready():
             raise RuntimeError("Service not initialized")
 
         try:
-            await self.router.handle_user_message(group_id, message)
+            await self.router.handle_user_message(group_id, message, sender)
         except Exception as e:
             # Log error and store error message
             error_msg = f"Error processing message: {str(e)}"
             print(f"❌ Service error processing message: {e}")
-            print(f"📍 Error type: {type(e).__name__}")
-            print(f"📝 Original message: {message[:100]}...")
-            import traceback
-            print(f"🔍 Traceback: {traceback.format_exc()}")
 
             session_store.append_message(
                 group_id=group_id,
@@ -185,7 +178,7 @@ class OrchestratorService:
                 temp_file_path = temp_file.name
 
             # Process using the temporary file path
-            result = document_manager.process_and_store_document(
+            result = await document_manager.process_and_store_document(
                 uploaded_file=temp_file_path,  # Pass file path instead of UploadFile
                 group_id=group_id,
                 agent_id=agent_id,

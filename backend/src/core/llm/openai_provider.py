@@ -52,13 +52,24 @@ class OpenAILLM(LLM):
         try:
             formatted_messages = self._format_messages_for_openai(messages)
             
-            response = await self._async_client.chat.completions.create(
-                model=self.model,
-                messages=formatted_messages,
-                temperature=self.temperature,
-                max_tokens=self.max_tokens,
-                timeout=self.timeout
-            )
+            # Prepare completion parameters
+            params = {
+                "model": self.model,
+                "messages": formatted_messages,
+                "timeout": self.timeout
+            }
+
+            # Handle model-specific parameters
+            if "gpt-5" in self.model:
+                # GPT-5 uses max_completion_tokens and only supports default temperature
+                params["max_completion_tokens"] = self.max_tokens
+                # GPT-5 only supports temperature=1 (default), so we don't set it
+            else:
+                # Other models use max_tokens and support temperature configuration
+                params["max_tokens"] = self.max_tokens
+                params["temperature"] = self.temperature
+
+            response = await self._async_client.chat.completions.create(**params)
             
             return response.choices[0].message.content or ""
             
@@ -71,15 +82,26 @@ class OpenAILLM(LLM):
             formatted_messages = self._format_messages_for_openai(messages)
             formatted_tools = self._format_tools_for_openai(tools)
             
-            response = await self._async_client.chat.completions.create(
-                model=self.model,
-                messages=formatted_messages,
-                tools=formatted_tools if formatted_tools else None,
-                tool_choice="auto" if formatted_tools else None,
-                temperature=self.temperature,
-                max_tokens=self.max_tokens,
-                timeout=self.timeout
-            )
+            # Prepare completion parameters
+            params = {
+                "model": self.model,
+                "messages": formatted_messages,
+                "tools": formatted_tools if formatted_tools else None,
+                "tool_choice": "auto" if formatted_tools else None,
+                "timeout": self.timeout
+            }
+
+            # Handle model-specific parameters
+            if "gpt-5" in self.model:
+                # GPT-5 uses max_completion_tokens and only supports default temperature
+                params["max_completion_tokens"] = self.max_tokens
+                # GPT-5 only supports temperature=1 (default), so we don't set it
+            else:
+                # Other models use max_tokens and support temperature configuration
+                params["max_tokens"] = self.max_tokens
+                params["temperature"] = self.temperature
+
+            response = await self._async_client.chat.completions.create(**params)
             
             choice = response.choices[0]
             result = {
@@ -108,14 +130,25 @@ class OpenAILLM(LLM):
         try:
             formatted_messages = self._format_messages_for_openai(messages)
             
-            stream = await self._async_client.chat.completions.create(
-                model=self.model,
-                messages=formatted_messages,
-                temperature=self.temperature,
-                max_tokens=self.max_tokens,
-                timeout=self.timeout,
-                stream=True
-            )
+            # Prepare streaming parameters
+            stream_params = {
+                "model": self.model,
+                "messages": formatted_messages,
+                "timeout": self.timeout,
+                "stream": True
+            }
+
+            # Handle model-specific parameters
+            if "gpt-5" in self.model:
+                # GPT-5 uses max_completion_tokens and only supports default temperature
+                stream_params["max_completion_tokens"] = self.max_tokens
+                # GPT-5 only supports temperature=1 (default), so we don't set it
+            else:
+                # Other models use max_tokens and support temperature configuration
+                stream_params["max_tokens"] = self.max_tokens
+                stream_params["temperature"] = self.temperature
+
+            stream = await self._async_client.chat.completions.create(**stream_params)
             
             async for chunk in stream:
                 if chunk.choices[0].delta.content:
@@ -171,13 +204,13 @@ class OpenAILLM(LLM):
         
         return model_info
     
-    def _format_messages_for_openai(self, messages: List[LLMMessage]) -> List[Dict[str, str]]:
+    def _format_messages_for_openai(self, messages: List[LLMMessage]) -> List[Dict[str, Any]]:
         """Convert LLMMessage objects to OpenAI format"""
         formatted = []
         for msg in messages:
             formatted.append({
                 "role": msg.role,
-                "content": msg.content
+                "content": msg.content  # content can be string or multimodal structure
             })
         return formatted
     

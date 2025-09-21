@@ -86,6 +86,55 @@ function App() {
     loadGroupData();
   }, [selectedGroup]);
 
+  // Set up SSE stream to refresh messages on every agent response
+  useEffect(() => {
+    if (!selectedGroup) return;
+
+    const eventSource = apiService.createEventStream(selectedGroup.id);
+
+    eventSource.onmessage = async (event) => {
+      try {
+        const data = JSON.parse(event.data);
+
+        // Refresh messages on agent responses (message events with agent role)
+        if (data.type === 'message' && data.payload?.role === 'agent') {
+          console.log('SSE: Agent response received, refreshing messages...');
+          const newMessages = await apiService.getGroupMessages(selectedGroup.id);
+          setMessages(Array.isArray(newMessages) ? newMessages : []);
+
+          // Clear any existing loading state when agent responds
+          window.dispatchEvent(new CustomEvent('agentChainResponse', {
+            detail: { groupId: selectedGroup.id }
+          }));
+
+          // If the agent response contains @mentions for another agent (not @user), show loading
+          const agentMentionMatch = data.payload?.content?.match(/@([A-Za-z0-9_\-]+)/);
+          const hasAgentMention = agentMentionMatch && agentMentionMatch[1].toLowerCase() !== 'user';
+
+          if (hasAgentMention) {
+            // Small delay to show the response before loading next agent
+            setTimeout(() => {
+              window.dispatchEvent(new CustomEvent('agentChainLoading', {
+                detail: { groupId: selectedGroup.id }
+              }));
+            }, 500);
+          }
+        }
+      } catch (error) {
+        console.error('Error processing SSE event:', error);
+      }
+    };
+
+    eventSource.onerror = (error) => {
+      console.error('SSE connection error:', error);
+    };
+
+    // Cleanup function to close SSE connection
+    return () => {
+      eventSource.close();
+    };
+  }, [selectedGroup]);
+
   // Enhanced group management
   const handleGroupCreate = async (name: string) => {
     try {
@@ -166,16 +215,8 @@ function App() {
       setMessages(prev => [...prev, userMessage]);
       
       await apiService.sendMessage(selectedGroup.id, agentId, message);
-      
-      // Refresh messages after a short delay to get agent response
-      setTimeout(async () => {
-        try {
-          const newMessages = await apiService.getGroupMessages(selectedGroup.id);
-          setMessages(Array.isArray(newMessages) ? newMessages : []);
-        } catch (error) {
-          console.error('Failed to refresh messages:', error);
-        }
-      }, 1000);
+
+      // SSE stream will automatically refresh messages when agent responds
       
     } catch (error) {
       console.error('Failed to send message:', error);

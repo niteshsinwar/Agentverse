@@ -21,9 +21,10 @@ interface Agent {
   name: string;
   description: string;
   emoji: string;
-  tools?: string[];
-  mcp_config?: any;
-  tools_code?: string;
+  llm?: {
+    provider: string;
+    model: string;
+  };
 }
 
 interface ToolSelection {
@@ -61,7 +62,11 @@ export const EnhancedAgentCreationPanel: React.FC<EnhancedAgentCreationPanelProp
     name: '',
     description: '',
     emoji: '🤖',
-    key: ''
+    key: '',
+    llm: {
+      provider: 'openai',
+      model: 'gpt-4o-mini'
+    }
   });
 
   // Tool and MCP selections
@@ -170,14 +175,10 @@ export const EnhancedAgentCreationPanel: React.FC<EnhancedAgentCreationPanelProp
 
   const loadAgentConfiguration = async (agent: Agent) => {
     try {
-      // Load existing tool and MCP configurations for the agent
-      // This would typically come from the backend
-      const response = await fetch(`http://localhost:8000/api/v1/agents/${agent.key}/config`);
-      if (response.ok) {
-        const config = await response.json();
-        // Update selections based on existing configuration
-        updateSelectionsFromConfig(config);
-      }
+      // Note: The /agents/{key}/config endpoint was removed as unused
+      // Agent configuration is now managed through the simplified agent.yaml
+      // which only contains: name, description, emoji, llm (provider, model)
+      console.log('Agent configuration loaded from simplified YAML structure:', agent);
     } catch (error) {
       console.warn('Could not load agent configuration:', error);
     }
@@ -388,7 +389,11 @@ export const EnhancedAgentCreationPanel: React.FC<EnhancedAgentCreationPanelProp
       name: '',
       description: '',
       emoji: '🤖',
-      key: ''
+      key: '',
+      llm: {
+        provider: 'openai',
+        model: 'gpt-4o-mini'
+      }
     });
     initializeSelections();
     setCustomToolsCode('');
@@ -406,22 +411,30 @@ export const EnhancedAgentCreationPanel: React.FC<EnhancedAgentCreationPanelProp
         name: fullAgent.name,
         description: fullAgent.description,
         emoji: fullAgent.emoji,
-        key: fullAgent.key
+        key: fullAgent.key,
+        llm: fullAgent.llm || { provider: 'openai', model: 'gpt-4o-mini' }
       });
 
-      // Load custom code directly from the complete agent data
-      if (fullAgent.tools_code) {
-        setCustomToolsCode(fullAgent.tools_code);
-        setSelectedTabIndex(3); // Switch to Custom Code tab
-      }
-      if (fullAgent.mcp_config) {
-        setCustomMCPConfig(typeof fullAgent.mcp_config === 'string'
-          ? fullAgent.mcp_config
-          : JSON.stringify(fullAgent.mcp_config, null, 2)
-        );
-        if (!fullAgent.tools_code) {
+      // Load custom code directly from the complete agent data (legacy support)
+      // Note: tools_code and mcp_config are no longer part of simplified schema
+      // but may exist in legacy agent data
+      try {
+        const legacyAgent = fullAgent as any;
+        if (legacyAgent.tools_code) {
+          setCustomToolsCode(legacyAgent.tools_code);
           setSelectedTabIndex(3); // Switch to Custom Code tab
         }
+        if (legacyAgent.mcp_config) {
+          setCustomMCPConfig(typeof legacyAgent.mcp_config === 'string'
+            ? legacyAgent.mcp_config
+            : JSON.stringify(legacyAgent.mcp_config, null, 2)
+          );
+          if (!legacyAgent.tools_code) {
+            setSelectedTabIndex(3); // Switch to Custom Code tab
+          }
+        }
+      } catch (e) {
+        // Ignore legacy field access errors
       }
 
       setIsEditing(true);
@@ -434,7 +447,8 @@ export const EnhancedAgentCreationPanel: React.FC<EnhancedAgentCreationPanelProp
         name: agent.name,
         description: agent.description,
         emoji: agent.emoji,
-        key: agent.key
+        key: agent.key,
+        llm: agent.llm || { provider: 'openai', model: 'gpt-4o-mini' }
       });
       setIsEditing(true);
       loadAgentConfiguration(agent);
@@ -561,6 +575,79 @@ export const EnhancedAgentCreationPanel: React.FC<EnhancedAgentCreationPanelProp
                           className="w-20 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-center text-lg"
                           maxLength={2}
                         />
+                      </div>
+
+                      {/* LLM Configuration */}
+                      <div className="border-t border-gray-200 dark:border-gray-600 pt-4">
+                        <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-3">
+                          LLM Configuration
+                        </h4>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                              Provider
+                            </label>
+                            <select
+                              value={formData.llm.provider}
+                              onChange={(e) => {
+                                const provider = e.target.value;
+                                let defaultModel = 'gpt-4o-mini';
+                                if (provider === 'gemini') defaultModel = 'gemini-1.5-flash';
+                                if (provider === 'claude') defaultModel = 'claude-3-5-sonnet-20241022';
+
+                                setFormData(prev => ({
+                                  ...prev,
+                                  llm: { provider, model: defaultModel }
+                                }));
+                              }}
+                              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                            >
+                              <option value="openai">OpenAI</option>
+                              <option value="gemini">Google Gemini</option>
+                              <option value="claude">Anthropic Claude</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                              Model
+                            </label>
+                            <select
+                              value={formData.llm.model}
+                              onChange={(e) => setFormData(prev => ({
+                                ...prev,
+                                llm: { ...prev.llm, model: e.target.value }
+                              }))}
+                              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                            >
+                              {formData.llm.provider === 'openai' && (
+                                <>
+                                  <option value="gpt-5">GPT-5 (Latest)</option>
+                                  <option value="gpt-4o">GPT-4o</option>
+                                  <option value="gpt-4o-mini">GPT-4o Mini</option>
+                                  <option value="o1-preview">o1-preview</option>
+                                  <option value="o1-mini">o1-mini</option>
+                                </>
+                              )}
+                              {formData.llm.provider === 'gemini' && (
+                                <>
+                                  <option value="gemini-1.5-flash">Gemini 1.5 Flash (Default)</option>
+                                  <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+                                  <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash (Experimental)</option>
+                                </>
+                              )}
+                              {formData.llm.provider === 'claude' && (
+                                <>
+                                  <option value="claude-3-5-sonnet-20241022">Claude 3.5 Sonnet</option>
+                                  <option value="claude-3-opus-20240229">Claude 3 Opus</option>
+                                  <option value="claude-3-haiku-20240307">Claude 3 Haiku</option>
+                                </>
+                              )}
+                            </select>
+                          </div>
+                        </div>
+                        <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                          Choose the LLM provider and model for this agent. Document processing uses GPT-4o by default (configurable globally).
+                        </div>
                       </div>
                     </Tab.Panel>
 

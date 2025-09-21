@@ -4,9 +4,10 @@ Professional Pydantic-based configuration management following best practices
 """
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from functools import lru_cache
 from enum import Enum
+from pydantic import BaseModel
 
 
 class Environment(str, Enum):
@@ -15,6 +16,21 @@ class Environment(str, Enum):
     STAGING = "staging"
     PRODUCTION = "production"
     TESTING = "testing"
+
+
+class DocumentExtractionSettings(BaseModel):
+    """Document extraction configuration"""
+    enabled: bool = True
+    default_provider: str = "openai"
+    default_model: str = "gpt-4o"
+    max_file_size_mb: int = 15
+    ai_analysis_enabled: bool = True
+    generate_summary: bool = True
+    supported_formats: List[str] = [
+        "txt", "csv", "pdf", "docx", "pptx", "jpg", "jpeg", "png", "gif",
+        "json", "md", "xlsx", "xls", "rtf", "odt", "odp", "ods",
+        "bmp", "tiff", "webp", "svg", "xml", "html", "htm"
+    ]
 
 
 class Settings(BaseSettings):
@@ -77,6 +93,9 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     enable_file_logging: bool = True
     log_file_max_size_mb: int = 10
+
+    # Document Extraction Configuration
+    document_extraction: DocumentExtractionSettings = DocumentExtractionSettings()
 
     # Legacy support for old settings format
     @property

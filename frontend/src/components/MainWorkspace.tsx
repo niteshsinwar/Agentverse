@@ -52,6 +52,29 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = ({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Listen for agent chain loading events from SSE
+  useEffect(() => {
+    const handleAgentChainLoading = () => {
+      console.log('MainWorkspace: Agent chain loading triggered');
+      setIsTyping(true);
+      // Auto-clear loading after 30 seconds to prevent stuck state
+      setTimeout(() => setIsTyping(false), 30000);
+    };
+
+    const handleAgentChainResponse = () => {
+      console.log('MainWorkspace: Agent response received, clearing loading state');
+      setIsTyping(false);
+    };
+
+    window.addEventListener('agentChainLoading', handleAgentChainLoading as EventListener);
+    window.addEventListener('agentChainResponse', handleAgentChainResponse as EventListener);
+
+    return () => {
+      window.removeEventListener('agentChainLoading', handleAgentChainLoading as EventListener);
+      window.removeEventListener('agentChainResponse', handleAgentChainResponse as EventListener);
+    };
+  }, []);
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
@@ -71,6 +94,7 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = ({
       setSelectedAgent('');
     }
   }, [agents]);
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
