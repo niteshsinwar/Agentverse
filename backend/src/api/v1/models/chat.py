@@ -11,6 +11,7 @@ class SendMessageRequest(BaseModel):
     """Request model for sending a message"""
     agent_id: str = Field(..., description="Target agent identifier")
     message: str = Field(..., min_length=1, description="Message content")
+    sender: Optional[str] = Field("user", description="Message sender (user or agent_key)")
 
 
 class MessageResponse(BaseModel):

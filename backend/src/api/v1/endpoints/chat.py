@@ -4,12 +4,16 @@ RESTful endpoints for chat and messaging functionality
 """
 
 from fastapi import APIRouter, HTTPException, Depends, File, UploadFile, Form
+from fastapi.responses import StreamingResponse
 from typing import List, Dict, Any, Optional
 import os
+import json
+import asyncio
 
 from src.services.orchestrator_service import OrchestratorService
 from src.api.v1.models.chat import SendMessageRequest, MessageResponse
 from src.api.v1.dependencies import get_orchestrator_service
+from src.core.telemetry.events import EVENT_BUS
 
 router = APIRouter()
 
@@ -59,28 +63,31 @@ async def send_message(
     service: OrchestratorService = Depends(get_orchestrator_service)
 ):
     """
-    Send a message to a group.
+    Send a message to a group - handles both user and agent messages uniformly.
 
-    Processes a user message and routes it to the appropriate agents.
+    All messages go through the router for consistent mention processing.
     """
     try:
-        # Format message for agent routing
         message = request.message
+        sender = request.sender or "user"
 
-        # Check if this is a single-agent group
-        group_agents = service.list_group_agents(group_id)
+        # For user messages, add @mention if needed (preserves existing behavior)
+        if sender == "user":
+            # Check if this is a single-agent group
+            group_agents = service.list_group_agents(group_id)
 
-        if len(group_agents) == 1:
-            # Single agent - no @mention needed
-            pass
-        else:
-            # Multiple agents - add @mention if not present
-            if not message.strip().startswith(f"@{request.agent_id}"):
-                message = f"@{request.agent_id} {message}"
+            if len(group_agents) == 1:
+                # Single agent - no @mention needed
+                pass
+            else:
+                # Multiple agents - add @mention if not present
+                if not message.strip().startswith(f"@{request.agent_id}"):
+                    message = f"@{request.agent_id} {message}"
 
-        print(f"🚀 Processing message for group {group_id}: {message[:100]}...")
+        # For agent messages, pass through as-is (router will handle @mentions)
+        print(f"🚀 Processing {sender} message for group {group_id}: {message[:100]}...")
 
-        await service.process_message(group_id, message)
+        await service.process_message(group_id, message, sender)
 
         print(f"✅ Message processed successfully for group {group_id}")
         return {"message": "Message sent successfully"}
@@ -204,3 +211,65 @@ async def upload_document(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to upload document: {str(e)}")
+
+
+
+@router.get("/groups/{group_id}/events")
+async def stream_group_events(group_id: str):
+    """
+    Server-Sent Events stream for real-time group updates.
+
+    Streams messages, user mentions, and other events as they happen.
+    Frontend can listen to this for real-time updates and sound notifications.
+    """
+    async def event_generator():
+        """Generate Server-Sent Events for the specified group"""
+
+        # Send initial connection message
+        yield f"data: {json.dumps({'type': 'connected', 'group_id': group_id, 'timestamp': asyncio.get_event_loop().time()})}\n\n"
+
+        while True:
+            try:
+                # Drain events from the event bus
+                events = await EVENT_BUS.drain(limit=50)
+
+                for event in events:
+                    # Only send events for this group
+                    if event.group_id == group_id:
+                        event_data = {
+                            'type': event.kind,
+                            'group_id': event.group_id,
+                            'agent_key': event.agent_key,
+                            'timestamp': event.ts,
+                            'payload': event.payload
+                        }
+
+                        # Add sound notification flag for user mentions
+                        if event.kind == 'user_mention':
+                            event_data['sound_notification'] = True
+
+                        yield f"data: {json.dumps(event_data)}\n\n"
+
+                # Wait before next poll
+                await asyncio.sleep(1)
+
+            except Exception as e:
+                # Send error event
+                error_data = {
+                    'type': 'error',
+                    'group_id': group_id,
+                    'timestamp': asyncio.get_event_loop().time(),
+                    'payload': {'error': str(e)}
+                }
+                yield f"data: {json.dumps(error_data)}\n\n"
+                await asyncio.sleep(5)  # Longer wait on error
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "Access-Control-Allow-Origin": "*",
+        }
+    )

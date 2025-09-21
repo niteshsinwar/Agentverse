@@ -29,31 +29,57 @@ except ImportError:
 class DocumentProcessor:
     """Processes various document formats and extracts text content"""
     
-    def __init__(self):
-        self.supported_formats = {
-            '.pdf': self._extract_pdf_content,
-            '.docx': self._extract_docx_content,
-            '.pptx': self._extract_pptx_content,
-            '.csv': self._extract_csv_content,
-            '.txt': self._extract_text_content,
-            '.jpg': self._extract_image_content,
-            '.jpeg': self._extract_image_content,
-            '.png': self._extract_image_content,
-            '.gif': self._extract_image_content
+    def __init__(self, settings=None):
+        from src.core.config.settings import get_settings
+        self.settings = settings or get_settings()
+
+        # Build supported formats from global settings
+        format_mapping = {
+            'pdf': self._extract_pdf_content,
+            'docx': self._extract_docx_content,
+            'pptx': self._extract_pptx_content,
+            'csv': self._extract_csv_content,
+            'txt': self._extract_text_content,
+            'md': self._extract_text_content,
+            'json': self._extract_text_content,
+            'xml': self._extract_text_content,
+            'html': self._extract_text_content,
+            'htm': self._extract_text_content,
+            'xlsx': self._extract_csv_content,
+            'xls': self._extract_csv_content,
+            'rtf': self._extract_text_content,
+            'odt': self._extract_docx_content,
+            'odp': self._extract_pptx_content,
+            'ods': self._extract_csv_content,
+            'jpg': self._extract_image_content,
+            'jpeg': self._extract_image_content,
+            'png': self._extract_image_content,
+            'gif': self._extract_image_content,
+            'bmp': self._extract_image_content,
+            'tiff': self._extract_image_content,
+            'webp': self._extract_image_content,
+            'svg': self._extract_image_content
         }
-        
-        # Initialize OpenAI client if available
-        self.openai_client = None
-        if OPENAI_AVAILABLE:
+
+        # Build supported formats based on global settings
+        self.supported_formats = {}
+        for fmt in self.settings.document_extraction.supported_formats:
+            if fmt in format_mapping:
+                self.supported_formats[f'.{fmt}'] = format_mapping[fmt]
+
+        # Initialize LLM client based on global settings
+        self.llm_client = None
+        if self.settings.document_extraction.ai_analysis_enabled:
             try:
-                # Try to get API key from environment
-                api_key = os.getenv('OPENAI_API_KEY')
-                if api_key:
-                    self.openai_client = OpenAI(api_key=api_key)
+                from src.core.llm.factory import get_llm
+                self.llm_client = get_llm(
+                    provider=self.settings.document_extraction.default_provider,
+                    model=self.settings.document_extraction.default_model
+                )
             except Exception as e:
-                print(f"Warning: Could not initialize OpenAI client: {e}")
+                print(f"Warning: Could not initialize LLM client for document processing: {e}")
     
-    def process_file(self, file_path: str, file_extension: str = None, use_ai_analysis: bool = True) -> str:
+    async def process_file(self, file_path: str, file_extension: str = None, use_ai_analysis: bool = True) -> str:
         """Process a file and extract its text content"""
         if file_extension is None:
             file_extension = Path(file_path).suffix.lower()
@@ -66,9 +92,9 @@ class DocumentProcessor:
             basic_content = processor(file_path)
             
             # Enhance with AI analysis if available and requested
-            if use_ai_analysis and self.openai_client:
+            if use_ai_analysis and self.llm_client and self.settings.document_extraction.ai_analysis_enabled:
                 try:
-                    ai_content = self._ai_analyze_content(file_path, file_extension, basic_content)
+                    ai_content = await self._ai_analyze_content(file_path, file_extension, basic_content)
                     if ai_content:
                         return f"{basic_content}\n\n--- AI Analysis ---\n{ai_content}"
                 except Exception as e:
@@ -78,64 +104,65 @@ class DocumentProcessor:
         except Exception as e:
             return f"Error processing {file_extension} file: {str(e)}"
     
-    def _ai_analyze_content(self, file_path: str, file_extension: str, basic_content: str) -> str:
-        """Use OpenAI to analyze document content"""
-        if not self.openai_client:
+    async def _ai_analyze_content(self, file_path: str, file_extension: str, basic_content: str) -> str:
+        """Use LLM to analyze document content"""
+        if not self.llm_client:
             return ""
         
         try:
             # Handle images with vision model
             if file_extension.lower() in ['.jpg', '.jpeg', '.png', '.gif']:
-                return self._ai_analyze_image(file_path)
+                return await self._ai_analyze_image(file_path)
             
             # Handle text-based documents
             elif len(basic_content.strip()) > 0:
-                return self._ai_analyze_text_document(basic_content, file_extension)
+                return await self._ai_analyze_text_document(basic_content, file_extension)
                 
         except Exception as e:
             print(f"AI analysis error: {e}")
             return ""
     
-    def _ai_analyze_image(self, file_path: str) -> str:
-        """Analyze image using OpenAI Vision"""
+    async def _ai_analyze_image(self, file_path: str) -> str:
+        """Analyze image using LLM with vision capabilities"""
         try:
             # Encode image to base64
             with open(file_path, "rb") as image_file:
                 base64_image = base64.b64encode(image_file.read()).decode('utf-8')
-            
-            response = self.openai_client.chat.completions.create(
-                model="gpt-4o",  # or "gpt-4-vision-preview"
-                messages=[
-                    {
-                        "role": "user",
-                        "content": [
-                            {
-                                "type": "text",
-                                "text": "Analyze this image thoroughly. Describe what you see, extract any text content, identify key elements, and provide insights about the purpose or context of this image."
-                            },
-                            {
-                                "type": "image_url",
-                                "image_url": {
-                                    "url": f"data:image/jpeg;base64,{base64_image}"
-                                }
+
+            # Use the LLM client for image analysis
+            messages = [
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": "Analyze this image thoroughly. Describe what you see, extract any text content, identify key elements, and provide insights about the purpose or context of this image."
+                        },
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/jpeg;base64,{base64_image}"
                             }
-                        ]
-                    }
-                ],
-                max_tokens=1000
-            )
-            
-            return response.choices[0].message.content
-            
+                        }
+                    ]
+                }
+            ]
+
+            # Convert to LLMMessage format for our LLM providers
+            from src.core.llm.base import LLMMessage
+            llm_messages = [LLMMessage(role=msg["role"], content=msg["content"]) for msg in messages]
+            response = await self.llm_client.chat(llm_messages)
+            return response
+
         except Exception as e:
             print(f"Image analysis error: {e}")
             return f"Could not analyze image: {str(e)}"
     
-    def _ai_analyze_text_document(self, content: str, file_extension: str) -> str:
-        """Analyze text document using OpenAI"""
+    async def _ai_analyze_text_document(self, content: str, file_extension: str) -> str:
+        """Analyze text document using LLM"""
         try:
             file_type = file_extension.upper().lstrip('.')
-            
+
             prompt = f"""Analyze this {file_type} document content and provide:
 1. A comprehensive summary
 2. Key insights and important information
@@ -146,17 +173,13 @@ class DocumentProcessor:
 Document content:
 {content[:4000]}  # Limit content to avoid token limits
 """
-            
-            response = self.openai_client.chat.completions.create(
-                model="gpt-4",
-                messages=[
-                    {"role": "user", "content": prompt}
-                ],
-                max_tokens=800
-            )
-            
-            return response.choices[0].message.content
-            
+
+            # Convert to LLMMessage format for our LLM providers
+            from src.core.llm.base import LLMMessage
+            llm_messages = [LLMMessage(role="user", content=prompt)]
+            response = await self.llm_client.chat(llm_messages)
+            return response
+
         except Exception as e:
             print(f"Text analysis error: {e}")
             return f"Could not analyze document: {str(e)}"

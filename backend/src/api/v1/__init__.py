@@ -5,7 +5,7 @@ Consolidates all API endpoints for version 1
 
 from fastapi import APIRouter
 
-from .endpoints import groups, agents, chat, analytics, project, config, logs
+from .endpoints import groups, agents, chat, analytics, config, logs
 
 # Create the main API router
 router = APIRouter()
@@ -32,12 +32,6 @@ router.include_router(
     analytics.router,
     prefix="/analytics",
     tags=["analytics"]
-)
-
-router.include_router(
-    project.router,
-    prefix="/project",
-    tags=["project"]
 )
 
 router.include_router(

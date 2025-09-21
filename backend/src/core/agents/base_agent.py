@@ -22,12 +22,13 @@ def agent_tool(fn: Callable):
 
 
 class BaseAgent:
-    def __init__(self, agent_id: str):
+    def __init__(self, agent_id: str, llm_config: Optional[Dict[str, str]] = None):
         self.agent_id = agent_id
         self.metadata: Dict[str, Any] = {}
         self.tools: Dict[str, Callable[..., Any]] = {}
         self.mcp = None
-        
+        self.llm_config = llm_config or {"provider": "openai", "model": "gpt-4o-mini"}
+
         # Initialize agent memory system
         self.memory_manager = None
         if AgentMemoryManager:
@@ -225,7 +226,11 @@ class BaseAgent:
           // if action == call_agent:{ "target": str, "prompt": str }
         }
         """
-        llm = get_llm()
+        # Use agent-specific LLM configuration
+        llm = get_llm(
+            provider=self.llm_config.get("provider"),
+            model=self.llm_config.get("model")
+        )
         roster = []
         if orchestrator:
             roster = orchestrator.group_roster(group_id)
@@ -367,11 +372,13 @@ class BaseAgent:
             f"  • You can ONLY interact with agents present in this group (listed above in Group section)\n"
             f"  • Study other agents' specialties and delegate appropriately to create efficient workflows\n"
             f"  • Continue multi-step processes with other agents rather than breaking to user\n"
-            f"- 🎯 INTELLIGENT TAGGING:\n"
+            f"- 🎯 MANDATORY TAGGING RULES:\n"
+            f"  • EVERY response MUST include exactly ONE @mention - NO EXCEPTIONS\n"
             f"  • Tag '@user' ONLY when: conversation is complete, user input needed, or error requires user attention\n"
             f"  • Tag '@agent_name' when: delegating tasks, asking for help, continuing workflows, or collaborating\n"
             f"  • Think: 'Can another agent in this group help?' before defaulting to @user\n"
             f"  • NEVER tag agents not listed in the Group section above\n"
+            f"  • ⚠️ CRITICAL: Responses without @mentions will be REJECTED and you'll be asked to fix them\n"
             f"- When tagged by another agent (@{self.agent_id}), engage collaboratively and continue the workflow\n"
             f"- ⚠️ IMPORTANT: Call tools ONE AT A TIME - never return multiple JSON actions in one response\n"
             f"- If you need multiple operations, call one tool, then the system will ask for next action\n"
@@ -449,21 +456,24 @@ class BaseAgent:
 
             if act == "final":
                 final_response = state.get("text", "")
-                
+
+                # VALIDATION WALL: Check for mandatory @mentions
+                validated_response = await self._validate_and_fix_response(final_response, roster, group_id, sys)
+
                 # STORE EXPERIENCE IN PERSONAL MEMORY
-                if self.memory_manager and final_response:
+                if self.memory_manager and validated_response:
                     try:
                         # Create memory entry for this interaction
                         self.memory_manager.store_experience(
-                            self.agent_id, prompt, final_response, group_id,
+                            self.agent_id, prompt, validated_response, group_id,
                             tools_used=[obs.get("tool") for obs in observations if obs.get("tool")],
                             success=True
                         )
                         print(f"✅ Stored experience in memory for {self.agent_id}")
                     except Exception as e:
                         print(f"⚠️ Failed to store memory for {self.agent_id}: {e}")
-                
-                return final_response
+
+                return validated_response
 
             if act == "call_tool":
                 tool = state.get("tool_name")
@@ -532,3 +542,83 @@ class BaseAgent:
             return "[error] Unknown action"
 
         return "[error] Stopped after max planning steps]"
+
+    async def _validate_and_fix_response(self, response: str, roster: List, group_id: str, system_prompt: str, max_attempts: int = 3) -> str:
+        """
+        Validation wall: Ensures response contains exactly one @mention.
+        If not, sends response back to agent for correction.
+        """
+        import re
+        from src.core.llm.factory import get_llm
+
+        # Extract @mentions from response
+        MENTION_PATTERN = re.compile(r"@([A-Za-z0-9_\-]+)", re.DOTALL)
+        mentions = MENTION_PATTERN.findall(response)
+
+        # Check if response has exactly one @mention
+        if len(mentions) == 1:
+            # Valid response - has exactly one mention
+            return response
+
+        # Invalid response - needs correction
+        attempt = 0
+        current_response = response
+
+        while attempt < max_attempts:
+            attempt += 1
+            print(f"🔄 Validation wall: Response from {self.agent_id} attempt {attempt} - fixing missing/multiple @mentions")
+
+            # Prepare validation error message
+            if len(mentions) == 0:
+                error_msg = (
+                    f"⚠️ VALIDATION ERROR: Your response is missing a required @mention.\n"
+                    f"MANDATORY: Every response must include exactly ONE @mention.\n"
+                    f"Available options: @user, {', '.join(f'@{agent[0]}' for agent in roster)}\n\n"
+                    f"Your original response:\n{current_response}\n\n"
+                    f"Please rewrite your response including exactly one appropriate @mention:"
+                )
+            else:
+                error_msg = (
+                    f"⚠️ VALIDATION ERROR: Your response has {len(mentions)} @mentions but exactly ONE is required.\n"
+                    f"Found mentions: {', '.join(f'@{m}' for m in mentions)}\n"
+                    f"Available options: @user, {', '.join(f'@{agent[0]}' for agent in roster)}\n\n"
+                    f"Your original response:\n{current_response}\n\n"
+                    f"Please rewrite your response with exactly one appropriate @mention:"
+                )
+
+            # Get LLM to fix the response
+            llm = get_llm(
+                provider=self.llm_config.get("provider"),
+                model=self.llm_config.get("model")
+            )
+
+            try:
+                # Use simple format for correction
+                from src.core.llm.base import LLMMessage
+                messages = [
+                    LLMMessage(role="system", content=system_prompt),
+                    LLMMessage(role="user", content=error_msg)
+                ]
+
+                corrected_response = await llm.chat(messages)
+
+                # Check corrected response
+                corrected_mentions = MENTION_PATTERN.findall(corrected_response)
+
+                if len(corrected_mentions) == 1:
+                    print(f"✅ Validation wall: Response corrected after {attempt} attempts")
+                    return corrected_response
+                else:
+                    print(f"❌ Validation wall: Attempt {attempt} still invalid ({len(corrected_mentions)} mentions)")
+                    current_response = corrected_response
+                    mentions = corrected_mentions
+
+            except Exception as e:
+                print(f"❌ Validation wall: Error during correction attempt {attempt}: {e}")
+                continue
+
+        # If all attempts failed, force add @user mention
+        print(f"⚠️ Validation wall: Max attempts reached, forcing @user mention")
+        if not response.strip().endswith("@user"):
+            return f"{response.rstrip()} @user"
+        return response

@@ -25,11 +25,17 @@ from src.core.telemetry.user_actions import (
 router = APIRouter()
 
 # Pydantic models for request validation
+class LLMConfig(BaseModel):
+    provider: str = "openai"
+    model: str = "gpt-4o-mini"
+
 class CreateAgentRequest(BaseModel):
     name: str
     description: str
     emoji: str = "🤖"
+    llm: LLMConfig = LLMConfig()
     key: Optional[str] = None
+    # Legacy fields for backward compatibility
     tools_code: Optional[str] = ""
     mcp_config: Optional[Dict[str, Any]] = {}
     selected_tools: Optional[List[str]] = []
@@ -39,6 +45,9 @@ class UpdateAgentRequest(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
     emoji: Optional[str] = None
+    llm: Optional[LLMConfig] = None
+    new_key: Optional[str] = None  # For agent folder renaming
+    # Legacy fields for backward compatibility
     tools_code: Optional[str] = None
     mcp_config: Optional[Dict[str, Any]] = None
     selected_tools: Optional[List[str]] = None
@@ -64,6 +73,7 @@ async def list_agents(
                 "name": spec.name,
                 "description": spec.description,
                 "emoji": spec.emoji,
+                "llm": spec.llm,
                 "mcp_config": spec.mcp_config
             }
 
@@ -132,26 +142,6 @@ async def get_agent_details(
         raise HTTPException(status_code=500, detail=f"Failed to get agent details: {str(e)}")
 
 
-@router.post("/refresh")
-async def refresh_agents(
-    service: OrchestratorService = Depends(get_orchestrator_service)
-):
-    """
-    Refresh agent discovery.
-
-    Rescans the agents directory for new or updated agents.
-    """
-    try:
-        service.refresh_agents()
-        agents = service.list_available_agents()
-
-        return {
-            "message": "Agents refreshed successfully",
-            "agents_count": len(agents),
-            "agents": list(agents.keys())
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to refresh agents: {str(e)}")
 
 
 @router.post("/create/")
@@ -234,11 +224,15 @@ async def create_agent(
         agent_dir = os.path.join("agent_store", agent_key)
         os.makedirs(agent_dir, exist_ok=True)
 
-        # Create agent.yaml
+        # Create agent.yaml with simplified schema
         agent_yaml = {
             "name": request.name,
             "description": request.description,
-            "emoji": request.emoji
+            "emoji": request.emoji,
+            "llm": {
+                "provider": request.llm.provider,
+                "model": request.llm.model
+            }
         }
 
         with open(os.path.join(agent_dir, "agent.yaml"), 'w') as f:
@@ -348,6 +342,14 @@ async def update_agent(
         updated_name = request.name if request.name is not None else current_yaml.get('name', '')
         updated_description = request.description if request.description is not None else current_yaml.get('description', '')
         updated_emoji = request.emoji if request.emoji is not None else current_yaml.get('emoji', '🤖')
+        updated_llm = None
+        if request.llm is not None:
+            updated_llm = {
+                "provider": request.llm.provider,
+                "model": request.llm.model
+            }
+        else:
+            updated_llm = current_yaml.get('llm', {"provider": "openai", "model": "gpt-4o-mini"})
         updated_tools_code = request.tools_code if request.tools_code is not None else None
         updated_mcp_config = request.mcp_config if request.mcp_config is not None else None
 
@@ -370,14 +372,41 @@ async def update_agent(
                 }
             )
 
+        # Handle agent key renaming (folder rename) if new_key is provided
+        new_agent_key = agent_key
+        if request.new_key and request.new_key != agent_key:
+            # Clean the new key
+            import re
+            new_key_clean = re.sub(r'[^a-zA-Z0-9_]', '', request.new_key.lower().replace(' ', '_').replace('-', '_'))
+
+            # Check if new key already exists
+            if new_key_clean in agents:
+                raise HTTPException(status_code=400, detail=f"Agent with key '{new_key_clean}' already exists")
+
+            # Rename the folder
+            new_agent_dir = os.path.join("agent_store", new_key_clean)
+            shutil.move(agent_dir, new_agent_dir)
+            agent_dir = new_agent_dir
+            agent_yaml_path = os.path.join(agent_dir, "agent.yaml")
+            new_agent_key = new_key_clean
+
         # Step 2: Update Files
-        # Update agent.yaml
+        # Update agent.yaml with simplified schema
         if request.name is not None:
             current_yaml['name'] = request.name
         if request.description is not None:
             current_yaml['description'] = request.description
         if request.emoji is not None:
             current_yaml['emoji'] = request.emoji
+        if request.llm is not None:
+            current_yaml['llm'] = {
+                "provider": request.llm.provider,
+                "model": request.llm.model
+            }
+
+        # Ensure LLM configuration exists
+        if 'llm' not in current_yaml:
+            current_yaml['llm'] = {"provider": "openai", "model": "gpt-4o-mini"}
 
         # Write updated agent.yaml
         with open(agent_yaml_path, 'w') as f:
@@ -399,9 +428,11 @@ async def update_agent(
         service.refresh_agents()
 
         return {
-            "message": f"Agent '{agent_key}' updated successfully",
-            "agent_key": agent_key,
-            "validation_passed": True
+            "message": f"Agent '{new_agent_key}' updated successfully",
+            "agent_key": new_agent_key,
+            "original_key": agent_key,
+            "validation_passed": True,
+            "folder_renamed": new_agent_key != agent_key
         }
 
     except HTTPException:
@@ -451,61 +482,3 @@ async def delete_agent(
         raise HTTPException(status_code=500, detail=f"Failed to delete agent: {str(e)}")
 
 
-@router.get("/{agent_key}/config/")
-async def get_agent_config(
-    agent_key: str,
-    service: OrchestratorService = Depends(get_orchestrator_service)
-):
-    """
-    Get the full configuration of an agent including tools and MCP settings.
-    """
-    try:
-        # Verify agent exists
-        agents = service.list_available_agents()
-        if agent_key not in agents:
-            raise HTTPException(status_code=404, detail=f"Agent '{agent_key}' not found")
-
-        agent_spec = agents[agent_key]
-        agent_dir = agent_spec.folder
-
-        config = {
-            "key": agent_spec.key,
-            "name": agent_spec.name,
-            "description": agent_spec.description,
-            "emoji": agent_spec.emoji,
-            "folder": agent_spec.folder
-        }
-
-        # Load tools.py content
-        tools_path = os.path.join(agent_dir, "tools.py")
-        if os.path.exists(tools_path):
-            with open(tools_path, 'r') as f:
-                config['tools_code'] = f.read()
-
-        # Load mcp.json content
-        mcp_path = os.path.join(agent_dir, "mcp.json")
-        if os.path.exists(mcp_path):
-            with open(mcp_path, 'r') as f:
-                config['mcp_config'] = json.load(f)
-
-        return config
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get agent config: {str(e)}")
-
-
-@router.get("/status/")
-async def get_agents_status(
-    service: OrchestratorService = Depends(get_orchestrator_service)
-):
-    """
-    Get comprehensive status of the agent system.
-
-    Returns detailed information about the agent system status.
-    """
-    try:
-        return service.get_service_status()
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get agents status: {str(e)}")

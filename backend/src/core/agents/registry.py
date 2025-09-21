@@ -17,9 +17,10 @@ class AgentSpec:
     key: str
     name: str
     description: str
+    emoji: str
+    llm: Dict[str, str]  # LLM configuration with provider and model
     folder: str
-    mcp_config: Dict[str, Any]
-    emoji: str = "🔧"  # Default emoji if not specified
+    mcp_config: Dict[str, Any] = None  # Optional for backward compatibility
     tools_module: Optional[str] = None
 
 
@@ -51,35 +52,46 @@ def discover_agents() -> Dict[str, AgentSpec]:
         if entry.startswith("__"):  # __pycache__
             continue
         ay = os.path.join(full, "agent.yaml")
-        mj = os.path.join(full, "mcp.json")
-        if os.path.exists(ay) and os.path.exists(mj):
+        if os.path.exists(ay):
             meta = _load_yaml(ay)
-            with open(mj, "r", encoding="utf-8") as f:
-                mcp = json.load(f)
+
+            # Handle legacy format with mcp.json (optional)
+            mj = os.path.join(full, "mcp.json")
+            mcp_config = {}
+            if os.path.exists(mj):
+                with open(mj, "r", encoding="utf-8") as f:
+                    mcp_config = json.load(f)
+
+            # Extract LLM configuration from simplified schema
+            llm_config = meta.get("llm", {"provider": "openai", "model": "gpt-4o-mini"})
+
             tools_py = os.path.join(full, "tools.py")
             agents[entry] = AgentSpec(
                 key=entry,
                 name=meta.get("name", entry),
                 description=meta.get("description", ""),
+                emoji=meta.get("emoji", "🔧"),
+                llm=llm_config,
                 folder=full,
-                mcp_config=mcp,
-                emoji=meta.get("emoji", "🔧"),  # Read emoji from agent.yaml
+                mcp_config=mcp_config,
                 tools_module=tools_py if os.path.exists(tools_py) else None,
             )
     return agents
 
 
 async def build_agent(spec: AgentSpec) -> BaseAgent:
-    agent = BaseAgent(agent_id=spec.key)
+    agent = BaseAgent(agent_id=spec.key, llm_config=spec.llm)
     agent.load_metadata(name=spec.name, description=spec.description, folder_path=spec.folder)
-    # Attach a dedicated MCP manager (per-agent JSON)
-    mcp_manager = MCPManager.from_config(spec.mcp_config)
-    agent.attach_mcp(mcp_manager)
-    
-    # Auto-start MCP servers to discover tools at initialization
-    if mcp_manager.servers:
-        await mcp_manager.start_all()
-    
+
+    # Attach a dedicated MCP manager (per-agent JSON) if available
+    if spec.mcp_config:
+        mcp_manager = MCPManager.from_config(spec.mcp_config)
+        agent.attach_mcp(mcp_manager)
+
+        # Auto-start MCP servers to discover tools at initialization
+        if mcp_manager.servers:
+            await mcp_manager.start_all()
+
     if spec.tools_module:
         mod = _import_tools_py(spec.tools_module)
         if mod:

@@ -11,6 +11,10 @@ export interface Agent {
   name: string;
   description: string;
   emoji: string;
+  llm?: {
+    provider: string;
+    model: string;
+  };
 }
 
 export interface Message {
