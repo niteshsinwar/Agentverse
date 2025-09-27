@@ -263,7 +263,6 @@ async def create_agent(
             success=True,
             resource_type="agent",
             resource_id=agent_key,
-            resource_name=request.name,
             result_data={
                 "agent_dir": agent_dir,
                 "has_tools": bool(request.tools_code and request.tools_code.strip()),
