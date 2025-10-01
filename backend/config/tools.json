@@ -15,12 +15,20 @@
     "name": "web_scraping_tool",
     "description": "Extract data from web pages, APIs, and online resources",
     "category": "web",
-    "code": "import requests\nfrom bs4 import BeautifulSoup\nimport json\nfrom src.core.agents.base_agent import agent_tool\n\n@agent_tool\ndef fetch_webpage(url: str) -> str:\n    \"\"\"Fetch webpage content\"\"\"\n    try:\n        response = requests.get(url, timeout=10)\n        response.raise_for_status()\n        return response.text\n    except Exception as e:\n        return f\"Error fetching webpage: {e}\"\n\n@agent_tool\ndef extract_text(html_content: str) -> str:\n    \"\"\"Extract text from HTML content\"\"\"\n    soup = BeautifulSoup(html_content, 'html.parser')\n    return soup.get_text(strip=True)\n\n@agent_tool\ndef fetch_api_data(url: str, headers: dict = None) -> dict:\n    \"\"\"Fetch data from REST API\"\"\"\n    try:\n        response = requests.get(url, headers=headers or {}, timeout=10)\n        response.raise_for_status()\n        return response.json()\n    except Exception as e:\n        return {\"error\": str(e)}\n\n@agent_tool\ndef extract_links(html_content: str) -> list:\n    \"\"\"Extract all links from HTML content\"\"\"\n    soup = BeautifulSoup(html_content, 'html.parser')\n    return [a.get('href') for a in soup.find_all('a', href=True)]",
+    "code": "import requests\nfrom bs4 import BeautifulSoup\nimport json\nfrom src.core.agents.base_agent import agent_tool\n\n\n@agent_tool\ndef extract_text(html_content: str) -> str:\n    \"\"\"Extract text from HTML content\"\"\"\n    soup = BeautifulSoup(html_content, 'html.parser')\n    return soup.get_text(strip=True)\n\n@agent_tool\ndef fetch_api_data(url: str, headers: dict = None) -> dict:\n    \"\"\"Fetch data from REST API\"\"\"\n    try:\n        response = requests.get(url, headers=headers or {}, timeout=10)\n        response.raise_for_status()\n        return response.json()\n    except Exception as e:\n        return {\"error\": str(e)}\n\n@agent_tool\ndef extract_links(html_content: str) -> list:\n    \"\"\"Extract all links from HTML content\"\"\"\n    soup = BeautifulSoup(html_content, 'html.parser')\n    return [a.get('href') for a in soup.find_all('a', href=True)]",
     "functions": [
-      "fetch_webpage",
       "extract_text",
       "fetch_api_data",
       "extract_links"
+    ]
+  },
+  "sum": {
+    "name": "sum",
+    "description": "sum",
+    "category": "custom",
+    "code": "import os\nimport re\nfrom src.core.agents.base_agent import agent_tool\n\n@agent_tool\ndef sum_of_num(n: int, m: int) -> int:\n    \"\"\"sum of two numbers\"\"\"\n    return m+n\n",
+    "functions": [
+      "sum_of_num"
     ]
   }
 }

@@ -1,0 +1,127 @@
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Gradients for modern look -->
+    <linearGradient id="primaryGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#6366f1;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#8b5cf6;stop-opacity:1" />
+    </linearGradient>
+
+    <linearGradient id="accentGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#06b6d4;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#3b82f6;stop-opacity:1" />
+    </linearGradient>
+
+    <linearGradient id="networkGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#10b981;stop-opacity:0.8" />
+      <stop offset="100%" style="stop-color:#3b82f6;stop-opacity:0.8" />
+    </linearGradient>
+
+    <!-- Glow effect -->
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- Drop shadow -->
+    <filter id="dropshadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="1" dy="2" stdDeviation="2" flood-color="#1e40af" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+
+  <!-- Background circle -->
+  <circle cx="100" cy="100" r="95" fill="url(#primaryGradient)" opacity="0.05" />
+
+  <!-- Outer rings -->
+  <circle cx="100" cy="100" r="85" stroke="url(#primaryGradient)" stroke-width="2" fill="none" opacity="0.3" />
+  <circle cx="100" cy="100" r="75" stroke="url(#accentGradient)" stroke-width="1.5" fill="none" opacity="0.2" />
+
+  <!-- Central hub -->
+  <circle cx="100" cy="100" r="18" fill="url(#primaryGradient)" filter="url(#dropshadow)" />
+  <circle cx="100" cy="100" r="14" fill="#ffffff" opacity="0.9" />
+  <circle cx="100" cy="100" r="10" fill="url(#primaryGradient)" />
+
+  <!-- Agent nodes -->
+  <!-- Agent 1 - Top -->
+  <g transform="translate(100, 50)">
+    <circle r="12" fill="url(#accentGradient)" filter="url(#dropshadow)" />
+    <circle r="9" fill="#ffffff" opacity="0.9" />
+    <circle r="5" fill="url(#accentGradient)" />
+  </g>
+
+  <!-- Agent 2 - Top Right -->
+  <g transform="translate(135, 65)">
+    <circle r="10" fill="url(#networkGradient)" filter="url(#dropshadow)" />
+    <circle r="7" fill="#ffffff" opacity="0.9" />
+    <circle r="4" fill="url(#networkGradient)" />
+  </g>
+
+  <!-- Agent 3 - Right -->
+  <g transform="translate(150, 100)">
+    <circle r="11" fill="url(#primaryGradient)" filter="url(#dropshadow)" />
+    <circle r="8" fill="#ffffff" opacity="0.9" />
+    <circle r="5" fill="url(#primaryGradient)" />
+  </g>
+
+  <!-- Agent 4 - Bottom Right -->
+  <g transform="translate(135, 135)">
+    <circle r="9" fill="url(#accentGradient)" filter="url(#dropshadow)" />
+    <circle r="6" fill="#ffffff" opacity="0.9" />
+    <circle r="3" fill="url(#accentGradient)" />
+  </g>
+
+  <!-- Agent 5 - Bottom -->
+  <g transform="translate(100, 150)">
+    <circle r="10" fill="url(#networkGradient)" filter="url(#dropshadow)" />
+    <circle r="7" fill="#ffffff" opacity="0.9" />
+    <circle r="4" fill="url(#networkGradient)" />
+  </g>
+
+  <!-- Agent 6 - Bottom Left -->
+  <g transform="translate(65, 135)">
+    <circle r="11" fill="url(#primaryGradient)" filter="url(#dropshadow)" />
+    <circle r="8" fill="#ffffff" opacity="0.9" />
+    <circle r="5" fill="url(#primaryGradient)" />
+  </g>
+
+  <!-- Agent 7 - Left -->
+  <g transform="translate(50, 100)">
+    <circle r="9" fill="url(#accentGradient)" filter="url(#dropshadow)" />
+    <circle r="6" fill="#ffffff" opacity="0.9" />
+    <circle r="3" fill="url(#accentGradient)" />
+  </g>
+
+  <!-- Agent 8 - Top Left -->
+  <g transform="translate(65, 65)">
+    <circle r="10" fill="url(#networkGradient)" filter="url(#dropshadow)" />
+    <circle r="7" fill="#ffffff" opacity="0.9" />
+    <circle r="4" fill="url(#networkGradient)" />
+  </g>
+
+  <!-- Connection lines -->
+  <g stroke="url(#networkGradient)" stroke-width="1.5" opacity="0.4" filter="url(#glow)">
+    <line x1="100" y1="100" x2="100" y2="62" />
+    <line x1="100" y1="100" x2="125" y2="75" />
+    <line x1="100" y1="100" x2="139" y2="100" />
+    <line x1="100" y1="100" x2="125" y2="125" />
+    <line x1="100" y1="100" x2="100" y2="138" />
+    <line x1="100" y1="100" x2="75" y2="125" />
+    <line x1="100" y1="100" x2="61" y2="100" />
+    <line x1="100" y1="100" x2="75" y2="75" />
+  </g>
+
+  <!-- Inter-agent connections -->
+  <g stroke="url(#accentGradient)" stroke-width="1" opacity="0.15" stroke-dasharray="2,2">
+    <path d="M 100,62 Q 120,63 125,75" fill="none" />
+    <path d="M 125,75 Q 142,85 139,100" fill="none" />
+    <path d="M 139,100 Q 140,115 125,125" fill="none" />
+    <path d="M 125,125 Q 115,140 100,138" fill="none" />
+    <path d="M 100,138 Q 85,140 75,125" fill="none" />
+    <path d="M 75,125 Q 58,115 61,100" fill="none" />
+    <path d="M 61,100 Q 58,85 75,75" fill="none" />
+    <path d="M 75,75 Q 80,63 100,62" fill="none" />
+  </g>
+</svg>

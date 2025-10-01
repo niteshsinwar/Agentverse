@@ -58,7 +58,17 @@ class DocumentProcessor:
             'bmp': self._extract_image_content,
             'tiff': self._extract_image_content,
             'webp': self._extract_image_content,
-            'svg': self._extract_image_content
+            'svg': self._extract_image_content,
+            'py': self._extract_text_content,
+            'js': self._extract_text_content,
+            'ts': self._extract_text_content,
+            'java': self._extract_text_content,
+            'cpp': self._extract_text_content,
+            'c': self._extract_text_content,
+            'go': self._extract_text_content,
+            'rs': self._extract_text_content,
+            'rb': self._extract_text_content,
+            'php': self._extract_text_content
         }
 
         # Build supported formats based on global settings
@@ -136,7 +146,7 @@ class DocumentProcessor:
                     "content": [
                         {
                             "type": "text",
-                            "text": "Analyze this image thoroughly. Describe what you see, extract any text content, identify key elements, and provide insights about the purpose or context of this image."
+                            "text": "Analyze this image in detail. Provide: 1) **Complete text transcription** - Extract ALL visible text, maintaining formatting and structure. 2) **Visual description** - Describe objects, clothing, colors, setting, composition, and style. For people, describe general appearance, clothing, pose, and context without identifying individuals. 3) **Document/Image type** - Identify the type (photo, document, screenshot, diagram, etc.). 4) **Key details** - Note important visual elements, data, or information. 5) **Context and purpose** - Analyze what this image shows and its likely purpose. Be thorough and descriptive - users depend on this analysis to understand the visual content."
                         },
                         {
                             "type": "image_url",
@@ -207,9 +217,9 @@ Document content:
                             temp_img.write(img_data)
                             temp_img.flush()
                             
-                            # Use PyMuPDF's basic text recognition if available
-                            # Note: This is basic and may not work for all cases
-                            content.append(f"--- Page {page_num + 1} (Image-based) ---\n[Image content detected but text extraction limited without OCR]")
+                            # Note: AI vision analysis is handled in the main process_file method
+                            content.append(f"--- Page {page_num + 1} (Image-based) ---\n[Image content detected - AI analysis will be performed separately]")
+
                             os.unlink(temp_img.name)
                     except Exception:
                         content.append(f"--- Page {page_num + 1} ---\n[Unable to extract content from this page]")
@@ -365,14 +375,10 @@ Document content:
                     pil_img = Image.open(temp_img.name)
                     
                     # Basic heuristics to detect if image might contain text
-                    # (This is very basic - for full OCR, you'd need Tesseract or cloud OCR)
-                    if width > 100 and height > 50:  # Reasonable size for text
-                        content.append("\n[Image appears to be of suitable size for text content]")
-                        content.append("[Note: Full text extraction requires OCR capabilities]")
-                        content.append("[To extract text from images, consider using cloud OCR services]")
-                    else:
-                        content.append("\n[Image may be too small to contain readable text]")
-                    
+                    # Note: AI vision analysis is handled in the main process_file method
+                    # to avoid async/sync issues in image extraction
+                    content.append("\n[Image detected - AI analysis will be performed separately]")
+
                     os.unlink(temp_img.name)
                     
             except Exception:

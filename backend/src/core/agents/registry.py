@@ -46,35 +46,35 @@ def _import_tools_py(path: str):
 def discover_agents() -> Dict[str, AgentSpec]:
     agents: Dict[str, AgentSpec] = {}
     for entry in os.listdir(AGENTS_ROOT):
-        full = os.path.join(AGENTS_ROOT, entry)
-        if not os.path.isdir(full):
+        agent_dir_path = os.path.join(AGENTS_ROOT, entry)
+        if not os.path.isdir(agent_dir_path):
             continue
         if entry.startswith("__"):  # __pycache__
             continue
-        ay = os.path.join(full, "agent.yaml")
-        if os.path.exists(ay):
-            meta = _load_yaml(ay)
+        agent_yaml_path = os.path.join(agent_dir_path, "agent.yaml")
+        if os.path.exists(agent_yaml_path):
+            meta = _load_yaml(agent_yaml_path)
 
             # Handle legacy format with mcp.json (optional)
-            mj = os.path.join(full, "mcp.json")
+            mcp_json_path = os.path.join(agent_dir_path, "mcp.json")
             mcp_config = {}
-            if os.path.exists(mj):
-                with open(mj, "r", encoding="utf-8") as f:
+            if os.path.exists(mcp_json_path):
+                with open(mcp_json_path, "r", encoding="utf-8") as f:
                     mcp_config = json.load(f)
 
             # Extract LLM configuration from simplified schema
             llm_config = meta.get("llm", {"provider": "openai", "model": "gpt-4o-mini"})
 
-            tools_py = os.path.join(full, "tools.py")
+            tools_py_path = os.path.join(agent_dir_path, "tools.py")
             agents[entry] = AgentSpec(
                 key=entry,
                 name=meta.get("name", entry),
                 description=meta.get("description", ""),
                 emoji=meta.get("emoji", "🔧"),
                 llm=llm_config,
-                folder=full,
+                folder=agent_dir_path,
                 mcp_config=mcp_config,
-                tools_module=tools_py if os.path.exists(tools_py) else None,
+                tools_module=tools_py_path if os.path.exists(tools_py_path) else None,
             )
     return agents
 

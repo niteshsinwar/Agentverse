@@ -286,63 +286,51 @@ class ToolValidator:
     @staticmethod
     def _test_code_execution(result: ValidationResult, code: str):
         """
-        Test code execution in an isolated environment
-        This simulates what importlib.util.module_from_spec would do
+        Test ACTUAL tool registration using the EXACT same process as agent building
+        This matches exactly what registry.py does: importlib -> register_tools_from_module
         """
-
-        # Create a temporary module to test compilation
         try:
-            # Create a unique module name to avoid conflicts
-            import time
-            module_name = f"test_tool_{int(time.time() * 1000)}"
+            # Test the EXACT same process as agent building
+            import tempfile
+            import importlib.util
+            from src.core.agents.base_agent import BaseAgent
 
-            # Try to compile the code
-            compiled_code = compile(code, f"<{module_name}>", "exec")
+            # Create temporary file with tool code (same as agent discovery)
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+                f.write(code)
+                temp_path = f.name
 
-            # Create a restricted namespace for execution (security measure)
-            restricted_globals = {
-                '__name__': module_name,
-                '__doc__': None,
-                '__package__': None,
-                '__spec__': None,
-                '__builtins__': {
-                    # Only allow safe builtins
-                    'len': len,
-                    'str': str,
-                    'int': int,
-                    'float': float,
-                    'bool': bool,
-                    'list': list,
-                    'dict': dict,
-                    'tuple': tuple,
-                    'set': set,
-                    'range': range,
-                    'enumerate': enumerate,
-                    'zip': zip,
-                    'map': map,
-                    'filter': filter,
-                    'sorted': sorted,
-                    'sum': sum,
-                    'min': min,
-                    'max': max,
-                    'abs': abs,
-                    'round': round,
-                    'print': print  # Allow print for debugging
-                }
-            }
+            try:
+                # Test actual module loading (EXACT same as registry.py:39-42)
+                import time
+                module_name = f"test_tool_{int(time.time() * 1000)}"
+                spec = importlib.util.spec_from_file_location(module_name, temp_path)
+                module = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(module)  # This will fail if imports are broken
 
-            # Execute the code in the restricted environment
-            exec(compiled_code, restricted_globals)
+                # Test actual tool registration (EXACT same as registry.py:106-108)
+                test_agent = BaseAgent(agent_id="test_agent")
+                test_agent.register_tools_from_module(module)
 
-            # Code executed successfully
-            result.add_warning("code", "Code validation passed", "EXECUTION_SUCCESS")
+                # Verify tools were registered
+                registered_tools = list(test_agent.tools.keys())
+                if registered_tools:
+                    result.add_warning("code", f"✅ Successfully registered {len(registered_tools)} tools: {', '.join(registered_tools)}", "REGISTRATION_SUCCESS")
+                else:
+                    result.add_warning("code", "⚠️ No tools registered - check @agent_tool decorators", "NO_TOOLS_REGISTERED")
 
-        except SyntaxError as e:
-            result.add_error("code", f"Syntax error during compilation: {str(e)}", "COMPILATION_ERROR")
+            finally:
+                # Clean up temp file
+                import os
+                try:
+                    os.unlink(temp_path)
+                except:
+                    pass
+
         except ImportError as e:
-            result.add_warning("code", f"Import error during execution: {str(e)}", "IMPORT_ERROR")
+            result.add_error("code", f"Import error during real tool loading: {str(e)}", "IMPORT_ERROR")
         except Exception as e:
-            result.add_warning("code", f"Runtime error during execution: {str(e)}", "RUNTIME_ERROR")
+            result.add_error("code", f"Tool registration failed: {str(e)}", "REGISTRATION_ERROR")
 
     @staticmethod
     def get_tool_code_template() -> str:

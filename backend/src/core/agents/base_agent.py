@@ -9,11 +9,16 @@ import re
 from typing import Any, Callable, Optional, Dict, List
 from src.core.llm.factory import get_llm
 
-# Import agent memory system
-try:
-    from .agent_memory import AgentMemoryManager
-except ImportError:
-    AgentMemoryManager = None
+# Import structured response models
+from .response_models import parse_agent_response, get_response_schema, FinalResponse, ToolCallResponse, MCPCallResponse
+
+# Agent memory system is handled through session_store
+# No separate memory manager needed
+
+# Constants
+MAX_CONVERSATION_HISTORY = 20  # Number of recent messages to include in context
+MAX_PLANNING_STEPS = 8         # Maximum steps for agent planning loop
+MAX_VALIDATION_ATTEMPTS = 3    # Maximum attempts to fix @mention validation
 
 
 def agent_tool(fn: Callable):
@@ -29,13 +34,7 @@ class BaseAgent:
         self.mcp = None
         self.llm_config = llm_config or {"provider": "openai", "model": "gpt-4o-mini"}
 
-        # Initialize agent memory system
-        self.memory_manager = None
-        if AgentMemoryManager:
-            try:
-                self.memory_manager = AgentMemoryManager()
-            except Exception as e:
-                print(f"⚠️ Failed to initialize memory for {agent_id}: {e}")
+        # Memory is handled through session_store conversation history
 
     def load_metadata(self, name: str, description: str, folder_path: str):
         self.metadata = {"name": name, "description": description, "folder_path": folder_path}
@@ -97,14 +96,8 @@ class BaseAgent:
                     mcp_summary.append(f"{server_name}(0 tools)")
             parts.append(f"MCP servers: {' | '.join(mcp_summary)}")
         
-        # Add memory capabilities
-        if self.memory_manager:
-            # Get memory info from cache size
-            cache_info = getattr(self.memory_manager, 'memory_cache', {})
-            total_entries = sum(len(entries) for entries in cache_info.values()) if cache_info else 0
-            parts.append(f"Personal Memory: {total_entries} cached entries")
-        else:
-            parts.append("Personal Memory: disabled")
+        # Add conversation history capabilities
+        parts.append("Conversation Memory: enabled via session_store")
         
         result = " | ".join(parts)
         return result
@@ -118,8 +111,8 @@ class BaseAgent:
         """Call a custom tool with logging and error handling"""
         # If tool isn't registered, log as error and return structured error (do not raise)
         if tool_name not in self.tools:
-            from src.core.memory import session_store as _ss
-            _ss.append_message(
+            from src.core.memory import session_store
+            session_store.append_message(
                 group_id=group_id,
                 sender=self.agent_id,
                 role="tool_error",
@@ -132,7 +125,7 @@ class BaseAgent:
         from src.core.telemetry.events import emit_tool_call, emit_tool_result, emit_error
         from src.core.memory import session_store
         import time
-        import json as _json
+        import json
         
         start_time = time.time()
         
@@ -142,7 +135,7 @@ class BaseAgent:
                 group_id=group_id,
                 sender=self.agent_id,
                 role="tool_call",
-                content=f"🔧 Tool call: {tool_name}\nargs: " + _json.dumps(kwargs, ensure_ascii=False, default=str)[:1000],
+                content=f"🔧 Tool call: {tool_name}\nargs: " + json.dumps(kwargs, ensure_ascii=False, default=str)[:1000],
                 metadata={"tool": tool_name, "params": kwargs}
             )
             res = self.tools[tool_name](**kwargs)
@@ -169,7 +162,7 @@ class BaseAgent:
                 group_id=group_id,
                 sender=self.agent_id,
                 role="tool_result",
-                content=f"✅ Tool result: {tool_name}\nresult: " + _json.dumps(res, ensure_ascii=False, default=str)[:2000],
+                content=f"✅ Tool result: {tool_name}\nresult: " + json.dumps(res, ensure_ascii=False, default=str)[:2000],
                 metadata={"tool": tool_name, "result": res}
             )
             
@@ -201,12 +194,6 @@ class BaseAgent:
             # Do not interrupt the agent loop; return error object for planning
             return {"isError": True, "tool": tool_name, "error": str(e), "error_type": type(e).__name__}
     
-    async def call_mcp_tool(self, group_id: str, server_name: str, tool_name: str, **kwargs):
-        """Call an MCP tool with logging and error handling"""
-        if not self.mcp:
-            raise ValueError("No MCP manager attached to this agent")
-        
-        return await self.mcp.invoke(group_id, self.agent_id, server_name, tool_name, **kwargs)
     
     def list_mcp_tools(self) -> List[Dict[str, Any]]:
         """List all available MCP tools for this agent"""
@@ -215,16 +202,9 @@ class BaseAgent:
         return self.mcp.list_all_tools()
 
     async def respond(self, prompt: str, group_id: str, orchestrator=None, depth: int = 2) -> str:
-        """Multi-step planner loop. The agent decides each step.
-        LLM must return STRICT JSON:
-        {
-          "action": "final"|"call_tool"|"call_mcp"|"call_agent"|"retry_tool",
-          // if action == final: { "text": str }
-          // if action == call_tool: { "tool_name": str, "kwargs": {...} }
-          // if action == retry_tool: { "kwargs": {...} }   // retries last tool
-          // if action == call_mcp:  { "server": str, "tool": str, "params": {...} }
-          // if action == call_agent:{ "target": str, "prompt": str }
-        }
+        """Multi-step planner loop with structured output parsing.
+        Agent responses are parsed using Pydantic models to ensure reliable JSON handling.
+        Supported actions: final, call_tool, call_mcp
         """
         # Use agent-specific LLM configuration
         llm = get_llm(
@@ -236,20 +216,24 @@ class BaseAgent:
             roster = orchestrator.group_roster(group_id)
         roster_lines = "\n".join([f"- @{k} — {n}: {d}" for (k, n, d) in roster]) or "- (no other members)"
 
-        # CONVERSATION CONTEXT - Get recent conversation history
+        # CONVERSATION CONTEXT - Get recent conversation history with enhanced context
         from src.core.memory import session_store
         def build_history_context() -> str:
             hist = session_store.get_history(group_id) if group_id else []
             if not hist:
                 return ""
-            recent = hist[-20:]  # Get last 20 messages
+            recent = hist[-MAX_CONVERSATION_HISTORY:]  # Get recent messages
             lines: List[str] = []
+            last_user_message = ""
+
             for msg in recent:
                 role = msg.get("role", "unknown")
                 sender = msg.get("sender", "unknown")
                 content = msg.get("content", "")
+
                 if role == "user":
                     lines.append(f"User: {content}")
+                    last_user_message = content  # Track last user message for context
                 elif role == "agent":
                     agent_key = msg.get("metadata", {}).get("agent_key", sender)
                     lines.append(f"{agent_key}: {content}")
@@ -257,59 +241,31 @@ class BaseAgent:
                     lines.append(f"[System]: {content}")
                 elif role in ("tool_call", "tool_result", "tool_error", "mcp_call", "mcp_result"):
                     lines.append(f"[{role}]: {content}")
+
+            # Add context about who is currently being addressed
+            context_note = ""
+            if last_user_message and f"@{self.agent_id}" in last_user_message:
+                context_note = f"\n📍 IMPORTANT: You ({self.agent_id}) are being directly addressed by the user.\n"
+            elif prompt and f"@{self.agent_id}" in prompt:
+                # Find who mentioned this agent in the current prompt
+                import re
+                mention_pattern = r'(\w+):\s*.*@' + re.escape(self.agent_id)
+                mention_match = re.search(mention_pattern, prompt)
+                if mention_match:
+                    mentioner = mention_match.group(1)
+                    context_note = f"\n📍 IMPORTANT: You ({self.agent_id}) are being mentioned by {mentioner}.\n"
+
             return (
                 "\n\n=== CONVERSATION HISTORY (Last 20 messages) ===\n"
                 + "\n".join(lines)
+                + context_note
                 + "\n=== END HISTORY ===\n\n"
             )
 
         history_context = build_history_context()
 
-        # INTEGRATE PERSONAL MEMORY - Recall relevant memories based on prompt
-        personal_memory_context = ""
-        if self.memory_manager:
-            try:
-                relevant_memories = self.memory_manager.search_memories(prompt, limit=5)
-                if relevant_memories:
-                    memory_lines = []
-                    for memory in relevant_memories:
-                        memory_lines.append(f"- {memory.content} [Importance: {memory.importance:.1f}]")
-                    personal_memory_context = f"\n\n🧠 **PERSONAL MEMORY RECALL** (Relevant to current context):\n" + "\n".join(memory_lines) + "\n"
-                    print(f"✅ Recalled {len(relevant_memories)} relevant memories for {self.agent_id}")
-            except Exception as e:
-                print(f"⚠️ Memory recall failed for {self.agent_id}: {e}")
+        # Conversation context is already included in history_context
 
-        # Ensure build_history_context function is available
-        if 'build_history_context' not in locals():
-            from src.core.memory import session_store
-            def build_history_context() -> str:
-                hist = session_store.get_history(group_id) if group_id else []
-                if not hist:
-                    return ""
-                recent = hist[-20:]  # Increased from 10 to 20
-                lines: List[str] = []
-                for msg in recent:
-                    role = msg.get("role", "unknown")
-                    sender = msg.get("sender", "unknown")
-                    content = msg.get("content", "")
-                    if role == "user":
-                        lines.append(f"User: {content}")
-                    elif role == "agent":
-                        agent_key = msg.get("metadata", {}).get("agent_key", sender)
-                        lines.append(f"{agent_key}: {content}")
-                    elif role == "system":
-                        lines.append(f"[System]: {content}")
-                    elif role in ("tool_call", "tool_result", "tool_error", "mcp_call", "mcp_result"):
-                        lines.append(f"[{role}]: {content}")
-                return (
-                    "\n\n=== CONVERSATION HISTORY (Enhanced: Last 20 messages) ===\n"
-                    + "\n".join(lines)
-                    + "\n=== END HISTORY ===\n\n"
-                )
-
-        # Ensure history_context is set
-        if 'history_context' not in locals():
-            history_context = build_history_context()
         
         # Build detailed MCP tools listing for agent awareness
         mcp_tools_detail = ""
@@ -345,11 +301,10 @@ class BaseAgent:
             mcp_tools_detail += "⚡ Parameters marked with * are REQUIRED. Use exact parameter names shown above.\n"
             mcp_tools_detail += "=== END MCP TOOLS ===\n"
 
-        # Debug: Print what tools this agent actually has loaded
-        if self.agent_id == "agent_4":
-            print(f"🔍 DEBUG Agent_4 tools: {list(self.tools.keys())}")
         
-        # BUILD COLLABORATIVE PROMPT
+        # BUILD COLLABORATIVE PROMPT with structured response schema
+        response_schema = get_response_schema()
+
         sys = (
             f"Agent: {self.agent_id} ({self.metadata.get('name')})\n"
             f"Specialty: {self.metadata.get('description', 'General purpose')}\n"
@@ -357,34 +312,32 @@ class BaseAgent:
             f"{mcp_tools_detail}"
             f"Group: {roster_lines}\n"
             f"{history_context}"
-            f"{personal_memory_context}"
-            f"Action loop - return JSON only:\n"
-            f"- final: {{\"action\":\"final\",\"text\":\"response\"}} - USE THIS for normal conversation\n"
-            f"- call_tool: {{\"action\":\"call_tool\",\"tool_name\":\"<tool_name>\",\"kwargs\":{{...}}}} - Only for specific tool requests\n"
-            f"- call_mcp: {{\"action\":\"call_mcp\",\"server\":\"<server>\",\"tool\":\"<tool>\",\"params\":{{...}}}} - Only for MCP operations\n\n"
-            f"Rules:\n"
+            f"{response_schema}\n"
+            f"RULES AND GUIDELINES:\n"
             f"- DEFAULT to 'final' action for all normal conversation and responses\n"
-            f"- Only use tools registered under you; if another agent has the tool, delegate by replying 'final' and tagging that agent with clear instructions\n"
-            f"- NEVER invent or call unknown tools. If a tool is unavailable or fails, proceed using the provided document context to answer, or delegate to the right agent via 'final'\n"
-            f"- When the user mentions an 'image', 'photo', or 'picture', analyze the injected document content directly if no tool is available: describe visible damage, probable parts, and a reasonable cost estimate with assumptions\n"
+            f"- Use 'call_tool' only for your registered tools; if another agent has the tool, use 'final' and delegate\n"
+            f"- Use 'call_mcp' only for MCP server operations explicitly requested\n"
+            f"- NEVER invent tools - if unavailable, use 'final' to explain or delegate\n"
             f"- 🤖 COLLABORATION STRATEGY:\n"
-            f"  • PREFER agent-to-agent collaboration over returning to user when other agents can help\n"
-            f"  • You can ONLY interact with agents present in this group (listed above in Group section)\n"
-            f"  • Study other agents' specialties and delegate appropriately to create efficient workflows\n"
-            f"  • Continue multi-step processes with other agents rather than breaking to user\n"
-            f"- 🎯 MANDATORY TAGGING RULES:\n"
-            f"  • EVERY response MUST include exactly ONE @mention - NO EXCEPTIONS\n"
-            f"  • Tag '@user' ONLY when: conversation is complete, user input needed, or error requires user attention\n"
-            f"  • Tag '@agent_name' when: delegating tasks, asking for help, continuing workflows, or collaborating\n"
-            f"  • Think: 'Can another agent in this group help?' before defaulting to @user\n"
-            f"  • NEVER tag agents not listed in the Group section above\n"
-            f"  • ⚠️ CRITICAL: Responses without @mentions will be REJECTED and you'll be asked to fix them\n"
-            f"- When tagged by another agent (@{self.agent_id}), engage collaboratively and continue the workflow\n"
-            f"- ⚠️ IMPORTANT: Call tools ONE AT A TIME - never return multiple JSON actions in one response\n"
-            f"- If you need multiple operations, call one tool, then the system will ask for next action\n"
-            f"- Only use call_tool/call_mcp when explicitly asked to perform specific operations\n"
-            f"- MUST quote CAPABILITIES section when asked about tools/MCP\n"
-            f"- Return JSON only - NEVER return multiple JSON objects"
+            f"  • PREFER agent-to-agent collaboration over returning to user\n"
+            f"  • Only interact with agents listed in Group section above\n"
+            f"  • Delegate appropriately based on agent specialties\n"
+            f"- 🎯 MENTION RULES:\n"
+            f"  • ALWAYS end responses with exactly ONE @mention\n"
+            f"  • If USER mentioned you: respond to @user\n"
+            f"  • If AGENT mentioned you: respond to that @agent (see context above)\n"
+            f"  • If asking another agent for help: mention that @agent\n"
+            f"  • Single-agent groups: always mention @user\n"
+            f"  • Continue workflows collaboratively rather than breaking to user\n"
+            f"- 🎯 MANDATORY @MENTION RULES:\n"
+            f"  • EVERY 'final' response MUST include exactly ONE @mention\n"
+            f"  • @user: when conversation complete, user input needed, or errors need attention\n"
+            f"  • @agent_name: when delegating, collaborating, or continuing workflows\n"
+            f"  • Think: 'Can another agent help?' before defaulting to @user\n"
+            f"  • Only mention agents listed in Group section\n"
+            f"- When tagged by another agent (@{self.agent_id}), engage collaboratively\n"
+            f"- Use structured JSON responses only - system will handle parsing reliably\n"
+            f"- Call tools ONE AT A TIME for multi-step operations"
         )
 
         observations: List[Dict[str, Any]] = []
@@ -398,59 +351,33 @@ class BaseAgent:
             else:
                 # Fallback to old interface
                 raw = await llm.chat(system=sys, user=user_or_obs)
+
+            # Use structured response parsing
             try:
-                # Clean up the response - remove any extra formatting
-                clean_raw = raw.strip()
-                if clean_raw.startswith("```json"):
-                    clean_raw = clean_raw[7:]
-                if clean_raw.endswith("```"):
-                    clean_raw = clean_raw[:-3]
-                clean_raw = clean_raw.strip()
-                
-                # Handle case where agent puts @mention outside JSON
-                # Use regex to detect any @mention pattern dynamically
-                mention_pattern = r'\s@\w+$'
-                if re.search(mention_pattern, clean_raw):
-                    # Find the JSON part and the mention part
-                    json_end = clean_raw.rfind('}')
-                    if json_end != -1:
-                        json_part = clean_raw[:json_end + 1]
-                        mention_part = clean_raw[json_end + 1:].strip()
-                        
-                        # Try to parse the JSON part
-                        try:
-                            parsed = json.loads(json_part)
-                            # Add the mention to the text field
-                            if parsed.get("action") == "final" and mention_part:
-                                parsed["text"] = parsed.get("text", "") + " " + mention_part
-                            return parsed
-                        except:
-                            pass
-                
-                # Handle malformed JSON with multiple actions - take only the first valid JSON object
-                if clean_raw.count('{"action"') > 1:
-                    # Multiple JSON objects detected - extract the first one
-                    parts = clean_raw.split('{"action"')
-                    if len(parts) > 1:
-                        # Reconstruct the first JSON object
-                        first_json = '{"action"' + parts[1].split('},')[0] + '}'
-                        try:
-                            return json.loads(first_json)
-                        except:
-                            pass
-                
-                return json.loads(clean_raw)
+                parsed_response = parse_agent_response(raw)
+
+                # Convert to dict format expected by existing logic
+                if isinstance(parsed_response, FinalResponse):
+                    return {"action": "final", "text": parsed_response.text}
+                elif isinstance(parsed_response, ToolCallResponse):
+                    return {"action": "call_tool", "tool_name": parsed_response.tool, "kwargs": parsed_response.inputs}
+                elif isinstance(parsed_response, MCPCallResponse):
+                    return {"action": "call_mcp", "server": parsed_response.server, "tool": parsed_response.tool, "params": parsed_response.inputs}
+                else:
+                    # Fallback to final response
+                    return {"action": "final", "text": str(parsed_response)}
+
             except Exception as e:
-                print(f"JSON parsing error: {e}, raw response: {raw}")
-                # If the model sends plain text, treat as final
-                return {"action": "final", "text": raw}
+                print(f"⚠️ Structured parsing failed for {self.agent_id}: {e}")
+                print(f"Raw response: {repr(raw)}")
+                # Fallback to final response with error notice
+                return {"action": "final", "text": f"[Parsing error occurred] {raw} @user"}
 
         # First decision based on the user prompt
         state = await decide(f"User prompt: {prompt}")
         steps = 0
-        MAX_STEPS = 8
 
-        while steps < MAX_STEPS:
+        while steps < MAX_PLANNING_STEPS:
             steps += 1
             act = (state.get("action") or "").lower()
 
@@ -460,25 +387,24 @@ class BaseAgent:
                 # VALIDATION WALL: Check for mandatory @mentions
                 validated_response = await self._validate_and_fix_response(final_response, roster, group_id, sys)
 
-                # STORE EXPERIENCE IN PERSONAL MEMORY
-                if self.memory_manager and validated_response:
-                    try:
-                        # Create memory entry for this interaction
-                        self.memory_manager.store_experience(
-                            self.agent_id, prompt, validated_response, group_id,
-                            tools_used=[obs.get("tool") for obs in observations if obs.get("tool")],
-                            success=True
-                        )
-                        print(f"✅ Stored experience in memory for {self.agent_id}")
-                    except Exception as e:
-                        print(f"⚠️ Failed to store memory for {self.agent_id}: {e}")
+                # Experience is automatically stored in session_store conversation history
 
                 return validated_response
 
             if act == "call_tool":
                 tool = state.get("tool_name")
                 kwargs = state.get("kwargs", {})
-                
+
+                # Validate tool exists before calling
+                if tool not in self.tools:
+                    obs = {"kind": "tool_error", "tool": tool, "result": f"Tool '{tool}' not found. Available tools: {list(self.tools.keys())}"}
+                    observations.append(obs)
+
+                    # Update state to continue with error context
+                    obs_context = f"Tool '{tool}' not found. Available tools: {list(self.tools.keys())}\nWhat should I do next?"
+                    state = await decide(obs_context)
+                    continue
+
                 result = await self.call_tool(group_id, tool, **kwargs)
                 last_tool = tool
                 
@@ -502,26 +428,59 @@ class BaseAgent:
 
             if act == "call_mcp":
                 if not self.mcp:
-                    state = {"action": "final", "text": "[error] MCP not attached to this agent."}
+                    obs = {"kind": "mcp_error", "server": "unknown", "tool": "unknown", "result": "MCP not attached to this agent"}
+                    observations.append(obs)
+
+                    obs_context = f"MCP not available. No MCP tools can be called.\nWhat should I do next?"
+                    state = await decide(obs_context)
                     continue
+
                 server = state.get("server")
                 tool = state.get("tool")
                 params = state.get("params", {})
+
+                # Validate MCP server and tool exist
+                if not server or not tool:
+                    obs = {"kind": "mcp_error", "server": server, "tool": tool, "result": "Missing server or tool name"}
+                    observations.append(obs)
+
+                    obs_context = f"MCP call failed: Missing server or tool name. Available MCP tools: {self.list_mcp_tools()}\nWhat should I do next?"
+                    state = await decide(obs_context)
+                    continue
                 # Persist MCP call
-                from src.core.memory import session_store as _ss
-                import json as _json
-                _ss.append_message(group_id, sender=self.agent_id, role="mcp_call", content=f"🔧 MCP call: {server}/{tool}\nargs: " + _json.dumps(params, ensure_ascii=False, default=str)[:1000], metadata={"server": server, "tool": tool, "params": params})
+                from src.core.memory import session_store
+                from src.core.telemetry.events import emit_mcp_call, emit_error
+                import time
+
+                start_time = time.time()
+                session_store.append_message(group_id, sender=self.agent_id, role="mcp_call", content=f"🔧 MCP call: {server}/{tool}\nargs: " + json.dumps(params, ensure_ascii=False, default=str)[:1000], metadata={"server": server, "tool": tool, "params": params})
+
+                # Emit real-time MCP call event for UI
+                await emit_mcp_call(group_id, self.agent_id, server, tool, "calling", {"params": params})
+
                 try:
                     result = await self.mcp.invoke(group_id, self.agent_id, server, tool, **params)
                     last_server, last_tool = server, tool
+                    duration_ms = (time.time() - start_time) * 1000
+
                     obs = {"kind": "mcp_result", "server": server, "tool": tool, "result": result}
                     observations.append(obs)
+
                     # Persist MCP result
-                    _ss.append_message(group_id, sender=self.agent_id, role="mcp_result", content=f"✅ MCP result: {server}/{tool}\nresult: " + _json.dumps(result, ensure_ascii=False, default=str)[:2000], metadata={"server": server, "tool": tool, "result": result})
+                    session_store.append_message(group_id, sender=self.agent_id, role="mcp_result", content=f"✅ MCP result: {server}/{tool}\nresult: " + json.dumps(result, ensure_ascii=False, default=str)[:2000], metadata={"server": server, "tool": tool, "result": result})
+
+                    # Emit real-time MCP result event for UI
+                    await emit_mcp_call(group_id, self.agent_id, server, tool, "success", {"duration_ms": duration_ms, "result_preview": str(result)[:200]})
+
                 except Exception as me:
+                    duration_ms = (time.time() - start_time) * 1000
                     err_obj = {"isError": True, "server": server, "tool": tool, "error": str(me), "error_type": type(me).__name__}
                     observations.append({"kind": "mcp_error", "server": server, "tool": tool, "error": str(me)})
-                    _ss.append_message(group_id, sender=self.agent_id, role="mcp_error", content=f"❌ MCP error: {server}/{tool}\nerror: {str(me)}", metadata=err_obj)
+                    session_store.append_message(group_id, sender=self.agent_id, role="mcp_error", content=f"❌ MCP error: {server}/{tool}\nerror: {str(me)}", metadata=err_obj)
+
+                    # Emit real-time MCP error event for UI
+                    await emit_error(group_id, f"mcp_call:{server}/{tool}", str(me), {"agent_id": self.agent_id, "duration_ms": duration_ms})
+
                     result = err_obj
                 
                 # Build context with ALL previous observations AND chat history so agent remembers everything
@@ -543,7 +502,7 @@ class BaseAgent:
 
         return "[error] Stopped after max planning steps]"
 
-    async def _validate_and_fix_response(self, response: str, roster: List, group_id: str, system_prompt: str, max_attempts: int = 3) -> str:
+    async def _validate_and_fix_response(self, response: str, roster: List, group_id: str, system_prompt: str, max_attempts: int = MAX_VALIDATION_ATTEMPTS) -> str:
         """
         Validation wall: Ensures response contains exactly one @mention.
         If not, sends response back to agent for correction.
@@ -555,10 +514,18 @@ class BaseAgent:
         MENTION_PATTERN = re.compile(r"@([A-Za-z0-9_\-]+)", re.DOTALL)
         mentions = MENTION_PATTERN.findall(response)
 
+        # Get available agent keys from roster (exclude self to prevent infinite loops)
+        available_agents = [agent[0] for agent in roster if agent[0] != self.agent_id] + ["user"]
+
         # Check if response has exactly one @mention
         if len(mentions) == 1:
-            # Valid response - has exactly one mention
-            return response
+            mentioned_agent = mentions[0]
+            # Validate mention is to a valid agent or user
+            if mentioned_agent in available_agents:
+                return response
+            else:
+                # Invalid mention target - need to fix
+                mentions = []  # Treat as no valid mention
 
         # Invalid response - needs correction
         attempt = 0

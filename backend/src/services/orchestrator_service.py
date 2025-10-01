@@ -3,9 +3,10 @@ Orchestrator Service
 Business logic layer for agent orchestration and management
 """
 
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Set
 import asyncio
 import os
+import time
 
 from src.core.agents.orchestrator import AgentOrchestrator
 from src.core.agents.router import Router
@@ -30,6 +31,7 @@ class OrchestratorService:
         self.orchestrator: Optional[AgentOrchestrator] = None
         self.router: Optional[Router] = None
         self._initialized = False
+        self._stopped_groups: Set[str] = set()  # Track stopped group chains
 
     async def initialize(self) -> None:
         """Initialize the orchestrator service"""
@@ -41,7 +43,7 @@ class OrchestratorService:
 
             # Initialize core orchestrator
             self.orchestrator = AgentOrchestrator()
-            self.router = Router(self.orchestrator)
+            self.router = Router(self)
 
             # Verify agents are loaded directly from orchestrator
             agents = self.orchestrator.list_available_agents()
@@ -86,12 +88,12 @@ class OrchestratorService:
 
     # Message Processing Methods
     async def process_message(self, group_id: str, message: str, sender: str = "user") -> None:
-        """Process a message through the router (user or agent)"""
+        """Process a message through the unified router (user or agent)"""
         if not self.is_ready():
             raise RuntimeError("Service not initialized")
 
         try:
-            await self.router.handle_user_message(group_id, message, sender)
+            await self.router.route_message(group_id, message, sender)
         except Exception as e:
             # Log error and store error message
             error_msg = f"Error processing message: {str(e)}"
@@ -194,10 +196,7 @@ class OrchestratorService:
             # File size is already available from the content we read
             file_size = len(file_content)
 
-            # Create a minimal document message for chat history (visible to UI)
-            # Do NOT embed extracted content or summaries into the visible system message.
-            # Store the document upload as a system message. Keep visible content minimal,
-            # but persist the analysis summary in metadata so agents (server-side) can read it.
+            # Step 1: Add document upload notification (minimal, visible to UI)
             session_store.append_document_message(
                 group_id=group_id,
                 sender="user",
@@ -208,24 +207,73 @@ class OrchestratorService:
                 file_extension=os.path.splitext(file.filename)[1].lower(),
                 original_prompt=message,
                 extracted_content="",
-                content_summary=result.get('content_summary', '')
+                content_summary=""  # Keep UI message clean
             )
 
-            # Route a minimal notification to the agent (agent can fetch full content server-side)
-            document_message = (
-                f"{message}\n\n--- Document Uploaded ---\n"
-                f"Filename: {file.filename}\nDocument ID: {result['document_id']}"
-            )
+            # No need for separate SSE emission - document upload message is stored and will be visible
 
+            # Step 2: Add document analysis to conversation history (hidden from UI, available to agents)
+            # Use extracted_content (which contains AI analysis) rather than content_summary (which is just a basic summary)
+            document_analysis = result.get('extracted_content', result.get('content_summary', 'No analysis available'))
+            if document_analysis and document_analysis.strip() and document_analysis != 'No analysis available':
+                session_store.append_message(
+                    group_id=group_id,
+                    sender="system",
+                    role="system",
+                    content=f"📄 Document Analysis for {file.filename}:\n\n{document_analysis}",
+                    metadata={
+                        "message_type": "document_analysis",
+                        "document_id": result['document_id'],
+                        "filename": file.filename,
+                        "hidden_from_ui": True  # Hide from UI but keep in agent context
+                    }
+                )
+
+            # Step 3: Route user's message to agent (clean, without embedded analysis)
             await self.router.route_message(
                 group_id=group_id,
-                message=f"@{agent_id} {document_message}"
+                message=f"@{agent_id} {message}",
+                mentioner="user"
             )
 
             return result
 
         except Exception as e:
             raise RuntimeError(f"Failed to process document upload: {str(e)}")
+
+    # Group Chain Control Methods
+    async def stop_group_chain(self, group_id: str) -> None:
+        """Stop agent chain for a specific group"""
+        self._stopped_groups.add(group_id)
+
+        # Add system message to inform user
+        stop_message = "🛑 Agent chain stopped by user. New agent responses will be ignored."
+        session_store.append_message(
+            group_id=group_id,
+            sender="system",
+            role="system",
+            content=stop_message,
+            metadata={
+                "message_type": "chain_stopped",
+                "stopped_at": time.time()
+            }
+        )
+
+        # Emit the system message via SSE for real-time UI update
+        from src.core.telemetry.events import emit_message
+        await emit_message(group_id, sender="system", role="system", content=stop_message)
+
+        print(f"🛑 Group {group_id} chain stopped")
+
+    def is_group_chain_active(self, group_id: str) -> bool:
+        """Check if group chain is active (not stopped)"""
+        return group_id not in self._stopped_groups
+
+    def restart_group_chain(self, group_id: str) -> None:
+        """Restart agent chain for a specific group"""
+        if group_id in self._stopped_groups:
+            self._stopped_groups.remove(group_id)
+            print(f"✅ Group {group_id} chain restarted")
 
     # Service Status Methods
     def get_service_status(self) -> Dict[str, Any]:

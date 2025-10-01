@@ -3,7 +3,7 @@
  * Tracks user interactions and form validation errors
  */
 
-import { apiService } from '../services/api';
+import { apiService } from "@/shared/api";
 
 export interface UserActionContext {
   sessionId: string;

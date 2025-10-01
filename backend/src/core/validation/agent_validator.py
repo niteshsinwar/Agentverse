@@ -19,7 +19,135 @@ class AgentValidator:
     """Validates agent configurations before creation/modification"""
 
     @staticmethod
-    def validate_agent_config(
+    async def validate_agent_config(
+        name: str,
+        description: str,
+        emoji: str,
+        tools_code: Optional[str] = None,
+        mcp_config: Optional[Dict[str, Any]] = None,
+        agent_key: Optional[str] = None,
+        llm_config: Optional[Dict[str, str]] = None,
+        selected_tools: Optional[List[str]] = None,
+        selected_mcps: Optional[List[str]] = None
+    ) -> ValidationResult:
+        """
+        Validate agent configuration by testing COMPLETE agent building process
+        This uses the EXACT same logic as registry.py: discover_agents() -> build_agent()
+        """
+        result = ValidationResult(valid=True, errors=[], warnings=[])
+
+        # Validate basic fields (same as registry.py AgentSpec validation)
+        AgentValidator._validate_basic_fields(result, name, description, emoji, agent_key)
+
+        # Test COMPLETE agent building process (same as build_agent())
+        try:
+            import tempfile
+            import os
+            import yaml
+            import json
+            from src.core.agents.registry import build_agent, AgentSpec
+
+            # Create temporary agent directory
+            with tempfile.TemporaryDirectory() as temp_dir:
+                # Create agent.yaml
+                agent_yaml = {
+                    "name": name,
+                    "description": description,
+                    "emoji": emoji,
+                    "llm": llm_config or {"provider": "openai", "model": "gpt-4o-mini"}
+                }
+
+                with open(os.path.join(temp_dir, "agent.yaml"), 'w') as f:
+                    yaml.dump(agent_yaml, f)
+
+                # Create mcp.json (handle both custom and selected MCPs)
+                final_mcp_config = mcp_config or {}
+                if selected_mcps:
+                    # Load existing MCP servers and merge selected ones
+                    try:
+                        from pathlib import Path
+                        mcp_path = Path("config/mcp.json")
+                        if mcp_path.exists():
+                            with open(mcp_path, 'r') as f:
+                                global_mcps = json.load(f)
+                                if "mcpServers" in global_mcps:
+                                    selected_mcp_config = {
+                                        key: value for key, value in global_mcps["mcpServers"].items()
+                                        if key in selected_mcps
+                                    }
+                                    final_mcp_config = {"mcpServers": selected_mcp_config}
+                    except Exception as e:
+                        result.add_warning("mcp", f"Could not load selected MCPs: {e}", "MCP_LOAD_WARNING")
+
+                with open(os.path.join(temp_dir, "mcp.json"), 'w') as f:
+                    json.dump(final_mcp_config, f)
+
+                # Create tools.py (handle both custom and selected tools)
+                final_tools_code = tools_code or ""
+                if selected_tools:
+                    # Load existing tools and merge selected ones
+                    try:
+                        from pathlib import Path
+                        tools_path = Path("config/tools.json")
+                        if tools_path.exists():
+                            with open(tools_path, 'r') as f:
+                                global_tools = json.load(f)
+                                selected_tool_codes = []
+                                for tool_id in selected_tools:
+                                    if tool_id in global_tools:
+                                        tool_code = global_tools[tool_id].get("code", "")
+                                        if tool_code:
+                                            selected_tool_codes.append(f"# Tool: {tool_id}\n{tool_code}\n")
+
+                                if selected_tool_codes:
+                                    if final_tools_code:
+                                        final_tools_code += "\n\n" + "\n\n".join(selected_tool_codes)
+                                    else:
+                                        final_tools_code = "\n\n".join(selected_tool_codes)
+                    except Exception as e:
+                        result.add_warning("tools", f"Could not load selected tools: {e}", "TOOLS_LOAD_WARNING")
+
+                if final_tools_code.strip():
+                    with open(os.path.join(temp_dir, "tools.py"), 'w') as f:
+                        f.write(final_tools_code)
+                else:
+                    # Create empty tools.py
+                    with open(os.path.join(temp_dir, "tools.py"), 'w') as f:
+                        f.write("# Agent tools will be defined here\n")
+
+                # Test ACTUAL agent building (EXACT same as registry.py)
+                spec = AgentSpec(
+                    key=agent_key or "test_agent",
+                    name=name,
+                    description=description,
+                    emoji=emoji,
+                    llm=agent_yaml["llm"],
+                    folder=temp_dir,
+                    mcp_config=final_mcp_config,
+                    tools_module=os.path.join(temp_dir, "tools.py") if final_tools_code.strip() else None
+                )
+
+                # This is the CRITICAL test - actual agent building
+                agent = await build_agent(spec)
+
+                # Verify agent was built successfully
+                result.add_warning("build", f"✅ Agent built successfully: {agent.agent_id}", "BUILD_SUCCESS")
+                result.add_warning("build", f"   LLM: {agent.llm_config}", "BUILD_LLM")
+                result.add_warning("build", f"   Tools: {len(agent.tools)} registered", "BUILD_TOOLS")
+
+                if agent.mcp and hasattr(agent.mcp, 'servers') and agent.mcp.servers:
+                    mcp_count = len(agent.mcp.servers)
+                    result.add_warning("build", f"   MCP: {mcp_count} servers connected", "BUILD_MCP")
+                else:
+                    result.add_warning("build", "   MCP: No servers", "BUILD_NO_MCP")
+
+        except Exception as e:
+            result.add_error("build", f"Agent building failed: {str(e)}", "BUILD_FAILED")
+
+        return result
+
+    @staticmethod
+    def validate_agent_config_syntax_only(
         name: str,
         description: str,
         emoji: str,
@@ -28,8 +156,8 @@ class AgentValidator:
         agent_key: Optional[str] = None
     ) -> ValidationResult:
         """
-        Validate agent configuration using the same logic as registry.py
-        This mirrors the exact validation that happens during agent discovery and building
+        Legacy syntax-only validation (DEPRECATED)
+        Only validates configuration syntax, not actual functionality
         """
         result = ValidationResult(valid=True, errors=[], warnings=[])
 

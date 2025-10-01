@@ -117,7 +117,7 @@ class FrontendErrorLogger {
   private async sendToBackend(errorEntry: any) {
     try {
       // Use centralized API service instead of direct fetch
-      const { apiService } = await import('../services/api');
+      const { apiService } = await import('@/shared/api');
       await apiService.logFrontendError({
           error_id: errorEntry.id,
           timestamp: errorEntry.timestamp,

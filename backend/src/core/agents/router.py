@@ -1,6 +1,6 @@
 # =========================================
 # File: app/agents/router.py
-# Purpose: Route user messages that must @mention a group member
+# Purpose: Unified router treating all participants (users and agents) equally
 # =========================================
 from __future__ import annotations
 import asyncio
@@ -13,8 +13,8 @@ MENTION = re.compile(r"@([A-Za-z0-9_\-]+)", re.DOTALL)
 
 
 class Router:
-    def __init__(self, orchestrator):
-        self.o = orchestrator
+    def __init__(self, orchestrator_service):
+        self.orchestrator_service = orchestrator_service
 
     def parse(self, text: str) -> Optional[Tuple[str, str]]:
         # Look for @mentions anywhere in the text
@@ -43,127 +43,133 @@ class Router:
             
         return agent_key, content
 
-    async def handle_user_message(self, group_id: str, text: str, sender: str = "user") -> str:
+    async def route_message(self, group_id: str, message: str, mentioner: str = "user") -> str:
+        """
+        Unified message routing for all participants (users and agents).
+
+        Args:
+            group_id: The group to route message in
+            message: The message content
+            mentioner: Who sent this message ("user" or agent_key)
+
+        Returns:
+            Error message if routing failed, empty string if successful
+        """
         members = session_store.list_group_agents(group_id)
 
-        # If this is an agent message, just process it for mentions and return
-        if sender != "user":
-            # Process mentions in agent message for automatic chaining
-            await self._process_mentions_in_message(group_id, text, sender)
-            return ""
-
-        # Special case: if only one agent in group, auto-respond without @mention needed
-        if len(members) == 1:
+        # 1. Handle single-agent groups (auto-route to the only agent)
+        if len(members) == 1 and mentioner == "user":
             agent_key = members[0]
 
-            # Persist + emit user message
-            session_store.append_message(group_id, sender="user", role="user", content=text)
-            await emit_message(group_id, sender="user", role="user", content=text)
+            # Store user message immediately
+            session_store.append_message(group_id, sender="user", role="user", content=message)
+            await emit_message(group_id, sender="user", role="user", content=message)
+
+            # Check if group chain is active before processing
+            if not self.orchestrator_service.is_group_chain_active(group_id):
+                print(f"🛑 Single-agent processing blocked for group {group_id}")
+                return ""
+
+            # Process agent response asynchronously
+            asyncio.create_task(self._process_agent_response(group_id, agent_key, message, mentioner))
+            return ""
+
+        # 2. Parse @mentions for multi-agent groups or agent-to-agent communication
+        parsed = self.parse(message)
+        if not parsed:
+            if mentioner == "user":
+                # User in multi-agent group must use @mentions
+                matches = MENTION.findall(message.strip())
+                if len(matches) > 1:
+                    return f"Please tag only ONE agent at a time. Found multiple @mentions: {', '.join('@' + m for m in matches)}"
+                else:
+                    return "Please start your message with @AgentKey (e.g., @agent_1 How many records?)."
+            else:
+                # Agent message without @mention - just store it, no further routing
+                session_store.append_message(group_id, sender=mentioner, role="agent", content=message, metadata={"agent_key": mentioner})
+                await emit_message(group_id, sender=mentioner, role="agent", content=message, agent_key=mentioner)
+                return ""
+
+        # 3. Route to mentioned agent
+        target_agent, content = parsed
+        members_set = set(session_store.list_group_agents(group_id))
+
+        if target_agent not in members_set:
+            return f"Unknown or non-member agent '@{target_agent}' for this group."
+
+        # Store the original message (preserves @mention in UI)
+        # Skip storage if this is a U-turn routing (message already stored)
+        if mentioner != "user":
+            # This is agent-to-agent routing (U-turn), message already stored in _process_agent_response
+            pass
+        else:
+            # This is user message, store it
+            role = "user"
+            metadata = {}
+            session_store.append_message(group_id, sender=mentioner, role=role, content=message, metadata=metadata)
+            await emit_message(group_id, sender=mentioner, role=role, content=message, agent_key=None)
+
+        # Process target agent response asynchronously (U-turn flow)
+        asyncio.create_task(self._process_agent_response(group_id, target_agent, content, mentioner))
+
+        return ""
+
+    async def handle_user_message(self, group_id: str, text: str, sender: str = "user") -> str:
+        """Legacy method - delegates to unified route_message"""
+        return await self.route_message(group_id, text, sender)
+
+    async def _process_agent_response(self, group_id: str, agent_key: str, content: str, mentioned_by: str = "user"):
+        """
+        Process agent response asynchronously - enables immediate UI display.
+        This method runs in the background while the user sees their message immediately.
+        """
+        try:
+            # Check if group chain is stopped
+            if not self.orchestrator_service.is_group_chain_active(group_id):
+                print(f"🛑 Agent {agent_key} processing stopped for group {group_id}")
+                return
+            # Add context about who mentioned this agent
+            enhanced_content = content
+            if mentioned_by != "user":
+                enhanced_content = f"[Context: You were mentioned by {mentioned_by}]\n\n{content}"
 
             # Get agent response with document context
-            reply = await self.o.process_user_message(group_id, agent_key, text)
+            reply = await self.orchestrator_service.orchestrator.process_user_message(group_id, agent_key, enhanced_content)
 
             # Save agent response only if it's not empty
             if str(reply).strip():
-                session_store.append_message(group_id, sender=agent_key, role="agent", content=str(reply), metadata={"agent_key": agent_key})
+                session_store.append_message(group_id, sender=agent_key, role="agent", content=str(reply), metadata={"agent_key": agent_key, "mentioned_by": mentioned_by})
                 await emit_message(group_id, sender=agent_key, role="agent", content=str(reply), agent_key=agent_key)
 
-                # Process mentions in agent response for automatic chaining
-                await self._process_mentions_in_message(group_id, str(reply), agent_key)
+                # Check if group chain is still active before U-turn routing
+                if not self.orchestrator_service.is_group_chain_active(group_id):
+                    print(f"🛑 U-turn routing blocked for group {group_id}")
+                    return
 
-            return str(reply)
-
-        # For multiple agents, handle @mentions
-        parsed = self.parse(text)
-        if not parsed:
-            # Check if there are multiple @mentions
-            matches = MENTION.findall(text.strip())
-            if len(matches) > 1:
-                return f"Please tag only ONE agent or user at a time. Found multiple @mentions: {', '.join('@' + m for m in matches)}"
-            else:
-                return "Please start your message with @AgentKey … (e.g., @agent_1 How many records?)."
-
-        agent_key, content = parsed
-        members = set(session_store.list_group_agents(group_id))
-        if agent_key not in members:
-            return f"Unknown or non-member agent '@{agent_key}' for this group."
-
-        # Use the same logic as single-agent case but with parsed content
-        # Persist + emit user message
-        session_store.append_message(group_id, sender=sender, role="user" if sender == "user" else "agent", content=text)
-        await emit_message(group_id, sender=sender, role="user" if sender == "user" else "agent", content=text)
-
-        # Get agent response with document context
-        reply = await self.o.process_user_message(group_id, agent_key, content)
-
-        # Save agent response only if it's not empty
-        if str(reply).strip():
-            session_store.append_message(group_id, sender=agent_key, role="agent", content=str(reply), metadata={"agent_key": agent_key})
-            await emit_message(group_id, sender=agent_key, role="agent", content=str(reply), agent_key=agent_key)
-
-            # Process mentions in agent response for automatic chaining
-            await self._process_mentions_in_message(group_id, str(reply), agent_key)
-
-        return str(reply)
-
-    async def _process_mentions_in_message(self, group_id: str, message: str, current_sender: str, max_depth: int = 5):
-        """
-        Queue agent mentions for processing - enables real-time conversation display.
-        Each agent response appears immediately in UI, then triggers next agent.
-        """
-        if max_depth <= 0:
-            return  # Prevent infinite loops
-
-        agent_mention = self.parse(message)
-        if agent_mention:
-            target_agent_key, mentioned_content = agent_mention
-            members = set(session_store.list_group_agents(group_id))
-
-            # Only route if target agent is in the group and different from current sender
-            if target_agent_key in members and target_agent_key != current_sender:
-                # Queue agent-to-agent mention for background processing
-                # This allows the current response to appear in UI immediately
-                asyncio.create_task(self._handle_queued_mention(
-                    group_id, target_agent_key, mentioned_content, current_sender, max_depth - 1
-                ))
-
-    async def _handle_queued_mention(self, group_id: str, target_agent_key: str, mentioned_content: str, original_sender: str, remaining_depth: int):
-        """
-        Handle queued agent mention - processes in background for real-time UI updates.
-        """
-        try:
-            # Process agent-to-agent communication
-            agent_reply = await self.o.process_user_message(group_id, target_agent_key, mentioned_content)
-
-            # Save the agent-to-agent response (appears immediately in UI)
-            if str(agent_reply).strip():
-                session_store.append_message(group_id, sender=target_agent_key, role="agent", content=str(agent_reply), metadata={"agent_key": target_agent_key})
-                await emit_message(group_id, sender=target_agent_key, role="agent", content=str(agent_reply), agent_key=target_agent_key)
+                # U-turn routing: Agent response goes back through router for mention processing
+                await self.route_message(group_id, str(reply), agent_key)
 
                 # Check for user mentions to trigger sound notification
-                if "@user" in str(agent_reply).lower():
-                    await self._emit_user_notification(group_id, target_agent_key, str(agent_reply))
-
-                # Continue processing any @mentions in this response (non-recursive)
-                await self._process_mentions_in_message(group_id, str(agent_reply), target_agent_key, remaining_depth)
+                await self._emit_user_notification(group_id, agent_key, str(reply))
 
         except Exception as e:
-            print(f"❌ Error processing queued mention: {e}")
-            await emit_error(group_id, "router", f"Agent-to-agent mention failed: {str(e)}")
+            print(f"❌ Error processing agent response: {e}")
+            await emit_error(group_id, "router", f"Agent response failed: {str(e)}")
+
+    # Legacy methods removed - now using unified route_message approach
 
     async def _emit_user_notification(self, group_id: str, agent_key: str, message: str):
         """
         Emit special notification event when user is mentioned - triggers sound notification.
         """
-        from src.core.telemetry.events import EVENT_BUS, TelemetryEvent, now_ts
-        await EVENT_BUS.publish(TelemetryEvent(
-            ts=now_ts(),
-            group_id=group_id,
-            kind="user_mention",
-            agent_key=agent_key,
-            payload={"message": message, "notification": "sound"}
-        ))
+        if "@user" in message.lower():
+            from src.core.telemetry.events import EVENT_BUS, TelemetryEvent, now_ts
+            await EVENT_BUS.publish(TelemetryEvent(
+                ts=now_ts(),
+                group_id=group_id,
+                kind="user_mention",
+                agent_key=agent_key,
+                payload={"message": message, "notification": "sound"}
+            ))
 
-    async def route_message(self, group_id: str, message: str) -> str:
-        """Route a message (used internally for agent-to-agent communication)"""
-        return await self.handle_user_message(group_id, message)
+

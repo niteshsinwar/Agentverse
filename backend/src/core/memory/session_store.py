@@ -294,8 +294,9 @@ def append_document_message(
     """Store a document upload as a special message type"""
     now = time.time()
     
-    # Create document-specific content
-    content = f"📄 **Document uploaded**: {filename}\n**Target Agent**: @{target_agent}"
+    # Create document-specific content with file details
+    size_kb = file_size / 1024 if file_size > 0 else 0
+    content = f"📄 **Document uploaded**: {filename}\n**Target Agent**: @{target_agent}\n**Size**: {size_kb:.1f} KB • **ID**: {document_id}"
     if content_summary:
         content += f"\n**Summary**: {content_summary}"
     

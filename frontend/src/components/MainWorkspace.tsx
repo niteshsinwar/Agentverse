@@ -8,28 +8,33 @@ import {
   CpuChipIcon,
   ClockIcon,
   DocumentTextIcon,
-  BoltIcon,
   ChartBarIcon,
   Cog6ToothIcon,
   PaperClipIcon,
   DocumentIcon,
   CodeBracketIcon,
   ServerIcon,
-  ChatBubbleLeftRightIcon
+  ChatBubbleLeftRightIcon,
+  StopIcon
 } from '@heroicons/react/24/outline';
 import { Menu, Transition } from '@headlessui/react';
 import { DocumentsListPanel } from './DocumentsListPanel';
+import { BrandLogo } from './BrandLogo';
+import { BrandedButton, BrandedCard, BrandedBadge, BrandedStatus } from './BrandedComponents';
 
 interface MainWorkspaceProps {
   selectedGroup: Group | null;
   agents: Agent[];
   messages: Message[];
   onSendMessage: (agentId: string, message: string) => void;
+  onStopGroupChain?: (groupId: string) => void;
   onOpenCommandPalette: () => void;
   onUploadDocument?: (agentId: string, file: File, message?: string) => Promise<void>;
   onOpenSettings?: () => void;
   onOpenToolsManagement?: () => void;
   onOpenMcpManagement?: () => void;
+  onOpenHelp?: () => void;
+  onOpenLogs?: () => void;
 }
 
 export const MainWorkspace: React.FC<MainWorkspaceProps> = ({
@@ -37,11 +42,14 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = ({
   agents,
   messages,
   onSendMessage,
+  onStopGroupChain,
   onOpenCommandPalette,
   onUploadDocument,
   onOpenSettings,
   onOpenToolsManagement,
   onOpenMcpManagement,
+  onOpenHelp,
+  onOpenLogs,
 }) => {
   const [message, setMessage] = useState('');
   const [selectedAgent, setSelectedAgent] = useState<string>('');
@@ -100,7 +108,7 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = ({
     e.preventDefault();
 
     // If both message and file are present, upload document with message
-    if (selectedFile && selectedAgent && onUploadDocument) {
+    if (selectedFile && message.trim() && selectedAgent && onUploadDocument) {
       try {
         setIsUploading(true);
         setIsTyping(true);
@@ -132,6 +140,16 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = ({
     }
   };
 
+  const handleStop = async () => {
+    if (!selectedGroup || !onStopGroupChain) return;
+
+    try {
+      await onStopGroupChain(selectedGroup.id);
+    } catch (error) {
+      console.error('Failed to stop group chain:', error);
+    }
+  };
+
   const formatTimestamp = (timestamp: number) => {
     return new Date(timestamp * 1000).toLocaleTimeString([], {
       hour: '2-digit',
@@ -160,19 +178,30 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = ({
 
   if (!selectedGroup) {
     return (
-      <div className="flex flex-col h-full bg-white dark:bg-gray-900">
+      <div className="flex flex-col h-full bg-gradient-to-br from-slate-50 via-violet-50/30 to-cyan-50/20 dark:from-slate-900 dark:via-violet-950/30 dark:to-cyan-950/20 overflow-hidden">
         {/* Header with Global Settings - Always visible */}
-        <div className="border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+        <div className="border-b border-violet-200/30 dark:border-violet-800/30 bg-white/80 dark:bg-slate-800/80 backdrop-blur-xl shadow-lg">
           <div className="px-6 py-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
                 <div className="flex items-center space-x-3">
-                  <div className="w-2 h-2 bg-gray-400 rounded-full" />
+                  <motion.div
+                    className="w-3 h-3 bg-gradient-to-r from-amber-400 to-orange-500 rounded-full"
+                    animate={{
+                      scale: [1, 1.2, 1],
+                      opacity: [0.7, 1, 0.7]
+                    }}
+                    transition={{
+                      duration: 2,
+                      repeat: Infinity,
+                      ease: "easeInOut"
+                    }}
+                  />
                   <div>
-                    <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
-                      Agentic Platform
+                    <h1 className="text-xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 dark:from-slate-100 dark:to-slate-300 bg-clip-text text-transparent">
+                      AgentVerse
                     </h1>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                    <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">
                       No workspace selected
                     </p>
                   </div>
@@ -180,16 +209,18 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = ({
               </div>
 
               <div className="flex items-center space-x-3">
-                <button
+                <motion.button
                   onClick={onOpenCommandPalette}
-                  className="flex items-center space-x-2 px-3 py-1.5 text-sm text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="flex items-center space-x-2 px-4 py-2 text-sm text-slate-600 dark:text-slate-300 bg-white/60 dark:bg-slate-700/60 backdrop-blur-sm rounded-xl border border-violet-200/30 dark:border-violet-800/30 hover:bg-violet-50/80 dark:hover:bg-violet-900/20 transition-all duration-200 shadow-sm"
                 >
                   <CommandLineIcon className="w-4 h-4" />
-                  <span>⌘K</span>
-                </button>
+                  <span className="font-medium">⌘K</span>
+                </motion.button>
 
                 <Menu as="div" className="relative">
-                  <Menu.Button className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+                  <Menu.Button className="p-2.5 text-slate-500 hover:text-violet-600 dark:text-slate-400 dark:hover:text-violet-400 bg-white/60 dark:bg-slate-700/60 backdrop-blur-sm rounded-xl border border-violet-200/30 dark:border-violet-800/30 hover:bg-violet-50/80 dark:hover:bg-violet-900/20 transition-all duration-200 shadow-sm">
                     <Cog6ToothIcon className="w-5 h-5" />
                   </Menu.Button>
                   <Transition
@@ -200,16 +231,16 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = ({
                     leaveFrom="transform scale-100 opacity-100"
                     leaveTo="transform scale-95 opacity-0"
                   >
-                    <Menu.Items className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 z-50">
+                    <Menu.Items className="absolute right-0 top-full mt-2 w-56 bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-violet-200/30 dark:border-violet-800/30 z-[9999]">
                       <div className="py-1">
                         <Menu.Item>
                           {({ active }) => (
                             <button
                               onClick={onOpenSettings}
-                              className={`w-full text-left px-3 py-2 text-sm transition-colors ${
+                              className={`w-full text-left px-4 py-3 text-sm transition-all duration-200 rounded-xl mx-2 my-1 ${
                                 active
-                                  ? 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white'
-                                  : 'text-gray-700 dark:text-gray-300'
+                                  ? 'bg-gradient-to-r from-violet-50 to-indigo-50 dark:from-violet-900/30 dark:to-indigo-900/30 text-violet-700 dark:text-violet-300 shadow-sm'
+                                  : 'text-slate-700 dark:text-slate-300 hover:bg-violet-50/50 dark:hover:bg-violet-900/20'
                               }`}
                             >
                               <div className="flex items-center space-x-2">
@@ -223,10 +254,10 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = ({
                           {({ active }) => (
                             <button
                               onClick={onOpenToolsManagement}
-                              className={`w-full text-left px-3 py-2 text-sm transition-colors ${
+                              className={`w-full text-left px-4 py-3 text-sm transition-all duration-200 rounded-xl mx-2 my-1 ${
                                 active
-                                  ? 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white'
-                                  : 'text-gray-700 dark:text-gray-300'
+                                  ? 'bg-gradient-to-r from-violet-50 to-indigo-50 dark:from-violet-900/30 dark:to-indigo-900/30 text-violet-700 dark:text-violet-300 shadow-sm'
+                                  : 'text-slate-700 dark:text-slate-300 hover:bg-violet-50/50 dark:hover:bg-violet-900/20'
                               }`}
                             >
                               <div className="flex items-center space-x-2">
@@ -240,15 +271,51 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = ({
                           {({ active }) => (
                             <button
                               onClick={onOpenMcpManagement}
-                              className={`w-full text-left px-3 py-2 text-sm transition-colors ${
+                              className={`w-full text-left px-4 py-3 text-sm transition-all duration-200 rounded-xl mx-2 my-1 ${
                                 active
-                                  ? 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white'
-                                  : 'text-gray-700 dark:text-gray-300'
+                                  ? 'bg-gradient-to-r from-violet-50 to-indigo-50 dark:from-violet-900/30 dark:to-indigo-900/30 text-violet-700 dark:text-violet-300 shadow-sm'
+                                  : 'text-slate-700 dark:text-slate-300 hover:bg-violet-50/50 dark:hover:bg-violet-900/20'
                               }`}
                             >
                               <div className="flex items-center space-x-2">
                                 <ServerIcon className="w-4 h-4" />
                                 <span>Manage MCP Servers</span>
+                              </div>
+                            </button>
+                          )}
+                        </Menu.Item>
+                        <Menu.Item>
+                          {({ active }) => (
+                            <button
+                              onClick={onOpenLogs}
+                              className={`w-full text-left px-4 py-3 text-sm transition-all duration-200 rounded-xl mx-2 my-1 ${
+                                active
+                                  ? 'bg-gradient-to-r from-violet-50 to-indigo-50 dark:from-violet-900/30 dark:to-indigo-900/30 text-violet-700 dark:text-violet-300 shadow-sm'
+                                  : 'text-slate-700 dark:text-slate-300 hover:bg-violet-50/50 dark:hover:bg-violet-900/20'
+                              }`}
+                            >
+                              <div className="flex items-center space-x-2">
+                                <DocumentTextIcon className="w-4 h-4" />
+                                <span>View Logs</span>
+                              </div>
+                            </button>
+                          )}
+                        </Menu.Item>
+                        <Menu.Item>
+                          {({ active }) => (
+                            <button
+                              onClick={onOpenHelp}
+                              className={`w-full text-left px-4 py-3 text-sm transition-all duration-200 rounded-xl mx-2 my-1 ${
+                                active
+                                  ? 'bg-gradient-to-r from-violet-50 to-indigo-50 dark:from-violet-900/30 dark:to-indigo-900/30 text-violet-700 dark:text-violet-300 shadow-sm'
+                                  : 'text-slate-700 dark:text-slate-300 hover:bg-violet-50/50 dark:hover:bg-violet-900/20'
+                              }`}
+                            >
+                              <div className="flex items-center space-x-2">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <span>Help & Documentation</span>
                               </div>
                             </button>
                           )}
@@ -269,14 +336,14 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = ({
             animate={{ opacity: 1, y: 0 }}
             className="text-center max-w-md mx-auto p-8"
           >
-            <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-6">
-              <BoltIcon className="w-8 h-8 text-white" />
+            <div className="flex justify-center mb-6">
+              <BrandLogo variant="icon" size="lg" />
             </div>
 
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-              Welcome to Agentic Platform
+            <h2 className="text-2xl font-bold bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 bg-clip-text text-transparent mb-4">
+              Welcome to AgentVerse
             </h2>
-            <p className="text-gray-600 dark:text-gray-400 mb-6">
+            <p className="text-slate-600 dark:text-slate-400 mb-6">
               Create or select a workspace to start orchestrating your AI agents and unlock the power of multi-agent collaboration.
             </p>
 
@@ -305,19 +372,20 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = ({
   }
 
   return (
-    <div className="flex flex-col h-full bg-white dark:bg-gray-900">
+    <div className="flex flex-col h-full bg-gradient-to-br from-slate-50 via-violet-50/30 to-cyan-50/20 dark:from-slate-900 dark:via-violet-950/30 dark:to-cyan-950/20 overflow-hidden">
       {/* Header */}
-      <div className="border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
-        <div className="px-6 py-4 pb-0">
+      <div className="relative bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-violet-200/30 dark:border-violet-800/30 shadow-lg shadow-violet-500/5">
+        <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/5 via-purple-500/5 to-pink-500/5" />
+        <div className="relative px-6 py-4 pb-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-3">
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                <BrandedStatus status="online" size="sm" />
                 <div>
-                  <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
+                  <h1 className="text-xl font-semibold bg-gradient-to-r from-slate-800 to-slate-600 dark:from-slate-100 dark:to-slate-300 bg-clip-text text-transparent">
                     {selectedGroup.name}
                   </h1>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                  <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">
                     {agents.length} agent{agents.length !== 1 ? 's' : ''} active • {messages.length} messages
                   </p>
                 </div>
@@ -325,16 +393,18 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = ({
             </div>
 
             <div className="flex items-center space-x-3">
-              <button
+              <motion.button
                 onClick={onOpenCommandPalette}
-                className="flex items-center space-x-2 px-3 py-1.5 text-sm text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="flex items-center space-x-2 px-4 py-2 text-sm text-slate-600 dark:text-slate-300 bg-white/60 dark:bg-slate-700/60 backdrop-blur-sm rounded-xl border border-violet-200/30 dark:border-violet-800/30 hover:bg-violet-50/80 dark:hover:bg-violet-900/20 transition-all duration-200 shadow-sm"
               >
                 <CommandLineIcon className="w-4 h-4" />
-                <span>⌘K</span>
-              </button>
+                <span className="font-medium">⌘K</span>
+              </motion.button>
 
               <Menu as="div" className="relative">
-                <Menu.Button className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+                <Menu.Button className="p-2.5 text-slate-500 hover:text-violet-600 dark:text-slate-400 dark:hover:text-violet-400 bg-white/60 dark:bg-slate-700/60 backdrop-blur-sm rounded-xl border border-violet-200/30 dark:border-violet-800/30 hover:bg-violet-50/80 dark:hover:bg-violet-900/20 transition-all duration-200 shadow-sm">
                   <Cog6ToothIcon className="w-5 h-5" />
                 </Menu.Button>
                 <Transition
@@ -345,16 +415,16 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = ({
                   leaveFrom="transform scale-100 opacity-100"
                   leaveTo="transform scale-95 opacity-0"
                 >
-                  <Menu.Items className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 z-50">
+                  <Menu.Items className="absolute right-0 top-full mt-2 w-56 bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-violet-200/30 dark:border-violet-800/30 z-[9999]">
                     <div className="py-1">
                       <Menu.Item>
                         {({ active }) => (
                           <button
                             onClick={onOpenSettings}
-                            className={`w-full text-left px-3 py-2 text-sm transition-colors ${
+                            className={`w-full text-left px-4 py-3 text-sm transition-all duration-200 rounded-xl mx-2 my-1 ${
                               active
-                                ? 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white'
-                                : 'text-gray-700 dark:text-gray-300'
+                                ? 'bg-gradient-to-r from-violet-50 to-indigo-50 dark:from-violet-900/30 dark:to-indigo-900/30 text-violet-700 dark:text-violet-300 shadow-sm'
+                                : 'text-slate-700 dark:text-slate-300 hover:bg-violet-50/50 dark:hover:bg-violet-900/20'
                             }`}
                           >
                             <div className="flex items-center space-x-2">
@@ -368,10 +438,10 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = ({
                         {({ active }) => (
                           <button
                             onClick={onOpenToolsManagement}
-                            className={`w-full text-left px-3 py-2 text-sm transition-colors ${
+                            className={`w-full text-left px-4 py-3 text-sm transition-all duration-200 rounded-xl mx-2 my-1 ${
                               active
-                                ? 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white'
-                                : 'text-gray-700 dark:text-gray-300'
+                                ? 'bg-gradient-to-r from-violet-50 to-indigo-50 dark:from-violet-900/30 dark:to-indigo-900/30 text-violet-700 dark:text-violet-300 shadow-sm'
+                                : 'text-slate-700 dark:text-slate-300 hover:bg-violet-50/50 dark:hover:bg-violet-900/20'
                             }`}
                           >
                             <div className="flex items-center space-x-2">
@@ -385,15 +455,51 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = ({
                         {({ active }) => (
                           <button
                             onClick={onOpenMcpManagement}
-                            className={`w-full text-left px-3 py-2 text-sm transition-colors ${
+                            className={`w-full text-left px-4 py-3 text-sm transition-all duration-200 rounded-xl mx-2 my-1 ${
                               active
-                                ? 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white'
-                                : 'text-gray-700 dark:text-gray-300'
+                                ? 'bg-gradient-to-r from-violet-50 to-indigo-50 dark:from-violet-900/30 dark:to-indigo-900/30 text-violet-700 dark:text-violet-300 shadow-sm'
+                                : 'text-slate-700 dark:text-slate-300 hover:bg-violet-50/50 dark:hover:bg-violet-900/20'
                             }`}
                           >
                             <div className="flex items-center space-x-2">
                               <ServerIcon className="w-4 h-4" />
                               <span>Manage MCP Servers</span>
+                            </div>
+                          </button>
+                        )}
+                      </Menu.Item>
+                      <Menu.Item>
+                        {({ active }) => (
+                          <button
+                            onClick={onOpenLogs}
+                            className={`w-full text-left px-4 py-3 text-sm transition-all duration-200 rounded-xl mx-2 my-1 ${
+                              active
+                                ? 'bg-gradient-to-r from-violet-50 to-indigo-50 dark:from-violet-900/30 dark:to-indigo-900/30 text-violet-700 dark:text-violet-300 shadow-sm'
+                                : 'text-slate-700 dark:text-slate-300 hover:bg-violet-50/50 dark:hover:bg-violet-900/20'
+                            }`}
+                          >
+                            <div className="flex items-center space-x-2">
+                              <DocumentTextIcon className="w-4 h-4" />
+                              <span>View Logs</span>
+                            </div>
+                          </button>
+                        )}
+                      </Menu.Item>
+                      <Menu.Item>
+                        {({ active }) => (
+                          <button
+                            onClick={onOpenHelp}
+                            className={`w-full text-left px-4 py-3 text-sm transition-all duration-200 rounded-xl mx-2 my-1 ${
+                              active
+                                ? 'bg-gradient-to-r from-violet-50 to-indigo-50 dark:from-violet-900/30 dark:to-indigo-900/30 text-violet-700 dark:text-violet-300 shadow-sm'
+                                : 'text-slate-700 dark:text-slate-300 hover:bg-violet-50/50 dark:hover:bg-violet-900/20'
+                            }`}
+                          >
+                            <div className="flex items-center space-x-2">
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                              <span>Help & Documentation</span>
                             </div>
                           </button>
                         )}
@@ -407,10 +513,10 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = ({
         </div>
 
         {/* Tabs */}
-        <div className="flex space-x-1 px-6">
+        <div className="flex space-x-1 px-6 relative z-10">
           <button
             onClick={() => setActiveTab('chat')}
-            className={`flex items-center space-x-2 px-3 py-2 text-sm font-medium rounded-t-lg transition-colors ${
+            className={`flex items-center space-x-2 px-3 py-2 text-sm font-medium rounded-t-lg transition-colors relative z-20 cursor-pointer pointer-events-auto ${
               activeTab === 'chat'
                 ? 'bg-gray-50 dark:bg-gray-700 text-blue-600 dark:text-blue-400 border-b-2 border-blue-600'
                 : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
@@ -420,8 +526,11 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = ({
             <span>Chat</span>
           </button>
           <button
-            onClick={() => setActiveTab('documents')}
-            className={`flex items-center space-x-2 px-3 py-2 text-sm font-medium rounded-t-lg transition-colors ${
+            onClick={() => {
+              console.log('Documents tab clicked');
+              setActiveTab('documents');
+            }}
+            className={`flex items-center space-x-2 px-3 py-2 text-sm font-medium rounded-t-lg transition-colors relative z-20 cursor-pointer pointer-events-auto ${
               activeTab === 'documents'
                 ? 'bg-gray-50 dark:bg-gray-700 text-blue-600 dark:text-blue-400 border-b-2 border-blue-600'
                 : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
@@ -438,7 +547,7 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = ({
         {activeTab === 'chat' ? (
           <div className="flex flex-col h-full">
             {/* Messages Area */}
-            <div className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900">
+            <div className="flex-1 overflow-y-auto bg-gradient-to-br from-slate-50 via-violet-50/30 to-cyan-50/20 dark:from-slate-900 dark:via-violet-950/30 dark:to-cyan-950/20 min-h-0">
               <div className="max-w-4xl mx-auto">
                 {messages.length === 0 ? (
                   <motion.div
@@ -446,22 +555,31 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = ({
                     animate={{ opacity: 1, y: 0 }}
                     className="flex items-center justify-center h-full py-16"
                   >
-                    <div className="text-center">
-                      <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center mx-auto mb-4">
-                        <CpuChipIcon className="w-6 h-6 text-white" />
+                    <BrandedCard variant="glass" hover={true} className="text-center max-w-md mx-4">
+                      <div className="flex justify-center mb-6">
+                        <BrandLogo variant="icon" size="lg" />
                       </div>
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                      <h3 className="text-xl font-bold bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 bg-clip-text text-transparent mb-3">
                         Ready to Collaborate
                       </h3>
-                      <p className="text-gray-500 dark:text-gray-400 max-w-md">
-                        Start a conversation with your AI agents. They're standing by to help with your tasks.
+                      <p className="text-slate-500 dark:text-slate-400 font-medium">
+                        Start a conversation with your AI agents in the AgentVerse. They're standing by to help with your tasks.
                       </p>
-                    </div>
+                    </BrandedCard>
                   </motion.div>
                 ) : (
                   <div className="py-6 space-y-6">
                     <AnimatePresence>
-                      {messages.map((msg, index) => {
+                      {messages.filter(msg => {
+                        // Filter out document analysis but keep upload notifications visible
+                        if (msg.role === 'system' && (
+                          msg.metadata?.message_type === 'document_analysis' ||
+                          msg.metadata?.hidden_from_ui === true
+                        )) {
+                          return false;
+                        }
+                        return msg && msg.role;
+                      }).map((msg, index) => {
                         const isUser = msg.role === 'user';
                         const agentInfo = !isUser ? getAgentInfo(msg.sender) : null;
 
@@ -477,10 +595,10 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = ({
                             <div className={`flex max-w-3xl ${isUser ? 'flex-row-reverse' : ''} space-x-3`}>
                               {/* Avatar */}
                               <div className={`flex-shrink-0 ${isUser ? 'ml-3' : 'mr-3'}`}>
-                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-lg ${
                                   isUser
-                                    ? 'bg-gradient-to-br from-blue-500 to-blue-600 text-white'
-                                    : 'bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800'
+                                    ? 'bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 text-white'
+                                    : 'bg-gradient-to-br from-violet-100 to-indigo-100 dark:from-violet-900/50 dark:to-indigo-900/50 border border-violet-200/50 dark:border-violet-700/50'
                                 }`}>
                                   {isUser ? (
                                     <UserIcon className="w-5 h-5" />
@@ -494,15 +612,15 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = ({
                               <div className={`flex-1 ${isUser ? 'text-right' : ''}`}>
                                 <div className={`inline-block max-w-full ${
                                   isUser
-                                    ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-t-2xl rounded-bl-2xl rounded-br-md'
-                                    : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-700 rounded-t-2xl rounded-br-2xl rounded-bl-md shadow-sm'
+                                    ? 'bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white rounded-t-2xl rounded-bl-2xl rounded-br-md shadow-lg shadow-violet-500/25'
+                                    : 'bg-white/80 dark:bg-slate-800/80 backdrop-blur-xl text-slate-900 dark:text-slate-100 border border-violet-200/30 dark:border-violet-800/30 rounded-t-2xl rounded-br-2xl rounded-bl-md shadow-lg shadow-violet-500/10'
                                 } px-4 py-3`}>
                                   {!isUser && agentInfo && (
-                                    <div className="flex items-center space-x-2 mb-2 pb-2 border-b border-gray-100 dark:border-gray-700">
-                                      <span className="text-sm font-semibold text-purple-600 dark:text-purple-400">
+                                    <div className="flex items-center space-x-2 mb-2 pb-2 border-b border-violet-200/30 dark:border-violet-800/30">
+                                      <BrandedBadge variant="primary" size="sm">
                                         {agentInfo.name}
-                                      </span>
-                                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                                      </BrandedBadge>
+                                      <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">
                                         Agent Response
                                       </span>
                                     </div>
@@ -515,7 +633,7 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = ({
                                   </div>
                                 </div>
 
-                                <div className={`flex items-center mt-2 text-xs text-gray-500 dark:text-gray-400 ${
+                                <div className={`flex items-center mt-2 text-xs text-slate-500 dark:text-slate-400 ${
                                   isUser ? 'justify-end' : ''
                                 }`}>
                                   <ClockIcon className="w-3 h-3 mr-1" />
@@ -538,16 +656,16 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = ({
                           className="flex justify-start px-6"
                         >
                           <div className="flex space-x-3 max-w-3xl">
-                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 flex items-center justify-center">
-                              <CpuChipIcon className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-100 to-indigo-100 dark:from-violet-900/50 dark:to-indigo-900/50 border border-violet-200/50 dark:border-violet-700/50 flex items-center justify-center shadow-lg">
+                              <BrandedStatus status="thinking" size="sm" />
                             </div>
 
-                            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-t-2xl rounded-br-2xl rounded-bl-md px-4 py-3 shadow-sm">
+                            <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-xl border border-violet-200/30 dark:border-violet-800/30 rounded-t-2xl rounded-br-2xl rounded-bl-md px-4 py-3 shadow-lg shadow-violet-500/10">
                               <div className="flex items-center space-x-1">
-                                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
-                                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
-                                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
-                                <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">Agent is thinking...</span>
+                                <div className="w-2 h-2 bg-gradient-to-r from-violet-500 to-indigo-600 rounded-full animate-bounce" />
+                                <div className="w-2 h-2 bg-gradient-to-r from-violet-500 to-indigo-600 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
+                                <div className="w-2 h-2 bg-gradient-to-r from-violet-500 to-indigo-600 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
+                                <span className="ml-2 text-sm text-slate-600 dark:text-slate-400 font-medium">Agent is thinking...</span>
                               </div>
                             </div>
                           </div>
@@ -562,18 +680,21 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = ({
             </div>
 
             {/* Input Area - only show in chat tab */}
-            <div className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
-              <div className="max-w-4xl mx-auto p-6">
+            <div className="relative border-t border-violet-200/30 dark:border-violet-800/30 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl shadow-lg shadow-violet-500/5">
+              <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/5 via-purple-500/5 to-pink-500/5" />
+              <div className="relative max-w-4xl mx-auto p-6">
                 {agents.length === 0 ? (
-                  <div className="text-center py-6">
-                    <CpuChipIcon className="w-8 h-8 mx-auto mb-3 text-gray-400" />
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                  <BrandedCard variant="glass" className="text-center py-6">
+                    <div className="flex justify-center mb-4">
+                      <BrandLogo variant="icon" size="md" />
+                    </div>
+                    <p className="text-sm text-slate-600 dark:text-slate-400 font-medium mb-2">
                       No agents available in this workspace
                     </p>
-                    <p className="text-xs text-gray-400 dark:text-gray-500">
+                    <p className="text-xs text-slate-500 dark:text-slate-500">
                       Add agents from the sidebar to start chatting
                     </p>
-                  </div>
+                  </BrandedCard>
                 ) : (
                   <form onSubmit={handleSubmit} className="space-y-4">
                     {/* Agent Selector */}
@@ -627,7 +748,7 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = ({
                         <textarea
                           value={message}
                           onChange={(e) => setMessage(e.target.value)}
-                          placeholder={selectedFile ? "Add a message for your document (optional)..." : "Type your message to the agent..."}
+                          placeholder={selectedFile ? "Type a message about your document..." : "Type your message to the agent..."}
                           rows={3}
                           className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none transition-all"
                           onKeyDown={(e) => {
@@ -663,7 +784,7 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = ({
 
                       <button
                         type="submit"
-                        disabled={(!message.trim() && !selectedFile) || !selectedAgent || isTyping || isUploading}
+                        disabled={!message.trim() || !selectedAgent || isTyping || isUploading}
                         className="px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-2xl hover:from-blue-600 hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-all transform hover:scale-105 active:scale-95 min-w-[80px]"
                         title={selectedFile ? "Send message and upload document" : "Send message"}
                       >
@@ -685,6 +806,17 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = ({
                         ) : (
                           <PaperAirplaneIcon className="w-5 h-5" />
                         )}
+                      </button>
+
+                      {/* Stop Button */}
+                      <button
+                        type="button"
+                        onClick={handleStop}
+                        disabled={!selectedGroup || !onStopGroupChain}
+                        className="p-3 bg-red-100 dark:bg-red-900 text-red-600 dark:text-red-300 rounded-2xl hover:bg-red-200 dark:hover:bg-red-800 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-all transform hover:scale-105 active:scale-95"
+                        title="Stop agent chain"
+                      >
+                        <StopIcon className="w-5 h-5" />
                       </button>
                     </div>
                   </form>

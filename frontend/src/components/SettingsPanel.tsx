@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
   Cog6ToothIcon,
   XMarkIcon,
@@ -9,14 +9,17 @@ import {
   CircleStackIcon,
   DocumentIcon,
   ShieldCheckIcon,
-  SwatchIcon,
-  ChartBarIcon
+  SwatchIcon
 } from '@heroicons/react/24/outline';
 import { Tab } from '@headlessui/react';
 import { toast } from 'react-hot-toast';
-import { apiService } from '../services/api';
+import { settingsApi } from "@/shared/api";
 import { useTheme } from '../contexts/ThemeContext';
-import { ComprehensiveLogPanel } from './ComprehensiveLogPanel';
+import { useAppStore } from '../shared/store/app.store';
+import { notificationService } from '../services/notificationService';
+import { debugLogger } from '../utils/debugLogger';
+import { BrandedButton, BrandedBadge } from './BrandedComponents';
+import { BrandLogo } from './BrandLogo';
 
 interface SettingsConfig {
   // Application Core Settings
@@ -77,7 +80,7 @@ interface SettingsPanelProps {
 }
 
 const defaultSettings: SettingsConfig = {
-  app_name: "Agentic SF Developer Backend",
+  app_name: "AgentVerse",
   version: "1.0.0",
   environment: "development",
   debug: false,
@@ -99,21 +102,40 @@ const defaultSettings: SettingsConfig = {
   enable_file_logging: true,
   log_file_max_size_mb: 10,
   theme: "system",
-  sidebar_expanded: true,
   notifications_enabled: true,
-  auto_save_interval: 30
+  auto_save_interval: 30,
+  sidebar_expanded: true
 };
 
 export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose }) => {
   const { theme, setTheme } = useTheme();
+  const { setSidebarExpanded } = useAppStore();
   const [settings, setSettings] = useState<SettingsConfig>(defaultSettings);
   const [isDirty, setIsDirty] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [logPanelOpen, setLogPanelOpen] = useState(false);
+  const [notificationSettings, setNotificationSettings] = useState(notificationService.getSettings());
 
   useEffect(() => {
     if (isOpen) {
       loadSettings();
+      // Load frontend settings from localStorage
+      try {
+        const frontendSettings = localStorage.getItem('frontend_settings');
+        if (frontendSettings) {
+          const parsed = JSON.parse(frontendSettings);
+          setSettings(prev => ({
+            ...prev,
+            theme: parsed.theme || 'system',
+            notifications_enabled: parsed.notifications_enabled ?? true,
+            sidebar_expanded: parsed.sidebar_expanded ?? true,
+            auto_save_interval: parsed.auto_save_interval || 30
+          }));
+        }
+        // Refresh notification settings
+        setNotificationSettings(notificationService.getSettings());
+      } catch (error) {
+        console.error('Failed to load frontend settings:', error);
+      }
     }
   }, [isOpen]);
 
@@ -121,20 +143,20 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
     try {
       setLoading(true);
       // Try to load settings from backend using correct endpoint
-      const response = await apiService.getSettings();
+      const response = await settingsApi.getSettings();
 
-      // Merge backend settings with local UI settings
-      const localSettings = JSON.parse(localStorage.getItem('app_settings') || '{}');
+      // Merge backend settings with frontend settings (separate storage)
+      const frontendSettings = JSON.parse(localStorage.getItem('frontend_settings') || '{}');
 
       if (response && (response as any).settings) {
-        setSettings({ ...defaultSettings, ...(response as any).settings, ...localSettings });
+        setSettings({ ...defaultSettings, ...(response as any).settings, ...frontendSettings });
       } else {
-        setSettings({ ...defaultSettings, ...localSettings });
+        setSettings({ ...defaultSettings, ...frontendSettings });
       }
     } catch (error) {
       console.warn('Failed to load backend settings, using defaults:', error);
-      const localSettings = JSON.parse(localStorage.getItem('app_settings') || '{}');
-      setSettings({ ...defaultSettings, ...localSettings });
+      const frontendSettings = JSON.parse(localStorage.getItem('frontend_settings') || '{}');
+      setSettings({ ...defaultSettings, ...frontendSettings });
     } finally {
       setLoading(false);
     }
@@ -144,16 +166,74 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
     try {
       setLoading(true);
 
-      // Save UI-specific settings to localStorage
+      // Step 1: Validate settings before saving
+      try {
+        const validation = await settingsApi.validateSettings();
+        if (!validation.is_valid) {
+          const errors = validation.errors || [];
+          const warnings = validation.warnings || [];
+
+          if (errors.length > 0) {
+            toast.error(`Settings validation failed: ${errors[0]}`);
+            return;
+          } else if (warnings.length > 0) {
+            // Show warning but continue saving
+            toast(`⚠️ Settings warning: ${warnings[0]}`, {
+              style: {
+                background: '#FEF3C7',
+                color: '#92400E',
+                border: '1px solid #F59E0B'
+              }
+            });
+          }
+        }
+      } catch (validationError) {
+        console.warn('Settings validation failed, continuing with save:', validationError);
+        toast(`⚠️ Validation unavailable, saving anyway`, {
+          style: {
+            background: '#FEF3C7',
+            color: '#92400E',
+            border: '1px solid #F59E0B'
+          }
+        });
+      }
+
+      // Step 2: Save UI-specific settings to localStorage (frontend.json)
       const uiSettings = {
         theme: settings.theme,
-        sidebar_expanded: settings.sidebar_expanded,
         notifications_enabled: settings.notifications_enabled,
         auto_save_interval: settings.auto_save_interval
       };
-      localStorage.setItem('app_settings', JSON.stringify(uiSettings));
+      localStorage.setItem('frontend_settings', JSON.stringify(uiSettings));
 
-      // Prepare backend settings (exclude UI-only settings)
+      // Step 3: Apply changes ONLY when saving
+      setTheme(settings.theme);
+
+      // Apply sidebar setting
+      if (settings.sidebar_expanded !== undefined) {
+        setSidebarExpanded(settings.sidebar_expanded);
+      }
+
+      // Apply notification setting
+      if (settings.notifications_enabled !== undefined) {
+        notificationService.setEnabled(settings.notifications_enabled);
+        if (settings.notifications_enabled) {
+          const granted = await notificationService.requestPermission();
+          if (granted) {
+            await notificationService.notifySuccess(
+              'Notifications Enabled',
+              'You will now receive notifications when agents mention you'
+            );
+          }
+        }
+      }
+
+      // Apply debug mode
+      debugLogger.setDebugMode(settings.debug);
+
+      setIsDirty(false);
+
+      // Step 3: Prepare backend settings (exclude UI-only settings)
       const backendSettings = {
         app_name: settings.app_name,
         version: settings.version,
@@ -184,11 +264,11 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
         log_file_max_size_mb: settings.log_file_max_size_mb
       };
 
-      // Save backend settings via API using correct endpoint
-      await apiService.updateSettings(backendSettings);
+      // Step 4: Save backend settings via API
+      await settingsApi.updateSettings({ settings: backendSettings });
 
       setIsDirty(false);
-      toast.success('Settings saved successfully');
+      toast.success('Settings validated and saved successfully');
     } catch (error) {
       console.error('Failed to save settings:', error);
       toast.error('Failed to save settings');
@@ -206,12 +286,12 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
     try {
       setSettings(defaultSettings);
 
-      // Clear localStorage UI settings
-      localStorage.removeItem('app_settings');
+      // Clear localStorage frontend settings
+      localStorage.removeItem('frontend_settings');
 
       // Reset backend settings to defaults
       try {
-        await apiService.resetSettings();
+        await settingsApi.resetSettings();
       } catch (error) {
         console.warn('Failed to reset backend settings:', error);
       }
@@ -224,35 +304,6 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
     }
   };
 
-  const validateSettings = async () => {
-    try {
-      const validation = await apiService.validateSettings() as any;
-      if (validation.valid) {
-        toast.success('All settings are valid');
-      } else {
-        const errors = validation.errors || [];
-        const warnings = validation.warnings || [];
-
-        if (errors.length > 0) {
-          toast.error(`Settings validation failed: ${errors[0]}`);
-        } else if (warnings.length > 0) {
-          // Use toast with custom style for warnings since react-hot-toast doesn't have warning by default
-          toast(`⚠️ Settings warnings: ${warnings[0]}`, {
-            style: {
-              background: '#FEF3C7',
-              color: '#92400E',
-              border: '1px solid #F59E0B'
-            }
-          });
-        }
-      }
-      return validation;
-    } catch (error) {
-      console.error('Failed to validate settings:', error);
-      toast.error('Failed to validate settings');
-      return { valid: false, errors: ['Validation failed'], warnings: [] };
-    }
-  };
 
   const tabs = [
     { name: 'General', icon: Cog6ToothIcon },
@@ -262,8 +313,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
     { name: 'Database', icon: CircleStackIcon },
     { name: 'Documents', icon: DocumentIcon },
     { name: 'Security', icon: ShieldCheckIcon },
-    { name: 'Interface', icon: SwatchIcon },
-    { name: 'Log Management', icon: ChartBarIcon }
+    { name: 'Interface', icon: SwatchIcon }
   ];
 
   if (!isOpen) return null;
@@ -273,35 +323,43 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 bg-gradient-to-br from-slate-900/80 via-violet-900/50 to-cyan-900/30 backdrop-blur-sm z-[60] flex items-center justify-center p-4"
       onClick={onClose}
     >
       <motion.div
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.9, opacity: 0 }}
-        className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-6xl h-[90vh] flex flex-col"
+        className="bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl rounded-3xl shadow-2xl border border-violet-200/30 dark:border-violet-800/30 w-full max-w-6xl h-[90vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-              <Cog6ToothIcon className="w-5 h-5 text-white" />
+        <div className="relative flex items-center justify-between p-6 border-b border-violet-200/30 dark:border-violet-800/30">
+          <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/5 via-purple-500/5 to-pink-500/5 rounded-t-3xl" />
+          <div className="relative flex items-center space-x-4">
+            <BrandLogo variant="icon" size="md" />
+            <div>
+              <h2 className="text-2xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 dark:from-slate-100 dark:to-slate-300 bg-clip-text text-transparent">
+                AgentVerse Settings
+              </h2>
+              <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">
+                Configure your multiverse of agents
+              </p>
             </div>
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Settings</h2>
             {isDirty && (
-              <span className="px-2 py-1 bg-amber-100 text-amber-800 text-xs rounded-full">
+              <BrandedBadge variant="warning" size="sm">
                 Unsaved Changes
-              </span>
+              </BrandedBadge>
             )}
           </div>
-          <button
+          <BrandedButton
+            variant="ghost"
+            size="sm"
             onClick={onClose}
-            className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+            className="p-2"
           >
             <XMarkIcon className="w-6 h-6" />
-          </button>
+          </BrandedButton>
         </div>
 
         {/* Content */}
@@ -309,21 +367,21 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
           <Tab.Group vertical>
             <div className="flex w-full h-full">
               {/* Sidebar */}
-              <div className="w-64 bg-gray-50 dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700">
-                <Tab.List className="flex flex-col space-y-1 p-4">
+              <div className="w-64 bg-gradient-to-b from-violet-50/50 to-indigo-50/30 dark:from-violet-950/30 dark:to-indigo-950/20 border-r border-violet-200/30 dark:border-violet-800/30">
+                <Tab.List className="flex flex-col space-y-2 p-4">
                 {tabs.map((tab) => (
                   <Tab
                     key={tab.name}
                     className={({ selected }) =>
-                      `flex items-center space-x-3 w-full px-4 py-3 text-left rounded-xl transition-colors ${
+                      `flex items-center space-x-3 w-full px-4 py-3 text-left rounded-xl transition-all duration-200 ${
                         selected
-                          ? 'bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-300'
-                          : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
+                          ? 'bg-gradient-to-r from-violet-500 to-indigo-600 text-white shadow-lg shadow-violet-500/25'
+                          : 'text-slate-600 dark:text-slate-400 hover:bg-violet-100/50 dark:hover:bg-violet-900/30 hover:text-violet-600 dark:hover:text-violet-400'
                       }`
                     }
                   >
                     <tab.icon className="w-5 h-5" />
-                    <span className="font-medium">{tab.name}</span>
+                    <span className="font-semibold">{tab.name}</span>
                   </Tab>
                 ))}
               </Tab.List>
@@ -765,7 +823,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                         <input
                           type="checkbox"
                           id="sidebar_expanded"
-                          checked={settings.sidebar_expanded}
+                          checked={settings.sidebar_expanded || false}
                           onChange={(e) => updateSetting('sidebar_expanded', e.target.checked)}
                           className="rounded border-gray-300 dark:border-gray-600"
                         />
@@ -773,95 +831,113 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                           Sidebar Expanded by Default
                         </label>
                       </div>
+                      {/* Enable Notifications */}
                       <div className="flex items-center space-x-2">
                         <input
                           type="checkbox"
                           id="notifications_enabled"
-                          checked={settings.notifications_enabled}
-                          onChange={(e) => updateSetting('notifications_enabled', e.target.checked)}
+                          checked={notificationSettings.enabled}
+                          onChange={(e) => {
+                            const enabled = e.target.checked;
+                            notificationService.setEnabled(enabled);
+                            setNotificationSettings(notificationService.getSettings());
+                          }}
                           className="rounded border-gray-300 dark:border-gray-600"
                         />
                         <label htmlFor="notifications_enabled" className="text-sm font-medium text-gray-700 dark:text-gray-300">
                           Enable Notifications
                         </label>
                       </div>
+
+                      {/* Permission Status */}
+                      <div className="mt-3 text-xs text-gray-600 dark:text-gray-400">
+                        Permission: <span className="font-mono">
+                          {typeof Notification !== 'undefined' ? Notification.permission : 'not supported'}
+                        </span>
+                      </div>
+
+                      {/* Request Permission Button */}
+                      <div className="mt-2">
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            try {
+                              const granted = await notificationService.requestPermission();
+                              if (granted) {
+                                toast.success('Notification permission granted!');
+                              } else {
+                                toast.error('Notification permission denied. Please allow notifications in your browser settings.');
+                              }
+                            } catch (error) {
+                              toast.error('Permission error: ' + String(error));
+                            }
+                          }}
+                          className="px-3 py-1.5 text-xs bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-300 rounded-lg transition-colors"
+                        >
+                          Request Permission
+                        </button>
+                      </div>
+
+                      {/* Sound Selection */}
+                      <div className="mt-4 space-y-2">
+                        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                          Notification Sound
+                        </label>
+                        <select
+                          value={notificationSettings.sound}
+                          onChange={(e) => {
+                            const sound = e.target.value as any;
+                            notificationService.setSound(sound);
+                            setNotificationSettings(notificationService.getSettings());
+                          }}
+                          className="w-full px-3 py-2 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="none">None (Silent)</option>
+                          <option value="bell">Bell</option>
+                          <option value="chime">Chime</option>
+                          <option value="beep">Beep</option>
+                          <option value="ding">Ding</option>
+                        </select>
+                      </div>
+
+                      {/* Volume Control */}
+                      <div className="mt-4 space-y-2">
+                        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                          Volume: {Math.round(notificationSettings.volume * 100)}%
+                        </label>
+                        <input
+                          type="range"
+                          min="0"
+                          max="1"
+                          step="0.1"
+                          value={notificationSettings.volume}
+                          onChange={(e) => {
+                            const volume = parseFloat(e.target.value);
+                            notificationService.setVolume(volume);
+                            setNotificationSettings(notificationService.getSettings());
+                          }}
+                          className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer"
+                        />
+                      </div>
+
+                      {/* Test Selected Sound */}
+                      <div className="mt-3">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            notificationService.playNotificationSound();
+                            toast.success('Playing selected sound!');
+                          }}
+                          disabled={notificationSettings.sound === 'none'}
+                          className="px-3 py-1.5 text-xs bg-green-100 hover:bg-green-200 dark:bg-green-900/30 dark:hover:bg-green-900/50 text-green-700 dark:text-green-300 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          Test Selected Sound
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </Tab.Panel>
 
-                {/* Log Management */}
-                <Tab.Panel className="space-y-6">
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                      Log Management & Monitoring
-                    </h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
-                      Monitor system logs, user activity, performance metrics, and error tracking in real-time.
-                    </p>
-
-                    <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 p-6 rounded-xl border border-blue-200 dark:border-blue-800">
-                      <div className="flex items-start space-x-4">
-                        <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
-                          <ChartBarIcon className="w-6 h-6 text-white" />
-                        </div>
-                        <div className="flex-1">
-                          <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                            Comprehensive Log Center
-                          </h4>
-                          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                            Access detailed system logs, user activity tracking, performance analytics, and error monitoring.
-                          </p>
-                          <div className="grid grid-cols-2 gap-4 text-sm mb-4">
-                            <div className="flex items-center space-x-2 text-blue-700 dark:text-blue-300">
-                              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                              <span>User Activity Dashboard</span>
-                            </div>
-                            <div className="flex items-center space-x-2 text-blue-700 dark:text-blue-300">
-                              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                              <span>Real-time Session Logs</span>
-                            </div>
-                            <div className="flex items-center space-x-2 text-blue-700 dark:text-blue-300">
-                              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                              <span>Performance Metrics</span>
-                            </div>
-                            <div className="flex items-center space-x-2 text-blue-700 dark:text-blue-300">
-                              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                              <span>Error Tracking & Analysis</span>
-                            </div>
-                          </div>
-                          <button
-                            onClick={() => setLogPanelOpen(true)}
-                            className="px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg hover:from-blue-600 hover:to-purple-700 transition-all transform hover:scale-105 flex items-center space-x-2"
-                          >
-                            <ChartBarIcon className="w-4 h-4" />
-                            <span>Open Log Management Center</span>
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
-                      <div className="p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-                        <h5 className="font-medium text-gray-900 dark:text-white mb-2">Current Log Level</h5>
-                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                          Logging level: <span className="font-mono text-blue-600 dark:text-blue-400">{settings.log_level}</span>
-                        </p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">
-                          File logging: {settings.enable_file_logging ? 'Enabled' : 'Disabled'}
-                        </p>
-                      </div>
-                      <div className="p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-                        <h5 className="font-medium text-gray-900 dark:text-white mb-2">Log File Settings</h5>
-                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                          Max file size: <span className="font-mono text-blue-600 dark:text-blue-400">{settings.log_file_max_size_mb}MB</span>
-                        </p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">
-                          Configure in Documents tab
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </Tab.Panel>
               </Tab.Panels>
               </div>
             </div>
@@ -869,19 +945,25 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between p-6 border-t border-gray-200 dark:border-gray-700">
+        <div className="border-t border-gray-200 dark:border-gray-700">
+          {/* Settings Info */}
+          <div className="px-6 py-3 bg-gray-50 dark:bg-gray-800/50 text-xs text-gray-600 dark:text-gray-400">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <span>📱 Interface settings save automatically</span>
+                <span>⚙️ Backend settings require "Save Settings"</span>
+              </div>
+              {isDirty && <span className="text-orange-600 dark:text-orange-400 font-medium">● Unsaved backend changes</span>}
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between p-6">
           <div className="flex space-x-3">
             <button
               onClick={resetToDefaults}
               className="px-4 py-2 text-red-600 hover:text-red-700 border border-red-300 hover:border-red-400 rounded-lg transition-colors"
             >
               Reset to Defaults
-            </button>
-            <button
-              onClick={validateSettings}
-              className="px-4 py-2 text-blue-600 hover:text-blue-700 border border-blue-300 hover:border-blue-400 rounded-lg transition-colors"
-            >
-              Validate Settings
             </button>
           </div>
           <div className="flex space-x-3">
@@ -895,22 +977,14 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
               onClick={saveSettings}
               disabled={loading || !isDirty}
               className="px-6 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg hover:from-blue-600 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              title={!isDirty ? 'No changes to save' : 'Save backend settings'}
             >
               {loading ? 'Saving...' : 'Save Settings'}
             </button>
           </div>
+          </div>
         </div>
       </motion.div>
-
-      {/* Log Management Panel */}
-      <AnimatePresence>
-        {logPanelOpen && (
-          <ComprehensiveLogPanel
-            isOpen={logPanelOpen}
-            onClose={() => setLogPanelOpen(false)}
-          />
-        )}
-      </AnimatePresence>
     </motion.div>
   );
 };

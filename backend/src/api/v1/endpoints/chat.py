@@ -5,15 +5,35 @@ RESTful endpoints for chat and messaging functionality
 
 from fastapi import APIRouter, HTTPException, Depends, File, UploadFile, Form
 from fastapi.responses import StreamingResponse
+from pydantic import BaseModel, Field
 from typing import List, Dict, Any, Optional
 import os
 import json
 import asyncio
 
 from src.services.orchestrator_service import OrchestratorService
-from src.api.v1.models.chat import SendMessageRequest, MessageResponse
 from src.api.v1.dependencies import get_orchestrator_service
 from src.core.telemetry.events import EVENT_BUS
+
+
+# Request models
+class SendMessageRequest(BaseModel):
+    """Request model for sending a message"""
+    agent_id: str = Field(..., description="Target agent identifier")
+    message: str = Field(..., min_length=1, description="Message content")
+    sender: Optional[str] = Field("user", description="Message sender (user or agent_key)")
+
+
+class MessageResponse(BaseModel):
+    """Response model for message information"""
+    id: int = Field(..., description="Message sequence number")
+    group_id: str = Field(..., description="Group identifier")
+    sender: str = Field(..., description="Message sender")
+    role: str = Field(..., description="Sender role (user/agent/system)")
+    content: str = Field(..., description="Message content")
+    metadata: Optional[Dict[str, Any]] = Field(None, description="Additional metadata")
+    created_at: float = Field(..., description="Creation timestamp")
+
 
 router = APIRouter()
 
@@ -250,8 +270,8 @@ async def stream_group_events(group_id: str):
 
                         yield f"data: {json.dumps(event_data)}\n\n"
 
-                # Wait before next poll
-                await asyncio.sleep(1)
+                # Wait before next poll - reduced to 50ms for near-real-time updates
+                await asyncio.sleep(0.05)
 
             except Exception as e:
                 # Send error event
@@ -273,3 +293,31 @@ async def stream_group_events(group_id: str):
             "Access-Control-Allow-Origin": "*",
         }
     )
+
+
+@router.post("/groups/{group_id}/stop")
+async def stop_group_chain(
+    group_id: str,
+    service: OrchestratorService = Depends(get_orchestrator_service)
+):
+    """
+    Stop agent chain for a specific group.
+
+    This will prevent new agent responses from being processed,
+    effectively stopping the agent conversation chain for this group only.
+    """
+    try:
+        # Stop the group chain
+        await service.stop_group_chain(group_id)
+
+        return {
+            "message": f"Agent chain stopped for group {group_id}",
+            "group_id": group_id,
+            "stopped": True
+        }
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to stop group chain: {str(e)}"
+        )

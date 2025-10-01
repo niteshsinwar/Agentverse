@@ -10,8 +10,10 @@ import {
   CalendarIcon
 } from '@heroicons/react/24/outline';
 import { Document, Agent } from '../types';
-import { apiService } from '../services/api';
+import { apiService } from "@/shared/api";
 import { toast } from 'react-hot-toast';
+import { BrandedCard } from './BrandedComponents';
+import { BrandLogo } from './BrandLogo';
 
 interface DocumentsListPanelProps {
   groupId: string;
@@ -160,15 +162,17 @@ export const DocumentsListPanel: React.FC<DocumentsListPanelProps> = ({
             <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">Loading documents...</p>
           </div>
         ) : totalDocuments === 0 ? (
-          <div className="p-6 text-center">
-            <DocumentIcon className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-            <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-2">
+          <BrandedCard variant="glass" className="p-6 text-center m-2">
+            <div className="flex justify-center mb-4">
+              <BrandLogo variant="icon" size="sm" />
+            </div>
+            <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-2">
               No documents uploaded
             </h4>
-            <p className="text-xs text-gray-600 dark:text-gray-400">
+            <p className="text-xs text-slate-600 dark:text-slate-400">
               Upload documents through the chat interface to see them here
             </p>
-          </div>
+          </BrandedCard>
         ) : (
           <div className="p-2">
             {Object.entries(documentsByAgent).map(([agentId, agentDocuments]) => {

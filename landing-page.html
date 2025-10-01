@@ -1,0 +1,1044 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AgentVerse - Multi-Agent AI Orchestration Platform | WhatsApp-Style Interface</title>
+    <meta name="description" content="The most intuitive AI agent collaboration platform. Build, deploy, and orchestrate multiple AI agents with a familiar WhatsApp-style interface. No coding required.">
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Custom Tailwind Config -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#6366f1',
+                        secondary: '#8b5cf6',
+                        accent: '#ec4899',
+                    },
+                    animation: {
+                        'float': 'float 3s ease-in-out infinite',
+                        'glow': 'glow 2s ease-in-out infinite alternate',
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0px)' },
+                            '50%': { transform: 'translateY(-20px)' },
+                        },
+                        glow: {
+                            'from': { boxShadow: '0 0 20px rgba(139, 92, 246, 0.5)' },
+                            'to': { boxShadow: '0 0 30px rgba(139, 92, 246, 0.8), 0 0 40px rgba(139, 92, 246, 0.6)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .gradient-text {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .hero-gradient {
+            background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4c1d95 100%);
+        }
+
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+
+        .card-hover:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 40px rgba(139, 92, 246, 0.3);
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+<!-- Navigation -->
+<nav class="fixed w-full z-50 bg-white/90 backdrop-blur-lg border-b border-gray-200 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex justify-between items-center h-16">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 gradient-bg rounded-xl flex items-center justify-center">
+                    <span class="text-white text-xl font-bold">🌌</span>
+                </div>
+                <span class="text-2xl font-bold gradient-text">AgentVerse</span>
+            </div>
+
+            <div class="hidden md:flex items-center space-x-8">
+                <a href="#features" class="text-gray-700 hover:text-indigo-600 font-medium transition">Features</a>
+                <a href="#pricing" class="text-gray-700 hover:text-indigo-600 font-medium transition">Pricing</a>
+                <a href="#comparison" class="text-gray-700 hover:text-indigo-600 font-medium transition">Why AgentVerse?</a>
+                <a href="#docs" class="text-gray-700 hover:text-indigo-600 font-medium transition">Docs</a>
+                <a href="#download" class="px-6 py-2.5 gradient-bg text-white rounded-lg font-semibold hover:opacity-90 transition shadow-lg">
+                    Download Free
+                </a>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<!-- Hero Section -->
+<section id="hero" class="relative hero-gradient pt-32 pb-20 px-4 sm:px-6 lg:px-8 overflow-hidden">
+    <!-- Animated Background Elements -->
+    <div class="absolute inset-0 overflow-hidden">
+        <div class="absolute top-20 left-10 w-72 h-72 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-float"></div>
+        <div class="absolute bottom-20 right-10 w-96 h-96 bg-indigo-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-float" style="animation-delay: 1s;"></div>
+        <div class="absolute top-1/2 left-1/2 w-80 h-80 bg-pink-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-float" style="animation-delay: 2s;"></div>
+    </div>
+
+    <div class="relative max-w-7xl mx-auto">
+        <div class="text-center mb-16">
+            <div class="inline-flex items-center space-x-2 px-4 py-2 bg-white/10 backdrop-blur-lg rounded-full border border-white/20 text-white mb-6">
+                <span class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+                <span class="text-sm font-medium">Production Ready • Enterprise Grade • Open Source</span>
+            </div>
+
+            <h1 class="text-5xl md:text-7xl font-black text-white mb-6 leading-tight">
+                AI Agent Collaboration,<br/>
+                <span class="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-purple-400 to-pink-400">
+                    As Easy As Messaging
+                </span>
+            </h1>
+
+            <p class="text-xl md:text-2xl text-gray-300 mb-10 max-w-3xl mx-auto leading-relaxed">
+                The <span class="font-bold text-white">first AI agent platform</span> with a WhatsApp-style interface.
+                Create, deploy, and orchestrate multiple AI agents without writing code.
+                <span class="text-cyan-300">Even your grandma could do it.</span>
+            </p>
+
+            <div class="flex flex-col sm:flex-row gap-4 justify-center items-center">
+                <a href="#download" class="px-8 py-4 bg-white text-indigo-600 rounded-xl font-bold text-lg hover:bg-gray-100 transition shadow-2xl hover:shadow-indigo-500/50 transform hover:scale-105">
+                    🚀 Download Desktop App
+                </a>
+                <a href="#demo" class="px-8 py-4 bg-transparent border-2 border-white text-white rounded-xl font-bold text-lg hover:bg-white/10 transition">
+                    🎥 Watch Demo (2 min)
+                </a>
+            </div>
+
+            <div class="mt-8 flex items-center justify-center space-x-6 text-gray-300">
+                <div class="flex items-center space-x-2">
+                    <svg class="w-5 h-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                    </svg>
+                    <span>No credit card</span>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <svg class="w-5 h-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                    </svg>
+                    <span>Free forever</span>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <svg class="w-5 h-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                    </svg>
+                    <span>5 min setup</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Hero Screenshot/Demo -->
+        <div class="relative max-w-6xl mx-auto">
+            <div class="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 p-1 rounded-2xl shadow-2xl animate-glow">
+                <div class="bg-gray-900 rounded-2xl overflow-hidden">
+                    <img src="https://placehold.co/1200x700/1e293b/818cf8?text=WhatsApp-Style+Agent+Interface+%F0%9F%92%AC"
+                         alt="AgentVerse Interface"
+                         class="w-full h-auto">
+                </div>
+            </div>
+
+            <!-- Floating Feature Pills -->
+            <div class="absolute -top-4 -left-4 glass-effect text-white px-4 py-2 rounded-full text-sm font-semibold shadow-xl">
+                💬 Group Chat UI
+            </div>
+            <div class="absolute top-1/4 -right-4 glass-effect text-white px-4 py-2 rounded-full text-sm font-semibold shadow-xl">
+                🤖 Multi-Agent Collaboration
+            </div>
+            <div class="absolute -bottom-4 left-1/4 glass-effect text-white px-4 py-2 rounded-full text-sm font-semibold shadow-xl">
+                📄 Drag & Drop Documents
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Trust Indicators -->
+<section class="py-12 bg-gray-50 border-y border-gray-200">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <p class="text-center text-gray-600 font-semibold mb-8">Trusted by developers and enterprises worldwide</p>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-8 items-center justify-items-center">
+            <div class="text-gray-400 font-bold text-lg">FastAPI</div>
+            <div class="text-gray-400 font-bold text-lg">LangChain</div>
+            <div class="text-gray-400 font-bold text-lg">OpenAI</div>
+            <div class="text-gray-400 font-bold text-lg">Anthropic</div>
+        </div>
+    </div>
+</section>
+
+<!-- The Problem Section -->
+<section class="py-20 bg-white">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center mb-16">
+            <h2 class="text-4xl md:text-5xl font-black text-gray-900 mb-4">
+                Other AI Agent Tools Are <span class="text-red-600">Too Complex</span>
+            </h2>
+            <p class="text-xl text-gray-600 max-w-3xl mx-auto">
+                Existing platforms require coding skills, complicated workflows, and hours of setup.
+                We asked: <span class="font-bold">"Why can't AI agents talk like humans do?"</span>
+            </p>
+        </div>
+
+        <div class="grid md:grid-cols-3 gap-6">
+            <div class="p-8 bg-red-50 border-2 border-red-200 rounded-2xl">
+                <div class="text-4xl mb-4">😫</div>
+                <h3 class="text-xl font-bold text-red-900 mb-2">Complex Workflows</h3>
+                <p class="text-red-700">CrewAI, AutoGen require JSON configs, Python code, and technical expertise</p>
+            </div>
+            <div class="p-8 bg-red-50 border-2 border-red-200 rounded-2xl">
+                <div class="text-4xl mb-4">⏰</div>
+                <h3 class="text-xl font-bold text-red-900 mb-2">Hours of Setup</h3>
+                <p class="text-red-700">n8n and Zapier need complex node connections and API integrations</p>
+            </div>
+            <div class="p-8 bg-red-50 border-2 border-red-200 rounded-2xl">
+                <div class="text-4xl mb-4">🚫</div>
+                <h3 class="text-xl font-bold text-red-900 mb-2">No Real-Time Feedback</h3>
+                <p class="text-red-700">Black box execution with no visibility into what agents are doing</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- The Solution: WhatsApp-Style Interface -->
+<section id="whatsapp" class="py-20 bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center mb-16">
+            <div class="inline-block px-4 py-2 bg-green-100 text-green-800 rounded-full font-bold mb-4">
+                🌟 GAME CHANGER
+            </div>
+            <h2 class="text-4xl md:text-5xl font-black text-gray-900 mb-4">
+                The First <span class="gradient-text">WhatsApp-Style</span> AI Agent Platform
+            </h2>
+            <p class="text-xl text-gray-600 max-w-3xl mx-auto">
+                Familiar interface. Zero learning curve. <span class="font-bold">Even non-technical users</span> can orchestrate complex AI workflows.
+            </p>
+        </div>
+
+        <div class="grid lg:grid-cols-2 gap-12 items-center">
+            <!-- Interface Preview -->
+            <div class="order-2 lg:order-1">
+                <div class="bg-white rounded-3xl shadow-2xl p-6 border-4 border-indigo-200">
+                    <div class="flex items-center space-x-3 mb-4 pb-4 border-b">
+                        <div class="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center text-white font-bold">
+                            3
+                        </div>
+                        <div>
+                            <div class="font-bold text-gray-900">Marketing Team Workspace</div>
+                            <div class="text-sm text-gray-500">3 agents active • 24 messages</div>
+                        </div>
+                    </div>
+
+                    <!-- Mock Messages -->
+                    <div class="space-y-4">
+                        <!-- User Message -->
+                        <div class="flex justify-end">
+                            <div class="bg-indigo-500 text-white rounded-2xl rounded-tr-md px-4 py-3 max-w-xs">
+                                <p>@researcher Find the latest SEO trends for 2025</p>
+                                <p class="text-xs mt-1 opacity-75">2:34 PM</p>
+                            </div>
+                        </div>
+
+                        <!-- Agent Response -->
+                        <div class="flex justify-start">
+                            <div class="bg-gray-100 rounded-2xl rounded-tl-md px-4 py-3 max-w-xs">
+                                <div class="flex items-center space-x-2 mb-2 pb-2 border-b border-gray-200">
+                                    <span>🔍</span>
+                                    <span class="font-bold text-sm">Researcher Agent</span>
+                                </div>
+                                <p>Found 5 key trends including AI-powered content...</p>
+                                <p class="text-xs mt-1 text-gray-500">2:35 PM</p>
+                            </div>
+                        </div>
+
+                        <!-- Agent-to-Agent -->
+                        <div class="flex justify-start">
+                            <div class="bg-gray-100 rounded-2xl rounded-tl-md px-4 py-3 max-w-xs">
+                                <div class="flex items-center space-x-2 mb-2 pb-2 border-b border-gray-200">
+                                    <span>✍️</span>
+                                    <span class="font-bold text-sm">Writer Agent</span>
+                                </div>
+                                <p>@researcher Great findings! I'll draft a blog post...</p>
+                                <p class="text-xs mt-1 text-gray-500">2:36 PM</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Features List -->
+            <div class="order-1 lg:order-2 space-y-6">
+                <div class="flex items-start space-x-4">
+                    <div class="w-12 h-12 bg-gradient-to-br from-green-400 to-green-600 rounded-xl flex items-center justify-center text-white font-bold text-xl flex-shrink-0">
+                        💬
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold text-gray-900 mb-2">Familiar Group Chat Interface</h3>
+                        <p class="text-gray-600">Works exactly like WhatsApp, Slack, or Teams. No training needed.</p>
+                    </div>
+                </div>
+
+                <div class="flex items-start space-x-4">
+                    <div class="w-12 h-12 bg-gradient-to-br from-blue-400 to-blue-600 rounded-xl flex items-center justify-center text-white font-bold text-xl flex-shrink-0">
+                        @
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold text-gray-900 mb-2">@Mention System</h3>
+                        <p class="text-gray-600">Tag agents with @mention just like messaging apps. Agents can mention each other too!</p>
+                    </div>
+                </div>
+
+                <div class="flex items-start space-x-4">
+                    <div class="w-12 h-12 bg-gradient-to-br from-purple-400 to-purple-600 rounded-xl flex items-center justify-center text-white font-bold text-xl flex-shrink-0">
+                        👥
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold text-gray-900 mb-2">Human-in-the-Loop</h3>
+                        <p class="text-gray-600">You're part of the conversation. Give feedback, correct agents, or jump in anytime.</p>
+                    </div>
+                </div>
+
+                <div class="flex items-start space-x-4">
+                    <div class="w-12 h-12 bg-gradient-to-br from-pink-400 to-pink-600 rounded-xl flex items-center justify-center text-white font-bold text-xl flex-shrink-0">
+                        📄
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold text-gray-900 mb-2">Drag & Drop Files</h3>
+                        <p class="text-gray-600">Upload documents, PDFs, images. Agents analyze them instantly.</p>
+                    </div>
+                </div>
+
+                <div class="flex items-start space-x-4">
+                    <div class="w-12 h-12 bg-gradient-to-br from-orange-400 to-orange-600 rounded-xl flex items-center justify-center text-white font-bold text-xl flex-shrink-0">
+                        ⚡
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold text-gray-900 mb-2">Real-Time Streaming</h3>
+                        <p class="text-gray-600">See agent responses as they type. Stop runaway agents with one click.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Key Features -->
+<section id="features" class="py-20 bg-white">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center mb-16">
+            <h2 class="text-4xl md:text-5xl font-black text-gray-900 mb-4">
+                Built For <span class="gradient-text">Non-Technical Users</span>
+            </h2>
+            <p class="text-xl text-gray-600 max-w-3xl mx-auto">
+                Every feature designed to be as simple as possible. If you can chat, you can build AI workflows.
+            </p>
+        </div>
+
+        <div class="grid md:grid-cols-3 gap-8">
+            <!-- Feature 1 -->
+            <div class="p-8 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-2xl border border-indigo-100 card-hover">
+                <div class="w-16 h-16 gradient-bg rounded-2xl flex items-center justify-center text-white text-3xl mb-4">
+                    🤖
+                </div>
+                <h3 class="text-2xl font-bold text-gray-900 mb-3">Create Agents in 60 Seconds</h3>
+                <p class="text-gray-600 mb-4">Visual agent builder. Pick tools from library. No code required.</p>
+                <ul class="space-y-2 text-sm text-gray-600">
+                    <li class="flex items-center space-x-2">
+                        <svg class="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                        <span>15+ pre-built tool templates</span>
+                    </li>
+                    <li class="flex items-center space-x-2">
+                        <svg class="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                        <span>8+ MCP servers (GitHub, Search, Files)</span>
+                    </li>
+                    <li class="flex items-center space-x-2">
+                        <svg class="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                        <span>Custom tools with Python editor</span>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Feature 2 -->
+            <div class="p-8 bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl border border-purple-100 card-hover">
+                <div class="w-16 h-16 gradient-bg rounded-2xl flex items-center justify-center text-white text-3xl mb-4">
+                    🗂️
+                </div>
+                <h3 class="text-2xl font-bold text-gray-900 mb-3">Multiple Workspaces</h3>
+                <p class="text-gray-600 mb-4">Organize agents into teams. Marketing, Dev, Sales - all separate.</p>
+                <ul class="space-y-2 text-sm text-gray-600">
+                    <li class="flex items-center space-x-2">
+                        <svg class="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                        <span>Unlimited workspaces</span>
+                    </li>
+                    <li class="flex items-center space-x-2">
+                        <svg class="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                        <span>Add/remove agents on the fly</span>
+                    </li>
+                    <li class="flex items-center space-x-2">
+                        <svg class="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                        <span>Conversation history per workspace</span>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Feature 3 -->
+            <div class="p-8 bg-gradient-to-br from-pink-50 to-orange-50 rounded-2xl border border-pink-100 card-hover">
+                <div class="w-16 h-16 gradient-bg rounded-2xl flex items-center justify-center text-white text-3xl mb-4">
+                    📊
+                </div>
+                <h3 class="text-2xl font-bold text-gray-900 mb-3">Transparent Logs</h3>
+                <p class="text-gray-600 mb-4">See every action in real-time. No black boxes.</p>
+                <ul class="space-y-2 text-sm text-gray-600">
+                    <li class="flex items-center space-x-2">
+                        <svg class="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                        <span>Chat-style logs (easy to read)</span>
+                    </li>
+                    <li class="flex items-center space-x-2">
+                        <svg class="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                        <span>Track tool calls & API usage</span>
+                    </li>
+                    <li class="flex items-center space-x-2">
+                        <svg class="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                        <span>Debug agent behavior easily</span>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Feature 4 -->
+            <div class="p-8 bg-gradient-to-br from-cyan-50 to-blue-50 rounded-2xl border border-cyan-100 card-hover">
+                <div class="w-16 h-16 gradient-bg rounded-2xl flex items-center justify-center text-white text-3xl mb-4">
+                    📁
+                </div>
+                <h3 class="text-2xl font-bold text-gray-900 mb-3">Document Intelligence</h3>
+                <p class="text-gray-600 mb-4">Upload files. Agents analyze them automatically.</p>
+                <ul class="space-y-2 text-sm text-gray-600">
+                    <li class="flex items-center space-x-2">
+                        <svg class="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                        <span>20+ file formats (PDF, DOCX, CSV)</span>
+                    </li>
+                    <li class="flex items-center space-x-2">
+                        <svg class="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                        <span>AI-powered content extraction</span>
+                    </li>
+                    <li class="flex items-center space-x-2">
+                        <svg class="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                        <span>Context injection to agents</span>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Feature 5 -->
+            <div class="p-8 bg-gradient-to-br from-green-50 to-teal-50 rounded-2xl border border-green-100 card-hover">
+                <div class="w-16 h-16 gradient-bg rounded-2xl flex items-center justify-center text-white text-3xl mb-4">
+                    🔌
+                </div>
+                <h3 class="text-2xl font-bold text-gray-900 mb-3">Easy Tool Integration</h3>
+                <p class="text-gray-600 mb-4">One-click to add web search, GitHub, databases, and more.</p>
+                <ul class="space-y-2 text-sm text-gray-600">
+                    <li class="flex items-center space-x-2">
+                        <svg class="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                        <span>MCP protocol support</span>
+                    </li>
+                    <li class="flex items-center space-x-2">
+                        <svg class="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                        <span>Pre-configured integrations</span>
+                    </li>
+                    <li class="flex items-center space-x-2">
+                        <svg class="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                        <span>Custom tool builder</span>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Feature 6 -->
+            <div class="p-8 bg-gradient-to-br from-yellow-50 to-amber-50 rounded-2xl border border-yellow-100 card-hover">
+                <div class="w-16 h-16 gradient-bg rounded-2xl flex items-center justify-center text-white text-3xl mb-4">
+                    🚀
+                </div>
+                <h3 class="text-2xl font-bold text-gray-900 mb-3">Desktop Performance</h3>
+                <p class="text-gray-600 mb-4">Native app with Tauri. Blazing fast on Windows, Mac, Linux.</p>
+                <ul class="space-y-2 text-sm text-gray-600">
+                    <li class="flex items-center space-x-2">
+                        <svg class="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                        <span>Local-first (no cloud required)</span>
+                    </li>
+                    <li class="flex items-center space-x-2">
+                        <svg class="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                        <span>Your data stays on your machine</span>
+                    </li>
+                    <li class="flex items-center space-x-2">
+                        <svg class="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                        <span>Instant startup</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Comparison Table -->
+<section id="comparison" class="py-20 bg-gradient-to-br from-gray-50 to-gray-100">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center mb-16">
+            <h2 class="text-4xl md:text-5xl font-black text-gray-900 mb-4">
+                Why <span class="gradient-text">AgentVerse</span> Beats The Competition
+            </h2>
+            <p class="text-xl text-gray-600 max-w-3xl mx-auto">
+                We took the best from CrewAI, AutoGen, LangFlow, n8n, and Zapier — then made it <span class="font-bold">10x easier</span>.
+            </p>
+        </div>
+
+        <div class="bg-white rounded-3xl shadow-2xl overflow-hidden border border-gray-200">
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead class="gradient-bg text-white">
+                        <tr>
+                            <th class="px-6 py-4 text-left font-bold">Feature</th>
+                            <th class="px-6 py-4 text-center font-bold">AgentVerse</th>
+                            <th class="px-6 py-4 text-center font-bold">CrewAI/AutoGen</th>
+                            <th class="px-6 py-4 text-center font-bold">LangFlow/n8n</th>
+                            <th class="px-6 py-4 text-center font-bold">Zapier</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200">
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-6 py-4 font-semibold">WhatsApp-Style Chat UI</td>
+                            <td class="px-6 py-4 text-center"><span class="text-3xl">✅</span></td>
+                            <td class="px-6 py-4 text-center"><span class="text-3xl">❌</span></td>
+                            <td class="px-6 py-4 text-center"><span class="text-3xl">❌</span></td>
+                            <td class="px-6 py-4 text-center"><span class="text-3xl">❌</span></td>
+                        </tr>
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-6 py-4 font-semibold">No Coding Required</td>
+                            <td class="px-6 py-4 text-center"><span class="text-3xl">✅</span></td>
+                            <td class="px-6 py-4 text-center"><span class="text-3xl">❌</span></td>
+                            <td class="px-6 py-4 text-center"><span class="text-2xl">⚠️</span></td>
+                            <td class="px-6 py-4 text-center"><span class="text-3xl">✅</span></td>
+                        </tr>
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-6 py-4 font-semibold">Real-Time Agent Visibility</td>
+                            <td class="px-6 py-4 text-center"><span class="text-3xl">✅</span></td>
+                            <td class="px-6 py-4 text-center"><span class="text-3xl">❌</span></td>
+                            <td class="px-6 py-4 text-center"><span class="text-2xl">⚠️</span></td>
+                            <td class="px-6 py-4 text-center"><span class="text-3xl">❌</span></td>
+                        </tr>
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-6 py-4 font-semibold">Human-in-the-Loop Chat</td>
+                            <td class="px-6 py-4 text-center"><span class="text-3xl">✅</span></td>
+                            <td class="px-6 py-4 text-center"><span class="text-3xl">❌</span></td>
+                            <td class="px-6 py-4 text-center"><span class="text-3xl">❌</span></td>
+                            <td class="px-6 py-4 text-center"><span class="text-3xl">❌</span></td>
+                        </tr>
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-6 py-4 font-semibold">Agent-to-Agent @Mentions</td>
+                            <td class="px-6 py-4 text-center"><span class="text-3xl">✅</span></td>
+                            <td class="px-6 py-4 text-center"><span class="text-2xl">⚠️</span></td>
+                            <td class="px-6 py-4 text-center"><span class="text-3xl">❌</span></td>
+                            <td class="px-6 py-4 text-center"><span class="text-3xl">❌</span></td>
+                        </tr>
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-6 py-4 font-semibold">Multi-LLM Support (OpenAI, Claude, Gemini)</td>
+                            <td class="px-6 py-4 text-center"><span class="text-3xl">✅</span></td>
+                            <td class="px-6 py-4 text-center"><span class="text-3xl">✅</span></td>
+                            <td class="px-6 py-4 text-center"><span class="text-2xl">⚠️</span></td>
+                            <td class="px-6 py-4 text-center"><span class="text-3xl">❌</span></td>
+                        </tr>
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-6 py-4 font-semibold">Drag & Drop Document Upload</td>
+                            <td class="px-6 py-4 text-center"><span class="text-3xl">✅</span></td>
+                            <td class="px-6 py-4 text-center"><span class="text-3xl">❌</span></td>
+                            <td class="px-6 py-4 text-center"><span class="text-2xl">⚠️</span></td>
+                            <td class="px-6 py-4 text-center"><span class="text-3xl">❌</span></td>
+                        </tr>
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-6 py-4 font-semibold">Desktop App (Local-First)</td>
+                            <td class="px-6 py-4 text-center"><span class="text-3xl">✅</span></td>
+                            <td class="px-6 py-4 text-center"><span class="text-3xl">❌</span></td>
+                            <td class="px-6 py-4 text-center"><span class="text-3xl">❌</span></td>
+                            <td class="px-6 py-4 text-center"><span class="text-3xl">❌</span></td>
+                        </tr>
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-6 py-4 font-semibold">Setup Time</td>
+                            <td class="px-6 py-4 text-center font-bold text-green-600">5 minutes</td>
+                            <td class="px-6 py-4 text-center font-bold text-red-600">2-4 hours</td>
+                            <td class="px-6 py-4 text-center font-bold text-yellow-600">1-2 hours</td>
+                            <td class="px-6 py-4 text-center font-bold text-yellow-600">30 mins</td>
+                        </tr>
+                        <tr class="hover:bg-gray-50 bg-green-50">
+                            <td class="px-6 py-4 font-semibold">Learning Curve</td>
+                            <td class="px-6 py-4 text-center font-bold text-green-600">Zero (if you can chat)</td>
+                            <td class="px-6 py-4 text-center font-bold text-red-600">High (need Python)</td>
+                            <td class="px-6 py-4 text-center font-bold text-yellow-600">Medium</td>
+                            <td class="px-6 py-4 text-center font-bold text-green-600">Low</td>
+                        </tr>
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-6 py-4 font-semibold">Price (Hobby Use)</td>
+                            <td class="px-6 py-4 text-center font-bold text-green-600">FREE</td>
+                            <td class="px-6 py-4 text-center font-bold text-green-600">FREE</td>
+                            <td class="px-6 py-4 text-center font-bold text-yellow-600">$20-50/mo</td>
+                            <td class="px-6 py-4 text-center font-bold text-yellow-600">$20-75/mo</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="mt-8 p-6 bg-indigo-100 border-2 border-indigo-300 rounded-2xl">
+            <p class="text-center text-indigo-900 font-bold text-lg">
+                🏆 <span class="text-2xl">AgentVerse wins on simplicity, transparency, and cost.</span> Built for humans, not just developers.
+            </p>
+        </div>
+    </div>
+</section>
+
+<!-- Pricing -->
+<section id="pricing" class="py-20 bg-white">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center mb-16">
+            <h2 class="text-4xl md:text-5xl font-black text-gray-900 mb-4">
+                Simple, Transparent Pricing
+            </h2>
+            <p class="text-xl text-gray-600 max-w-3xl mx-auto">
+                Start free forever. Upgrade when you're ready. <span class="font-bold">No hidden fees.</span>
+            </p>
+        </div>
+
+        <div class="grid md:grid-cols-3 gap-8">
+            <!-- Free Tier -->
+            <div class="p-8 bg-gray-50 rounded-3xl border-2 border-gray-200 card-hover">
+                <div class="text-center mb-6">
+                    <h3 class="text-2xl font-bold text-gray-900 mb-2">Free</h3>
+                    <div class="text-5xl font-black text-gray-900 mb-2">$0</div>
+                    <p class="text-gray-600">Forever</p>
+                </div>
+
+                <ul class="space-y-4 mb-8">
+                    <li class="flex items-start space-x-3">
+                        <svg class="w-6 h-6 text-green-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                        <span class="text-gray-700"><strong>3 agents</strong></span>
+                    </li>
+                    <li class="flex items-start space-x-3">
+                        <svg class="w-6 h-6 text-green-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                        <span class="text-gray-700"><strong>5 workspaces</strong></span>
+                    </li>
+                    <li class="flex items-start space-x-3">
+                        <svg class="w-6 h-6 text-green-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                        <span class="text-gray-700">All pre-built tools & MCPs</span>
+                    </li>
+                    <li class="flex items-start space-x-3">
+                        <svg class="w-6 h-6 text-green-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                        <span class="text-gray-700">Local desktop app</span>
+                    </li>
+                    <li class="flex items-start space-x-3">
+                        <svg class="w-6 h-6 text-green-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                        <span class="text-gray-700">Community support</span>
+                    </li>
+                    <li class="flex items-start space-x-3">
+                        <svg class="w-6 h-6 text-green-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                        <span class="text-gray-700">Unlimited messages</span>
+                    </li>
+                </ul>
+
+                <a href="#download" class="block w-full py-3 bg-gray-200 text-gray-900 rounded-xl font-bold text-center hover:bg-gray-300 transition">
+                    Download Free
+                </a>
+            </div>
+
+            <!-- Max Tier (Popular) -->
+            <div class="p-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-3xl border-4 border-indigo-400 shadow-2xl transform scale-105 card-hover relative">
+                <div class="absolute -top-4 left-1/2 transform -translate-x-1/2 px-4 py-1 bg-yellow-400 text-yellow-900 rounded-full font-bold text-sm">
+                    ⭐ MOST POPULAR
+                </div>
+
+                <div class="text-center mb-6">
+                    <h3 class="text-2xl font-bold text-white mb-2">Max</h3>
+                    <div class="text-5xl font-black text-white mb-2">$29</div>
+                    <p class="text-indigo-100">per month</p>
+                </div>
+
+                <ul class="space-y-4 mb-8">
+                    <li class="flex items-start space-x-3">
+                        <svg class="w-6 h-6 text-yellow-300 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                        <span class="text-white"><strong>Unlimited agents</strong></span>
+                    </li>
+                    <li class="flex items-start space-x-3">
+                        <svg class="w-6 h-6 text-yellow-300 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                        <span class="text-white"><strong>Unlimited workspaces</strong></span>
+                    </li>
+                    <li class="flex items-start space-x-3">
+                        <svg class="w-6 h-6 text-yellow-300 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                        <span class="text-white">Priority LLM access</span>
+                    </li>
+                    <li class="flex items-start space-x-3">
+                        <svg class="w-6 h-6 text-yellow-300 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                        <span class="text-white">Advanced analytics</span>
+                    </li>
+                    <li class="flex items-start space-x-3">
+                        <svg class="w-6 h-6 text-yellow-300 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                        <span class="text-white">Email support (24hr)</span>
+                    </li>
+                    <li class="flex items-start space-x-3">
+                        <svg class="w-6 h-6 text-yellow-300 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                        <span class="text-white">Early access to features</span>
+                    </li>
+                </ul>
+
+                <a href="#download" class="block w-full py-3 bg-white text-indigo-600 rounded-xl font-bold text-center hover:bg-gray-100 transition shadow-lg">
+                    Start Free Trial
+                </a>
+            </div>
+
+            <!-- Pro Tier -->
+            <div class="p-8 bg-gray-900 rounded-3xl border-2 border-gray-700 card-hover">
+                <div class="text-center mb-6">
+                    <h3 class="text-2xl font-bold text-white mb-2">Pro</h3>
+                    <div class="text-5xl font-black text-white mb-2">$99</div>
+                    <p class="text-gray-400">per month</p>
+                </div>
+
+                <ul class="space-y-4 mb-8">
+                    <li class="flex items-start space-x-3">
+                        <svg class="w-6 h-6 text-green-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                        <span class="text-white">Everything in Max</span>
+                    </li>
+                    <li class="flex items-start space-x-3">
+                        <svg class="w-6 h-6 text-green-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                        <span class="text-white"><strong>Team collaboration</strong> (5 users)</span>
+                    </li>
+                    <li class="flex items-start space-x-3">
+                        <svg class="w-6 h-6 text-green-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                        <span class="text-white">Shared workspaces</span>
+                    </li>
+                    <li class="flex items-start space-x-3">
+                        <svg class="w-6 h-6 text-green-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                        <span class="text-white">SSO & auth</span>
+                    </li>
+                    <li class="flex items-start space-x-3">
+                        <svg class="w-6 h-6 text-green-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                        <span class="text-white">Priority support (1hr)</span>
+                    </li>
+                    <li class="flex items-start space-x-3">
+                        <svg class="w-6 h-6 text-green-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                        <span class="text-white">Custom onboarding</span>
+                    </li>
+                </ul>
+
+                <a href="#contact" class="block w-full py-3 gradient-bg text-white rounded-xl font-bold text-center hover:opacity-90 transition">
+                    Contact Sales
+                </a>
+            </div>
+        </div>
+
+        <div class="mt-12 text-center">
+            <p class="text-gray-600 mb-4">
+                💡 <strong>Your API costs are separate</strong> - You pay OpenAI/Anthropic/Gemini directly for LLM usage.
+            </p>
+            <p class="text-gray-600">
+                Need more? <a href="#contact" class="text-indigo-600 font-bold hover:underline">Contact us</a> for Enterprise pricing with volume discounts.
+            </p>
+        </div>
+    </div>
+</section>
+
+<!-- Documentation Preview -->
+<section id="docs" class="py-20 bg-gradient-to-br from-gray-900 to-gray-800 text-white">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center mb-16">
+            <h2 class="text-4xl md:text-5xl font-black mb-4">
+                Get Started in <span class="text-cyan-400">5 Minutes</span>
+            </h2>
+            <p class="text-xl text-gray-300 max-w-3xl mx-auto">
+                Comprehensive docs, video tutorials, and templates to get you up and running fast.
+            </p>
+        </div>
+
+        <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <a href="#" class="p-6 bg-white/10 backdrop-blur-lg rounded-2xl border border-white/20 hover:bg-white/20 transition group">
+                <div class="text-4xl mb-4">📖</div>
+                <h3 class="text-xl font-bold mb-2 group-hover:text-cyan-400 transition">Quick Start Guide</h3>
+                <p class="text-gray-400 text-sm">5-minute setup walkthrough</p>
+            </a>
+
+            <a href="#" class="p-6 bg-white/10 backdrop-blur-lg rounded-2xl border border-white/20 hover:bg-white/20 transition group">
+                <div class="text-4xl mb-4">🎥</div>
+                <h3 class="text-xl font-bold mb-2 group-hover:text-cyan-400 transition">Video Tutorials</h3>
+                <p class="text-gray-400 text-sm">12 step-by-step videos</p>
+            </a>
+
+            <a href="#" class="p-6 bg-white/10 backdrop-blur-lg rounded-2xl border border-white/20 hover:bg-white/20 transition group">
+                <div class="text-4xl mb-4">🧩</div>
+                <h3 class="text-xl font-bold mb-2 group-hover:text-cyan-400 transition">Agent Templates</h3>
+                <p class="text-gray-400 text-sm">20+ ready-to-use agents</p>
+            </a>
+
+            <a href="#" class="p-6 bg-white/10 backdrop-blur-lg rounded-2xl border border-white/20 hover:bg-white/20 transition group">
+                <div class="text-4xl mb-4">💬</div>
+                <h3 class="text-xl font-bold mb-2 group-hover:text-cyan-400 transition">Community</h3>
+                <p class="text-gray-400 text-sm">Discord + GitHub discussions</p>
+            </a>
+        </div>
+
+        <div class="mt-12 p-8 bg-white/10 backdrop-blur-lg rounded-3xl border border-white/20">
+            <div class="flex flex-col md:flex-row items-center justify-between">
+                <div class="mb-6 md:mb-0">
+                    <h3 class="text-2xl font-bold mb-2">Framework Integration</h3>
+                    <p class="text-gray-300">Built on industry-standard frameworks</p>
+                </div>
+                <div class="flex flex-wrap gap-4">
+                    <div class="px-4 py-2 bg-white/20 rounded-lg font-bold">LangChain</div>
+                    <div class="px-4 py-2 bg-white/20 rounded-lg font-bold">LangGraph</div>
+                    <div class="px-4 py-2 bg-white/20 rounded-lg font-bold">FastAPI</div>
+                    <div class="px-4 py-2 bg-white/20 rounded-lg font-bold">React</div>
+                    <div class="px-4 py-2 bg-white/20 rounded-lg font-bold">Tauri</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Social Proof / Testimonials -->
+<section class="py-20 bg-white">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center mb-16">
+            <h2 class="text-4xl md:text-5xl font-black text-gray-900 mb-4">
+                Loved By Users Worldwide
+            </h2>
+            <p class="text-xl text-gray-600">Join thousands of developers and teams already using AgentVerse</p>
+        </div>
+
+        <div class="grid md:grid-cols-3 gap-8">
+            <div class="p-8 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-2xl border border-indigo-100">
+                <div class="flex items-center space-x-1 mb-4">
+                    <span class="text-2xl">⭐⭐⭐⭐⭐</span>
+                </div>
+                <p class="text-gray-700 mb-4 italic">"Finally, an AI agent tool I can actually use! The WhatsApp-style interface is genius. Setup took literally 5 minutes."</p>
+                <div class="flex items-center space-x-3">
+                    <div class="w-12 h-12 bg-indigo-200 rounded-full flex items-center justify-center font-bold text-indigo-700">
+                        JS
+                    </div>
+                    <div>
+                        <div class="font-bold text-gray-900">Jessica Smith</div>
+                        <div class="text-sm text-gray-600">Marketing Manager</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-8 bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl border border-purple-100">
+                <div class="flex items-center space-x-1 mb-4">
+                    <span class="text-2xl">⭐⭐⭐⭐⭐</span>
+                </div>
+                <p class="text-gray-700 mb-4 italic">"We tried CrewAI and gave up after 2 days. AgentVerse had us productive in 30 minutes. Game changer for our team."</p>
+                <div class="flex items-center space-x-3">
+                    <div class="w-12 h-12 bg-purple-200 rounded-full flex items-center justify-center font-bold text-purple-700">
+                        MK
+                    </div>
+                    <div>
+                        <div class="font-bold text-gray-900">Mike Kumar</div>
+                        <div class="text-sm text-gray-600">Startup Founder</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-8 bg-gradient-to-br from-pink-50 to-orange-50 rounded-2xl border border-pink-100">
+                <div class="flex items-center space-x-1 mb-4">
+                    <span class="text-2xl">⭐⭐⭐⭐⭐</span>
+                </div>
+                <p class="text-gray-700 mb-4 italic">"The drag-and-drop documents feature is incredible. Our research team now processes 50+ papers a day with agent help."</p>
+                <div class="flex items-center space-x-3">
+                    <div class="w-12 h-12 bg-pink-200 rounded-full flex items-center justify-center font-bold text-pink-700">
+                        AL
+                    </div>
+                    <div>
+                        <div class="font-bold text-gray-900">Dr. Anna Lee</div>
+                        <div class="text-sm text-gray-600">Research Lead</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- CTA Section -->
+<section id="download" class="py-20 hero-gradient relative overflow-hidden">
+    <div class="absolute inset-0">
+        <div class="absolute top-10 left-10 w-96 h-96 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-float"></div>
+        <div class="absolute bottom-10 right-10 w-96 h-96 bg-indigo-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-float" style="animation-delay: 1s;"></div>
+    </div>
+
+    <div class="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+        <h2 class="text-4xl md:text-6xl font-black text-white mb-6">
+            Ready To Build Your Agent Team?
+        </h2>
+        <p class="text-xl md:text-2xl text-gray-200 mb-10 max-w-3xl mx-auto">
+            Download AgentVerse for free. No credit card. No coding. <span class="font-bold text-cyan-300">Just chat with your AI agents.</span>
+        </p>
+
+        <div class="flex flex-col sm:flex-row gap-4 justify-center items-center mb-8">
+            <a href="#" class="px-10 py-5 bg-white text-indigo-600 rounded-xl font-bold text-xl hover:bg-gray-100 transition shadow-2xl hover:shadow-indigo-500/50 transform hover:scale-105">
+                🍎 Download for macOS
+            </a>
+            <a href="#" class="px-10 py-5 bg-white text-indigo-600 rounded-xl font-bold text-xl hover:bg-gray-100 transition shadow-2xl hover:shadow-indigo-500/50 transform hover:scale-105">
+                🪟 Download for Windows
+            </a>
+        </div>
+
+        <p class="text-gray-300 mb-4">Linux? Docker? Self-host?</p>
+        <a href="#" class="text-cyan-300 font-bold hover:underline">See all installation options →</a>
+
+        <div class="mt-12 flex items-center justify-center space-x-8 text-gray-300">
+            <div class="flex items-center space-x-2">
+                <svg class="w-6 h-6 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                </svg>
+                <span>Free forever</span>
+            </div>
+            <div class="flex items-center space-x-2">
+                <svg class="w-6 h-6 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                </svg>
+                <span>Open source</span>
+            </div>
+            <div class="flex items-center space-x-2">
+                <svg class="w-6 h-6 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                </svg>
+                <span>Your data stays local</span>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Footer -->
+<footer class="bg-gray-900 text-gray-400 py-12 border-t border-gray-800">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="grid md:grid-cols-4 gap-8 mb-8">
+            <div>
+                <div class="flex items-center space-x-3 mb-4">
+                    <div class="w-10 h-10 gradient-bg rounded-xl flex items-center justify-center">
+                        <span class="text-white text-xl font-bold">🌌</span>
+                    </div>
+                    <span class="text-xl font-bold text-white">AgentVerse</span>
+                </div>
+                <p class="text-sm">The easiest way to build multi-agent AI workflows.</p>
+            </div>
+
+            <div>
+                <h4 class="text-white font-bold mb-4">Product</h4>
+                <ul class="space-y-2 text-sm">
+                    <li><a href="#features" class="hover:text-white transition">Features</a></li>
+                    <li><a href="#pricing" class="hover:text-white transition">Pricing</a></li>
+                    <li><a href="#docs" class="hover:text-white transition">Documentation</a></li>
+                    <li><a href="#" class="hover:text-white transition">Changelog</a></li>
+                </ul>
+            </div>
+
+            <div>
+                <h4 class="text-white font-bold mb-4">Resources</h4>
+                <ul class="space-y-2 text-sm">
+                    <li><a href="#" class="hover:text-white transition">Blog</a></li>
+                    <li><a href="#" class="hover:text-white transition">Tutorials</a></li>
+                    <li><a href="#" class="hover:text-white transition">Templates</a></li>
+                    <li><a href="#" class="hover:text-white transition">Community</a></li>
+                </ul>
+            </div>
+
+            <div>
+                <h4 class="text-white font-bold mb-4">Company</h4>
+                <ul class="space-y-2 text-sm">
+                    <li><a href="#" class="hover:text-white transition">About</a></li>
+                    <li><a href="#" class="hover:text-white transition">GitHub</a></li>
+                    <li><a href="#" class="hover:text-white transition">Discord</a></li>
+                    <li><a href="#" class="hover:text-white transition">Contact</a></li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="border-t border-gray-800 pt-8 flex flex-col md:flex-row justify-between items-center">
+            <p class="text-sm mb-4 md:mb-0">&copy; 2025 AgentVerse. All rights reserved.</p>
+            <div class="flex space-x-6 text-sm">
+                <a href="#" class="hover:text-white transition">Privacy Policy</a>
+                <a href="#" class="hover:text-white transition">Terms of Service</a>
+                <a href="#" class="hover:text-white transition">Cookie Policy</a>
+            </div>
+        </div>
+    </div>
+</footer>
+
+<!-- Scroll to Top Button -->
+<button id="scrollToTop" class="fixed bottom-8 right-8 w-14 h-14 gradient-bg text-white rounded-full shadow-2xl hover:opacity-90 transition opacity-0 pointer-events-none z-50" onclick="window.scrollTo({top: 0, behavior: 'smooth'})">
+    <svg class="w-6 h-6 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"/>
+    </svg>
+</button>
+
+<script>
+    // Scroll to top button visibility
+    window.addEventListener('scroll', function() {
+        const scrollBtn = document.getElementById('scrollToTop');
+        if (window.pageYOffset > 300) {
+            scrollBtn.classList.remove('opacity-0', 'pointer-events-none');
+        } else {
+            scrollBtn.classList.add('opacity-0', 'pointer-events-none');
+        }
+    });
+
+    // Smooth scroll for anchor links
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+            e.preventDefault();
+            const target = document.querySelector(this.getAttribute('href'));
+            if (target) {
+                target.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start'
+                });
+            }
+        });
+    });
+</script>
+
+</body>
+</html>

@@ -13,7 +13,18 @@
       "args": [
         "-lc",
         "cd '/Users/niteshsinwar/Desktop/My Stuff/My Projects/Salesforce MCP Server/sfmcp' && source venv/bin/activate && python -m app.main --mcp-stdio"
-      ]
+      ],
+      "env": {}
+    },
+    "filesystem_server": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "/Users/niteshsinwar/Desktop",
+        "/Users/niteshsinwar/Downloads"
+      ],
+      "env": {}
     }
   }
 }

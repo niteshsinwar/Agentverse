@@ -74,8 +74,64 @@ class McpValidator:
         timeout: float = 10.0
     ) -> ValidationResult:
         """
-        Test MCP server connectivity and command availability
-        Uses the same logic as MCPServerHandle.start() but without persistence
+        Test COMPLETE MCP server startup and protocol communication
+        Uses EXACTLY the same logic as agent building: MCPManager.from_config() -> start_all()
+        """
+        result = ValidationResult(valid=True, errors=[], warnings=[])
+
+        try:
+            # Test the EXACT same process as agent building
+            from src.core.mcp.client import MCPManager
+            test_config = {"mcpServers": {name: config}}
+            mcp_manager = MCPManager.from_config(test_config)
+
+            if name not in mcp_manager.servers:
+                result.add_error("server_creation", f"Failed to create MCP server '{name}' from config", "SERVER_CREATION_FAILED")
+                return result
+
+            # Test ACTUAL server startup (same as build_agent()) with timeout
+            import asyncio
+            try:
+                startup_results = await asyncio.wait_for(
+                    mcp_manager.start_all(),
+                    timeout=timeout  # Use the provided timeout parameter
+                )
+            except asyncio.TimeoutError:
+                result.add_error("startup", f"MCP server '{name}' startup timeout after {timeout}s", "STARTUP_TIMEOUT")
+                return result
+
+            if not startup_results.get(name, False):
+                result.add_error("startup", f"MCP server '{name}' failed to start", "STARTUP_FAILED")
+                return result
+
+            server = mcp_manager.servers[name]
+
+            # Test tool discovery (this is what agents expect)
+            if server.tools_cache:
+                result.add_warning("tools", f"Successfully discovered {len(server.tools_cache)} tools", "TOOLS_DISCOVERED")
+                for tool in server.tools_cache[:3]:  # Show first 3 tools
+                    result.add_warning("tools", f"  - {tool.name}: {tool.description[:50]}...", "TOOL_DETAIL")
+            else:
+                result.add_warning("tools", "No tools discovered from MCP server", "NO_TOOLS")
+
+            # Clean up
+            await mcp_manager.stop_all()
+            result.add_warning("overall", "✅ Full MCP protocol validation passed", "VALIDATION_SUCCESS")
+
+        except Exception as e:
+            result.add_error("protocol", f"MCP server validation failed: {str(e)}", "VALIDATION_FAILED")
+
+        return result
+
+    @staticmethod
+    async def validate_mcp_server_connectivity_legacy(
+        name: str,
+        config: Dict[str, Any],
+        timeout: float = 10.0
+    ) -> ValidationResult:
+        """
+        Legacy connectivity test - only tests command availability (not full protocol)
+        DEPRECATED: Use validate_mcp_server_connectivity() for complete validation
         """
         result = ValidationResult(valid=True, errors=[], warnings=[])
 

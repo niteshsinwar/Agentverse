@@ -11,8 +11,10 @@ import {
 } from '@heroicons/react/24/outline';
 import { Tab } from '@headlessui/react';
 import { toast } from 'react-hot-toast';
-import { apiService } from '../services/api';
+import { apiService } from '@/shared/api';
 import { ProgressBar, useProgressSteps } from './ProgressBar';
+import { BrandedButton, BrandedCard, BrandedBadge, BrandedAlert } from './BrandedComponents';
+import { BrandLogo } from './BrandLogo';
 
 // Pre-built tools and MCP configurations will be loaded from API
 
@@ -468,29 +470,7 @@ export const EnhancedAgentCreationPanel: React.FC<EnhancedAgentCreationPanelProp
   };
 
   return (
-    <div className="h-full flex flex-col bg-gray-50 dark:bg-gray-900">
-      {/* Header */}
-      <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
-        <div className="flex items-center space-x-3">
-          <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-600 rounded-lg flex items-center justify-center">
-            <CpuChipIcon className="w-5 h-5 text-white" />
-          </div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            Agent Management
-          </h1>
-        </div>
-        <button
-          onClick={() => {
-            resetForm();
-            setShowCreateForm(true);
-          }}
-          className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg hover:from-blue-600 hover:to-purple-700 transition-all"
-        >
-          <PlusIcon className="w-5 h-5" />
-          <span>Create Agent</span>
-        </button>
-      </div>
-
+    <div className="h-full flex flex-col bg-gradient-to-br from-slate-50 via-violet-50/30 to-cyan-50/20 dark:from-slate-900 dark:via-violet-950/30 dark:to-cyan-950/20">
       {/* Content */}
       <div className="flex-1 p-6 overflow-auto">
         {showCreateForm || isEditing ? (
@@ -499,22 +479,25 @@ export const EnhancedAgentCreationPanel: React.FC<EnhancedAgentCreationPanelProp
             animate={{ opacity: 1, y: 0 }}
             className="max-w-4xl mx-auto"
           >
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden">
+            <BrandedCard variant="glass" className="overflow-hidden">
               <div className="p-6">
-                <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">
-                  {isEditing ? 'Edit Agent' : 'Create New Agent'}
-                </h2>
+                <div className="flex items-center space-x-3 mb-6">
+                  <BrandLogo variant="icon" size="sm" />
+                  <h2 className="text-xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 dark:from-slate-100 dark:to-slate-300 bg-clip-text text-transparent">
+                    {isEditing ? 'Edit Agent' : 'Create New Agent'}
+                  </h2>
+                </div>
 
                 <Tab.Group selectedIndex={selectedTabIndex} onChange={setSelectedTabIndex}>
-                  <Tab.List className="flex space-x-1 rounded-xl bg-gray-100 dark:bg-gray-700 p-1 mb-6">
+                  <Tab.List className="flex space-x-1 rounded-xl bg-gradient-to-r from-violet-50 to-indigo-50 dark:from-violet-900/30 dark:to-indigo-900/30 border border-violet-200/30 dark:border-violet-700/30 p-1 mb-6">
                     {['Basic Info', 'Pre-built Tools', 'Pre-built MCP', 'Custom Code'].map((tab) => (
                       <Tab
                         key={tab}
                         className={({ selected }) =>
-                          `w-full rounded-lg py-2.5 text-sm font-medium leading-5 text-center transition-all ${
+                          `w-full rounded-lg py-2.5 text-sm font-semibold leading-5 text-center transition-all duration-200 ${
                             selected
-                              ? 'bg-white dark:bg-gray-600 text-blue-600 dark:text-blue-300 shadow'
-                              : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                              ? 'bg-gradient-to-r from-violet-500 to-indigo-600 text-white shadow-lg shadow-violet-500/25'
+                              : 'text-slate-600 dark:text-slate-400 hover:text-violet-600 dark:hover:text-violet-400 hover:bg-violet-100/50 dark:hover:bg-violet-900/20'
                           }`
                         }
                       >
@@ -813,48 +796,77 @@ export const EnhancedAgentCreationPanel: React.FC<EnhancedAgentCreationPanelProp
 
                 {/* Form Actions */}
                 <div className="flex justify-end space-x-3 mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
-                  <button
+                  <BrandedButton
                     onClick={() => {
                       setShowCreateForm(false);
                       setIsEditing(false);
                       setEditingAgent(null);
                       resetForm();
                     }}
-                    className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+                    variant="ghost"
                   >
                     Cancel
-                  </button>
-                  <button
+                  </BrandedButton>
+                  <BrandedButton
                     onClick={isEditing ? handleUpdateAgent : handleCreateAgent}
+                    variant="primary"
+                    loading={loading}
                     disabled={loading || !formData.name.trim()}
-                    className="px-6 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg hover:from-blue-600 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                   >
                     {loading ? 'Saving...' : (isEditing ? 'Update Agent' : 'Create Agent')}
-                  </button>
+                  </BrandedButton>
                 </div>
               </div>
-            </div>
+            </BrandedCard>
           </motion.div>
         ) : (
           /* Agent List */
-          <div className="space-y-4">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-              Existing Agents ({agents.length})
-            </h2>
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 dark:from-slate-100 dark:to-slate-300 bg-clip-text text-transparent">
+                Existing Agents ({agents.length})
+              </h2>
+              <BrandedButton
+                variant="primary"
+                onClick={() => {
+                  resetForm();
+                  setShowCreateForm(true);
+                }}
+                className="flex items-center space-x-2"
+              >
+                <PlusIcon className="w-5 h-5" />
+                <span>Create Agent</span>
+              </BrandedButton>
+            </div>
 
             {loading ? (
-              <div className="text-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-                <p className="text-gray-500 dark:text-gray-400 mt-2">Loading agents...</p>
-              </div>
+              <BrandedCard variant="glass" className="text-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-2 border-transparent border-t-violet-500 border-r-indigo-600 mx-auto"></div>
+                <p className="text-slate-600 dark:text-slate-400 font-medium mt-3">Loading agents...</p>
+              </BrandedCard>
             ) : agents.length === 0 ? (
-              <div className="text-center py-12">
-                <CpuChipIcon className="mx-auto h-12 w-12 text-gray-400" />
-                <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">No agents</h3>
-                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                  Get started by creating your first agent.
+              <BrandedCard variant="glass" className="text-center py-12">
+                <div className="flex justify-center mb-6">
+                  <BrandLogo variant="icon" size="lg" />
+                </div>
+                <h3 className="text-xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 dark:from-slate-100 dark:to-slate-300 bg-clip-text text-transparent mb-2">
+                  No agents yet
+                </h3>
+                <p className="text-slate-500 dark:text-slate-400 font-medium mb-6">
+                  Get started by creating your first AI agent in the AgentVerse.
                 </p>
-              </div>
+                <BrandedButton
+                  variant="primary"
+                  onClick={() => {
+                    resetForm();
+                    setShowCreateForm(true);
+                  }}
+                  className="flex items-center space-x-2 mx-auto"
+                >
+                  <PlusIcon className="w-5 h-5" />
+                  <span>Create Your First Agent</span>
+                </BrandedButton>
+              </BrandedCard>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {agents.map((agent) => (

@@ -4,15 +4,30 @@ RESTful endpoints for group management
 """
 
 from fastapi import APIRouter, HTTPException, Depends
+from pydantic import BaseModel, Field
 from typing import List
 import os
 
 from src.services.orchestrator_service import OrchestratorService
-from src.api.v1.models.groups import (
-    GroupResponse,
-    CreateGroupRequest,
-    AddAgentRequest
-)
+
+
+# Request models
+class CreateGroupRequest(BaseModel):
+    """Request model for creating a new group"""
+    name: str = Field(..., min_length=1, max_length=100, description="Group name")
+
+
+class GroupResponse(BaseModel):
+    """Response model for group information"""
+    id: str = Field(..., description="Unique group identifier")
+    name: str = Field(..., description="Group display name")
+    created_at: float = Field(..., description="Creation timestamp")
+    updated_at: float = Field(..., description="Last update timestamp")
+
+
+class AddAgentRequest(BaseModel):
+    """Request model for adding an agent to a group"""
+    agent_key: str = Field(..., description="Agent identifier key")
 from src.api.v1.dependencies import get_orchestrator_service
 
 router = APIRouter()

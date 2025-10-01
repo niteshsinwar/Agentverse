@@ -290,18 +290,47 @@ async def add_mcp_server(mcp_id: str, mcp_data: MCPRequest):
                 }
             )
 
-        # Step 2: Test Connectivity
+        # Step 2: Test ACTUAL MCP Protocol Startup (REQUIRED)
         if server_config.get("command"):
             try:
-                connectivity_result = await McpValidator.validate_mcp_server_connectivity(
-                    name=mcp_id,
-                    config=server_config,
-                    timeout=10.0
-                )
-                # Continue even if connectivity test fails (warnings only)
+                # Test the complete MCP startup process like real agent building
+                from src.core.mcp.client import MCPManager
+                test_config = {"mcpServers": {mcp_id: server_config}}
+                mcp_manager = MCPManager.from_config(test_config)
+
+                # This must succeed or MCP creation fails
+                startup_results = await mcp_manager.start_all()
+                if not startup_results.get(mcp_id, False):
+                    raise HTTPException(
+                        status_code=400,
+                        detail={
+                            "message": f"MCP server '{mcp_id}' failed to start during validation",
+                            "error": "MCP server startup failed - this would cause agent building to fail"
+                        }
+                    )
+
+                # Test tool discovery
+                server = mcp_manager.servers[mcp_id]
+                if server.tools_cache:
+                    print(f"✅ MCP validation passed: {len(server.tools_cache)} tools discovered")
+                else:
+                    print(f"⚠️ MCP validation warning: No tools discovered from server")
+
+                # Clean up
+                await mcp_manager.stop_all()
+
+            except HTTPException:
+                raise  # Re-raise HTTP exceptions
             except Exception as conn_error:
-                # Log connectivity issues but don't fail the creation
-                print(f"Warning: Connectivity test failed for {mcp_id}: {conn_error}")
+                # Real connectivity failures should FAIL the creation
+                raise HTTPException(
+                    status_code=400,
+                    detail={
+                        "message": f"MCP server '{mcp_id}' validation failed",
+                        "error": f"Failed to start MCP server: {str(conn_error)}",
+                        "hint": "This MCP configuration would cause agent building to fail"
+                    }
+                )
 
         # Step 3: Save MCP Server
         mcp_path = BACKEND_CONFIG_PATH / "mcp.json"
@@ -373,18 +402,47 @@ async def update_mcp_server(mcp_id: str, mcp_data: MCPRequest):
                 }
             )
 
-        # Step 2: Test Connectivity
+        # Step 2: Test ACTUAL MCP Protocol Startup (REQUIRED) - Same as CREATE
         if server_config.get("command"):
             try:
-                connectivity_result = await McpValidator.validate_mcp_server_connectivity(
-                    name=mcp_id,
-                    config=server_config,
-                    timeout=10.0
-                )
-                # Continue even if connectivity test fails (warnings only)
+                # Test the complete MCP startup process like real agent building
+                from src.core.mcp.client import MCPManager
+                test_config = {"mcpServers": {mcp_id: server_config}}
+                mcp_manager = MCPManager.from_config(test_config)
+
+                # This must succeed or MCP update fails
+                startup_results = await mcp_manager.start_all()
+                if not startup_results.get(mcp_id, False):
+                    raise HTTPException(
+                        status_code=400,
+                        detail={
+                            "message": f"MCP server '{mcp_id}' failed to start during validation",
+                            "error": "MCP server startup failed - this would cause agent building to fail"
+                        }
+                    )
+
+                # Test tool discovery
+                server = mcp_manager.servers[mcp_id]
+                if server.tools_cache:
+                    print(f"✅ MCP validation passed: {len(server.tools_cache)} tools discovered")
+                else:
+                    print(f"⚠️ MCP validation warning: No tools discovered from server")
+
+                # Clean up
+                await mcp_manager.stop_all()
+
+            except HTTPException:
+                raise  # Re-raise HTTP exceptions
             except Exception as conn_error:
-                # Log connectivity issues but don't fail the update
-                print(f"Warning: Connectivity test failed for {mcp_id}: {conn_error}")
+                # Real connectivity failures should FAIL the update
+                raise HTTPException(
+                    status_code=400,
+                    detail={
+                        "message": f"MCP server '{mcp_id}' validation failed",
+                        "error": f"Failed to start MCP server: {str(conn_error)}",
+                        "hint": "This MCP configuration would cause agent building to fail"
+                    }
+                )
 
         # Step 3: Update MCP Server
         mcp_path = BACKEND_CONFIG_PATH / "mcp.json"
@@ -678,16 +736,19 @@ async def get_config_status():
 async def validate_agent_config(request: dict):
     """
     Validate agent configuration before creation/modification
-    Uses the exact same validation logic as registry.py
+    Uses the COMPLETE agent building process to test runtime functionality
     """
     try:
-        result = AgentValidator.validate_agent_config(
+        result = await AgentValidator.validate_agent_config(
             name=request.get("name", ""),
             description=request.get("description", ""),
             emoji=request.get("emoji", "🔧"),
             tools_code=request.get("tools_code"),
             mcp_config=request.get("mcp_config"),
-            agent_key=request.get("key")
+            agent_key=request.get("key"),
+            llm_config=request.get("llm_config"),
+            selected_tools=request.get("selected_tools"),
+            selected_mcps=request.get("selected_mcps")
         )
 
         return result.to_dict()

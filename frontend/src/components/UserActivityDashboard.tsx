@@ -19,7 +19,7 @@ import {
   TrendingDownIcon
 } from '@heroicons/react/24/outline';
 import { toast } from 'react-hot-toast';
-import { apiService } from '../services/api';
+import { apiService } from "@/shared/api";
 import { LogEvent } from '../types';
 
 interface UserAction {

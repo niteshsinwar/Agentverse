@@ -184,14 +184,17 @@ async def create_agent(
         import re
         agent_key = re.sub(r'[^a-zA-Z0-9_]', '', agent_key)
 
-        # Step 1: Validate Agent Configuration
-        validation_result = AgentValidator.validate_agent_config(
+        # Step 1: Validate Agent Configuration (Complete Runtime Test)
+        validation_result = await AgentValidator.validate_agent_config(
             name=request.name,
             description=request.description,
             emoji=request.emoji,
             tools_code=request.tools_code,
             mcp_config=request.mcp_config,
-            agent_key=agent_key
+            agent_key=agent_key,
+            llm_config=request.llm.dict() if request.llm else None,
+            selected_tools=request.selected_tools,
+            selected_mcps=request.selected_mcps
         )
 
         if not validation_result.valid:
@@ -352,14 +355,17 @@ async def update_agent(
         updated_tools_code = request.tools_code if request.tools_code is not None else None
         updated_mcp_config = request.mcp_config if request.mcp_config is not None else None
 
-        # Step 1: Validate Updated Agent Configuration
-        validation_result = AgentValidator.validate_agent_config(
+        # Step 1: Validate Updated Agent Configuration (Complete Runtime Test)
+        validation_result = await AgentValidator.validate_agent_config(
             name=updated_name,
             description=updated_description,
             emoji=updated_emoji,
             tools_code=updated_tools_code,
             mcp_config=updated_mcp_config,
-            agent_key=agent_key
+            agent_key=agent_key,
+            llm_config=updated_llm,
+            selected_tools=request.selected_tools,
+            selected_mcps=request.selected_mcps
         )
 
         if not validation_result.valid:
@@ -479,5 +485,40 @@ async def delete_agent(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to delete agent: {str(e)}")
+
+
+@router.post("/test-register/")
+async def test_register_agent(request: dict):
+    """
+    Test agent registration without saving (validation endpoint)
+    This endpoint validates an agent configuration by attempting to build it
+    """
+    try:
+        from src.core.validation.agent_validator import AgentValidator
+
+        result = await AgentValidator.validate_agent_config(
+            name=request.get("name", ""),
+            description=request.get("description", ""),
+            emoji=request.get("emoji", "🔧"),
+            tools_code=request.get("tools_code"),
+            mcp_config=request.get("mcp_config"),
+            agent_key=request.get("agent_key"),
+            llm_config=request.get("llm_config"),
+            selected_tools=request.get("selected_tools"),
+            selected_mcps=request.get("selected_mcps")
+        )
+
+        return {
+            "is_valid": result.valid,
+            "errors": [error.message for error in result.errors],
+            "warnings": [warning.message for warning in result.warnings],
+            "agent_preview": {
+                "name": request.get("name"),
+                "description": request.get("description"),
+                "emoji": request.get("emoji")
+            } if result.valid else None
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to test agent registration: {str(e)}")
 
 

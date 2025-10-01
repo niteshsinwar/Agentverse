@@ -21,7 +21,7 @@ export interface Message {
   id: number;
   group_id: string;
   sender: string;
-  role: 'user' | 'agent' | 'system';
+  role: 'user' | 'agent' | 'system' | 'tool_call' | 'tool_result' | 'mcp_call' | 'error';
   content: string;
   metadata?: Record<string, any>;
   created_at: number;

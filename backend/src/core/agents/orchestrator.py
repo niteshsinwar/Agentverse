@@ -58,7 +58,7 @@ class AgentOrchestrator:
         callee = await self.get_agent(target_key)
         
         # Add document context for the target agent
-        enhanced_prompt = self._enhance_prompt_with_documents(prompt, target_key, group_id)
+        enhanced_prompt = prompt  # Document context now handled via conversation history
         
         try:
             reply = await callee.respond(enhanced_prompt, group_id=group_id, orchestrator=self, depth=depth - 1)
@@ -69,29 +69,10 @@ class AgentOrchestrator:
             return f"[error] Agent call failed: {e}"
 
     def _enhance_prompt_with_documents(self, prompt: str, agent_id: str, group_id: str) -> str:
-        """Add relevant document context to the prompt - always include if documents exist"""
-        try:
-            # Always check for recent documents for this agent
-            recent_docs = document_manager.get_recent_documents(agent_id, group_id, limit=3)
-            
-            # Debug document context passing
-            print(f"🔍 Document context debug for {agent_id}: Found {len(recent_docs) if recent_docs else 0} recent docs")
-            
-            if recent_docs:
-                # Get full document context with content for LLM processing
-                doc_context = document_manager.get_agent_document_context(agent_id, group_id)
-                
-                if doc_context and "No documents found" not in doc_context:
-                    # Always include full document context when docs exist
-                    enhanced_prompt = f"{prompt}\n\n{doc_context}"
-                    print(f"✅ Document context added to {agent_id} prompt (length: {len(doc_context)})")
-                    return enhanced_prompt
-                    
-        except Exception as e:
-            # Don't fail the main call if document context fails
-            print(f"❌ Warning: Document context failed for {agent_id}: {e}")
-            
-        print(f"⚪ No document context added to {agent_id}")
+        """Document context is now provided via conversation history - no need for prompt injection"""
+        # Document context is now provided via conversation history (system messages)
+        # This avoids redundant context injection while preserving agent access to documents
+        print(f"⚪ Document context handled via conversation history for {agent_id}")
         return prompt
 
     async def process_user_message(self, group_id: str, agent_id: str, message: str, query_for_docs: Optional[str] = None) -> str:
@@ -99,7 +80,7 @@ class AgentOrchestrator:
         agent = await self.get_agent(agent_id)
         
         # Add document context if requested or if message mentions documents
-        enhanced_message = self._enhance_prompt_with_documents(message, agent_id, group_id)
+        enhanced_message = message  # Document context now handled via conversation history
         
         # If specific document query, search for relevant docs
         if query_for_docs:

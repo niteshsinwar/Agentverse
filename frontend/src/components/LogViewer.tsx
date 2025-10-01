@@ -18,7 +18,7 @@ import {
   XMarkIcon
 } from '@heroicons/react/24/outline';
 import { toast } from 'react-hot-toast';
-import { apiService } from '../services/api';
+import { apiService } from "@/shared/api";
 
 // Types for log entries following project patterns
 interface LogEvent {

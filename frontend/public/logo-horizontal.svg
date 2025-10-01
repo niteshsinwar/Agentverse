@@ -1,0 +1,141 @@
+<svg width="600" height="150" viewBox="0 0 600 150" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Gradients -->
+    <linearGradient id="primaryGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#6366f1;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#8b5cf6;stop-opacity:1" />
+    </linearGradient>
+
+    <linearGradient id="accentGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#06b6d4;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#3b82f6;stop-opacity:1" />
+    </linearGradient>
+
+    <linearGradient id="networkGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#10b981;stop-opacity:0.8" />
+      <stop offset="100%" style="stop-color:#3b82f6;stop-opacity:0.8" />
+    </linearGradient>
+
+    <!-- Effects -->
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="1.5" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <filter id="dropshadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="1" dy="2" stdDeviation="2" flood-color="#1e40af" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+
+  <!-- Icon section (left side) -->
+  <g transform="translate(75, 75)">
+    <!-- Background circle -->
+    <circle r="65" fill="url(#primaryGradient)" opacity="0.05" />
+
+    <!-- Outer rings -->
+    <circle r="55" stroke="url(#primaryGradient)" stroke-width="1.5" fill="none" opacity="0.3" />
+    <circle r="45" stroke="url(#accentGradient)" stroke-width="1" fill="none" opacity="0.2" />
+
+    <!-- Central hub -->
+    <circle r="12" fill="url(#primaryGradient)" filter="url(#dropshadow)" />
+    <circle r="9" fill="#ffffff" opacity="0.9" />
+    <circle r="6" fill="url(#primaryGradient)" />
+
+    <!-- Agent nodes positioned around hub -->
+    <g transform="translate(0, -35)">
+      <circle r="8" fill="url(#accentGradient)" filter="url(#dropshadow)" />
+      <circle r="6" fill="#ffffff" opacity="0.9" />
+      <circle r="3" fill="url(#accentGradient)" />
+    </g>
+
+    <g transform="translate(25, -25)">
+      <circle r="7" fill="url(#networkGradient)" filter="url(#dropshadow)" />
+      <circle r="5" fill="#ffffff" opacity="0.9" />
+      <circle r="2.5" fill="url(#networkGradient)" />
+    </g>
+
+    <g transform="translate(35, 0)">
+      <circle r="8" fill="url(#primaryGradient)" filter="url(#dropshadow)" />
+      <circle r="6" fill="#ffffff" opacity="0.9" />
+      <circle r="3" fill="url(#primaryGradient)" />
+    </g>
+
+    <g transform="translate(25, 25)">
+      <circle r="6" fill="url(#accentGradient)" filter="url(#dropshadow)" />
+      <circle r="4" fill="#ffffff" opacity="0.9" />
+      <circle r="2" fill="url(#accentGradient)" />
+    </g>
+
+    <g transform="translate(0, 35)">
+      <circle r="7" fill="url(#networkGradient)" filter="url(#dropshadow)" />
+      <circle r="5" fill="#ffffff" opacity="0.9" />
+      <circle r="2.5" fill="url(#networkGradient)" />
+    </g>
+
+    <g transform="translate(-25, 25)">
+      <circle r="8" fill="url(#primaryGradient)" filter="url(#dropshadow)" />
+      <circle r="6" fill="#ffffff" opacity="0.9" />
+      <circle r="3" fill="url(#primaryGradient)" />
+    </g>
+
+    <g transform="translate(-35, 0)">
+      <circle r="6" fill="url(#accentGradient)" filter="url(#dropshadow)" />
+      <circle r="4" fill="#ffffff" opacity="0.9" />
+      <circle r="2" fill="url(#accentGradient)" />
+    </g>
+
+    <g transform="translate(-25, -25)">
+      <circle r="7" fill="url(#networkGradient)" filter="url(#dropshadow)" />
+      <circle r="5" fill="#ffffff" opacity="0.9" />
+      <circle r="2.5" fill="url(#networkGradient)" />
+    </g>
+
+    <!-- Connection lines -->
+    <g stroke="url(#networkGradient)" stroke-width="1" opacity="0.3" filter="url(#glow)">
+      <line x1="0" y1="0" x2="0" y2="-27" />
+      <line x1="0" y1="0" x2="19" y2="-19" />
+      <line x1="0" y1="0" x2="27" y2="0" />
+      <line x1="0" y1="0" x2="19" y2="19" />
+      <line x1="0" y1="0" x2="0" y2="27" />
+      <line x1="0" y1="0" x2="-19" y2="19" />
+      <line x1="0" y1="0" x2="-27" y2="0" />
+      <line x1="0" y1="0" x2="-19" y2="-19" />
+    </g>
+
+    <!-- Inter-agent connections -->
+    <g stroke="url(#accentGradient)" stroke-width="0.8" opacity="0.15" stroke-dasharray="1.5,1.5">
+      <path d="M 0,-27 Q 15,-28 19,-19" fill="none" />
+      <path d="M 19,-19 Q 32,-5 27,0" fill="none" />
+      <path d="M 27,0 Q 28,15 19,19" fill="none" />
+      <path d="M 19,19 Q 10,30 0,27" fill="none" />
+      <path d="M 0,27 Q -10,30 -19,19" fill="none" />
+      <path d="M -19,19 Q -32,5 -27,0" fill="none" />
+      <path d="M -27,0 Q -28,-15 -19,-19" fill="none" />
+      <path d="M -19,-19 Q -15,-28 0,-27" fill="none" />
+    </g>
+  </g>
+
+  <!-- Text section (right side) -->
+  <g transform="translate(200, 0)">
+    <!-- Main brand name -->
+    <text x="0" y="65" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="700" fill="url(#primaryGradient)">AgentVerse</text>
+
+    <!-- Tagline -->
+    <text x="0" y="95" font-family="system-ui, -apple-system, sans-serif" font-size="16" font-weight="400" fill="#6b7280" letter-spacing="1px">MULTIVERSE OF AGENTS</text>
+
+    <!-- Subtle description -->
+    <text x="0" y="120" font-family="system-ui, -apple-system, sans-serif" font-size="12" font-weight="300" fill="#9ca3af" letter-spacing="0.5px">Enterprise AI Agent Orchestration Platform</text>
+  </g>
+
+  <!-- Decorative elements -->
+  <g opacity="0.4">
+    <circle cx="450" cy="30" r="1.5" fill="url(#accentGradient)" />
+    <circle cx="480" cy="45" r="1" fill="url(#primaryGradient)" />
+    <circle cx="520" cy="35" r="1.5" fill="url(#networkGradient)" />
+    <circle cx="550" cy="50" r="1" fill="url(#accentGradient)" />
+  </g>
+</svg>

@@ -10,18 +10,18 @@ import {
   CheckCircleIcon,
   XCircleIcon,
 } from '@heroicons/react/24/outline';
-import { apiService } from '../services/api';
+import { mcpApi } from "@/shared/api";
 import { ProgressBar, useProgressSteps } from './ProgressBar';
+import { BrandedButton, BrandedCard, BrandedBadge, BrandedAlert } from './BrandedComponents';
+import { BrandLogo } from './BrandLogo';
 
-interface McpServer {
+// Backend MCP structure (matches backend exactly)
+interface BackendMcpServer {
   command: string;
   args: string[];
   env?: Record<string, string>;
 }
 
-interface McpData {
-  mcpServers: Record<string, McpServer>;
-}
 
 interface McpManagementPanelProps {
   isOpen: boolean;
@@ -32,7 +32,7 @@ export const McpManagementPanel: React.FC<McpManagementPanelProps> = ({
   isOpen,
   onClose,
 }) => {
-  const [mcpServers, setMcpServers] = useState<Record<string, McpServer>>({});
+  const [mcpServers, setMcpServers] = useState<Record<string, BackendMcpServer>>({});
   const [loading, setLoading] = useState(true);
   const [selectedMcp, setSelectedMcp] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -61,7 +61,7 @@ export const McpManagementPanel: React.FC<McpManagementPanelProps> = ({
   const loadMcpServers = async () => {
     try {
       setLoading(true);
-      const response = await apiService.getMcpServers() as McpData;
+      const response = await mcpApi.getMcpServers();
       setMcpServers(response.mcpServers || {});
     } catch (error) {
       console.error('Failed to load MCP servers:', error);
@@ -95,11 +95,11 @@ export const McpManagementPanel: React.FC<McpManagementPanelProps> = ({
     if (mcp) {
       setFormData({
         mcpId,
-        name: mcpId, // Use the key as the name
+        name: mcpId,
         description: 'MCP Server Configuration',
         category: 'mcp',
       });
-      setRawJsonConfig(JSON.stringify(mcp, null, 2)); // The entire mcp object is the config
+      setRawJsonConfig(JSON.stringify(mcp, null, 2));
       setSelectedMcp(mcpId);
       setIsEditing(true);
       setIsCreating(false);
@@ -155,11 +155,11 @@ export const McpManagementPanel: React.FC<McpManagementPanelProps> = ({
 
       if (isCreating) {
         const mcpId = formData.mcpId || formData.name.toLowerCase().replace(/[^a-z0-9]/g, '_');
-        await apiService.addMcpServer(mcpId, mcpData);
+        await mcpApi.createMcpServer(mcpId, mcpData);
         progressSteps.completeProgress();
         toast.success(`MCP server "${mcpId}" created successfully`);
       } else if (selectedMcp) {
-        await apiService.updateMcpServer(selectedMcp, mcpData);
+        await mcpApi.updateMcpServer(selectedMcp, mcpData);
         progressSteps.completeProgress();
         toast.success(`MCP server "${selectedMcp}" updated successfully`);
       }
@@ -195,7 +195,7 @@ export const McpManagementPanel: React.FC<McpManagementPanelProps> = ({
     }
 
     try {
-      await apiService.deleteMcpServer(mcpId);
+      await mcpApi.deleteMcpServer(mcpId);
       toast.success('MCP server deleted successfully');
       await loadMcpServers();
       if (selectedMcp === mcpId) {
@@ -217,7 +217,7 @@ export const McpManagementPanel: React.FC<McpManagementPanelProps> = ({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+        className="fixed inset-0 bg-gradient-to-br from-slate-900/80 via-violet-900/50 to-cyan-900/30 backdrop-blur-sm flex items-center justify-center p-4 z-[10]"
         onClick={onClose}
       >
         <motion.div
@@ -277,16 +277,19 @@ export const McpManagementPanel: React.FC<McpManagementPanelProps> = ({
                     <p className="text-gray-600 dark:text-gray-400">Loading MCP servers...</p>
                   </div>
                 ) : Object.keys(mcpServers).length === 0 ? (
-                  <div className="p-6 text-center">
-                    <ServerIcon className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-                    <p className="text-gray-600 dark:text-gray-400">No MCP servers configured</p>
-                    <button
+                  <BrandedCard variant="glass" className="p-6 text-center m-4">
+                    <div className="flex justify-center mb-4">
+                      <BrandLogo variant="icon" size="md" />
+                    </div>
+                    <p className="text-slate-600 dark:text-slate-400 font-medium mb-4">No MCP servers configured yet</p>
+                    <BrandedButton
                       onClick={handleCreateNew}
-                      className="mt-2 text-purple-600 hover:text-purple-700"
+                      variant="primary"
+                      size="sm"
                     >
                       Create your first MCP server
-                    </button>
-                  </div>
+                    </BrandedButton>
+                  </BrandedCard>
                 ) : (
                   <div className="space-y-2 p-4">
                     {Object.entries(mcpServers).filter(([mcpId, mcp]) => mcpId && mcp).map(([mcpId, mcp]) => (
@@ -371,100 +374,76 @@ export const McpManagementPanel: React.FC<McpManagementPanelProps> = ({
                   </div>
 
                   {/* Form */}
-                  <div className="flex-1 overflow-y-auto p-4 space-y-6 min-h-0">
-                    {/* Basic Information */}
-                    <div>
-                      <h4 className="font-medium text-gray-900 dark:text-white mb-4">Basic Information</h4>
-                      <div className="space-y-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                            Server Name *
-                          </label>
-                          <input
-                            type="text"
-                            value={formData.name}
-                            onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                            placeholder="Enter server name"
-                          />
+                  <div className="flex-1 flex flex-col min-h-0">
+                    <div className="flex-1 overflow-y-auto p-4 space-y-6">
+                      {/* Basic Information */}
+                      <div>
+                        <h4 className="font-medium text-gray-900 dark:text-white mb-4">Basic Information</h4>
+                        <div className="space-y-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                              Server Name *
+                            </label>
+                            <input
+                              type="text"
+                              value={formData.name}
+                              onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                              placeholder="Enter server name"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                              Description *
+                            </label>
+                            <textarea
+                              value={formData.description}
+                              onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                              rows={3}
+                              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                              placeholder="Describe what this MCP server provides"
+                            />
+                          </div>
                         </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                            Description *
-                          </label>
-                          <textarea
-                            value={formData.description}
-                            onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                            rows={3}
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                            placeholder="Describe what this MCP server provides"
-                          />
-                        </div>
+                      </div>
+
+                      {/* MCP Configuration - Free JSON */}
+                      <div>
+                        <h4 className="font-medium text-gray-900 dark:text-white mb-4">MCP Configuration (JSON)</h4>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                          Write any valid JSON configuration for your MCP server. You have complete flexibility to define the structure.
+                        </p>
+                        <textarea
+                          value={rawJsonConfig}
+                          onChange={(e) => setRawJsonConfig(e.target.value)}
+                          rows={12}
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-sm resize-none overflow-y-auto"
+                          placeholder="Write any JSON configuration here..."
+                        />
                       </div>
                     </div>
 
-                    {/* MCP Configuration - Free JSON */}
-                    <div>
-                      <h4 className="font-medium text-gray-900 dark:text-white mb-4">MCP Configuration (JSON)</h4>
-                      <div className="mb-3">
-                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                          Write any valid JSON configuration for your MCP server. You have complete flexibility to define the structure.
-                        </p>
-                        <details className="text-xs text-gray-500 dark:text-gray-500 bg-gray-50 dark:bg-gray-800 p-2 rounded border">
-                          <summary className="cursor-pointer font-medium">Show Examples</summary>
-                          <div className="mt-2 space-y-2">
-                            <div>
-                              <p className="font-medium mb-1">Simple MCP:</p>
-                              <pre className="whitespace-pre-wrap">{`{
-  "command": "npx",
-  "args": ["@playwright/mcp@latest"]
-}`}</pre>
-                            </div>
-                            <div>
-                              <p className="font-medium mb-1">Complex MCP:</p>
-                              <pre className="whitespace-pre-wrap">{`{
-  "command": "/bin/bash",
-  "args": [
-    "-lc",
-    "cd '/path/to/project' && source venv/bin/activate && python -m app.main --mcp-stdio"
-  ],
-  "env": {
-    "API_KEY": "your-key",
-    "DEBUG": "true"
-  },
-  "capabilities": ["read", "write"],
-  "timeout": 30000
-}`}</pre>
-                            </div>
-                          </div>
-                        </details>
-                      </div>
-                      <textarea
-                        value={rawJsonConfig}
-                        onChange={(e) => setRawJsonConfig(e.target.value)}
-                        rows={12}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-sm resize-none"
-                        placeholder="Write any JSON configuration here..."
-                      />
+                    {/* JSON Validation Indicator - Fixed at bottom */}
+                    <div className="p-4 border-t border-gray-200 dark:border-gray-700">
                       {(() => {
                         try {
                           if (rawJsonConfig && rawJsonConfig.trim()) {
                             JSON.parse(rawJsonConfig);
                             return (
-                              <div className="mt-2 flex items-center text-green-600 dark:text-green-400">
+                              <div className="flex items-center text-green-600 dark:text-green-400">
                                 <CheckCircleIcon className="h-4 w-4 mr-1" />
                                 <span className="text-sm">Valid JSON</span>
                               </div>
                             );
                           }
-                          return null;
+                          return <div className="text-sm text-gray-400">Enter JSON configuration above</div>;
                         } catch (error) {
                           return rawJsonConfig && rawJsonConfig.trim() ? (
-                            <div className="mt-2 flex items-center text-red-600 dark:text-red-400">
+                            <div className="flex items-center text-red-600 dark:text-red-400">
                               <XCircleIcon className="h-4 w-4 mr-1" />
                               <span className="text-sm">Invalid JSON syntax</span>
                             </div>
-                          ) : null;
+                          ) : <div className="text-sm text-gray-400">Enter JSON configuration above</div>;
                         }
                       })()}
                     </div>

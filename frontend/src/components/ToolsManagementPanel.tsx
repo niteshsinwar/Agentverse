@@ -10,10 +10,13 @@ import {
   CheckCircleIcon,
   DocumentDuplicateIcon,
 } from '@heroicons/react/24/outline';
-import { apiService } from '../services/api';
+import { toolsApi } from "@/shared/api";
 import { ProgressBar, useProgressSteps } from './ProgressBar';
+import { BrandedButton, BrandedCard, BrandedBadge, BrandedAlert } from './BrandedComponents';
+import { BrandLogo } from './BrandLogo';
 
-interface Tool {
+// Backend response structure (matches backend exactly)
+interface BackendTool {
   name: string;
   description: string;
   category: string;
@@ -21,10 +24,6 @@ interface Tool {
   functions: string[];
 }
 
-interface ToolsData {
-  tools: Record<string, Tool>;
-  count: number;
-}
 
 interface ToolsManagementPanelProps {
   isOpen: boolean;
@@ -35,7 +34,7 @@ export const ToolsManagementPanel: React.FC<ToolsManagementPanelProps> = ({
   isOpen,
   onClose,
 }) => {
-  const [tools, setTools] = useState<Record<string, Tool>>({});
+  const [tools, setTools] = useState<Record<string, BackendTool>>({});
   const [loading, setLoading] = useState(true);
   const [selectedTool, setSelectedTool] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -76,7 +75,7 @@ export const ToolsManagementPanel: React.FC<ToolsManagementPanelProps> = ({
   const loadTools = async () => {
     try {
       setLoading(true);
-      const response = await apiService.getTools() as ToolsData;
+      const response = await toolsApi.getTools();
       setTools(response.tools || {});
     } catch (error) {
       console.error('Failed to load tools:', error);
@@ -161,11 +160,11 @@ export const ToolsManagementPanel: React.FC<ToolsManagementPanelProps> = ({
 
       if (isCreating) {
         const toolId = formData.toolId || formData.name.toLowerCase().replace(/[^a-z0-9]/g, '_');
-        await apiService.addTool(toolId, toolData);
+        await toolsApi.createTool(toolId, toolData);
         progressSteps.completeProgress();
         toast.success(`Tool "${formData.name}" created successfully`);
       } else if (selectedTool) {
-        await apiService.updateTool(selectedTool, toolData);
+        await toolsApi.updateTool(selectedTool, toolData);
         progressSteps.completeProgress();
         toast.success(`Tool "${formData.name}" updated successfully`);
       }
@@ -193,7 +192,7 @@ export const ToolsManagementPanel: React.FC<ToolsManagementPanelProps> = ({
     }
 
     try {
-      await apiService.deleteTool(toolId);
+      await toolsApi.deleteTool(toolId);
       toast.success('Tool deleted successfully');
       await loadTools();
       if (selectedTool === toolId) {
@@ -229,7 +228,7 @@ export const ToolsManagementPanel: React.FC<ToolsManagementPanelProps> = ({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+        className="fixed inset-0 bg-gradient-to-br from-slate-900/80 via-violet-900/50 to-cyan-900/30 backdrop-blur-sm flex items-center justify-center p-4 z-[10]"
         onClick={onClose}
       >
         <motion.div
@@ -289,16 +288,19 @@ export const ToolsManagementPanel: React.FC<ToolsManagementPanelProps> = ({
                     <p className="text-gray-600 dark:text-gray-400">Loading tools...</p>
                   </div>
                 ) : Object.keys(tools).length === 0 ? (
-                  <div className="p-6 text-center">
-                    <CodeBracketIcon className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-                    <p className="text-gray-600 dark:text-gray-400">No tools configured</p>
-                    <button
+                  <BrandedCard variant="glass" className="p-6 text-center m-4">
+                    <div className="flex justify-center mb-4">
+                      <BrandLogo variant="icon" size="md" />
+                    </div>
+                    <p className="text-slate-600 dark:text-slate-400 font-medium mb-4">No tools configured yet</p>
+                    <BrandedButton
                       onClick={handleCreateNew}
-                      className="mt-2 text-blue-600 hover:text-blue-700"
+                      variant="primary"
+                      size="sm"
                     >
                       Create your first tool
-                    </button>
-                  </div>
+                    </BrandedButton>
+                  </BrandedCard>
                 ) : (
                   <div className="space-y-2 p-4">
                     {Object.entries(tools).filter(([toolId, tool]) => toolId && tool).map(([toolId, tool]) => (
@@ -386,8 +388,9 @@ export const ToolsManagementPanel: React.FC<ToolsManagementPanelProps> = ({
                   </div>
 
                   {/* Form */}
-                  <div className="flex-1 flex flex-col overflow-hidden">
-                    <div className="p-4 space-y-4 border-b border-gray-200 dark:border-gray-700">
+                  <div className="flex-1 flex flex-col min-h-0 overflow-y-auto">
+                    {/* Basic Fields - Fixed at top, scrollable */}
+                    <div className="flex-shrink-0 p-4 space-y-4 border-b border-gray-200 dark:border-gray-700">
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -428,7 +431,7 @@ export const ToolsManagementPanel: React.FC<ToolsManagementPanelProps> = ({
                           value={formData.description}
                           onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
                           rows={2}
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white resize-none"
                           placeholder="Describe what this tool does"
                         />
                       </div>
@@ -453,19 +456,18 @@ export const ToolsManagementPanel: React.FC<ToolsManagementPanelProps> = ({
                       )}
                     </div>
 
-                    {/* Code Editor */}
-                    <div className="flex-1 flex flex-col">
-                      <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+                    {/* Code Editor - Takes remaining space */}
+                    <div className="flex-1 flex flex-col min-h-0">
+                      <div className="flex-shrink-0 p-4 border-b border-gray-200 dark:border-gray-700">
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                           Python Code *
                         </label>
                       </div>
-                      <div className="flex-1 bg-gray-900">
+                      <div className="flex-1 bg-gray-900 min-h-0">
                         <textarea
                           value={formData.code}
                           onChange={(e) => handleCodeChange(e.target.value)}
                           className="w-full h-full p-4 bg-gray-900 text-gray-100 font-mono text-sm border-none outline-none resize-none"
-                          style={{ minHeight: '400px' }}
                           placeholder="# Write your Python tool code here
 def example_function():
     '''
@@ -478,9 +480,9 @@ def example_function():
                   </div>
                 </div>
               ) : selectedTool && tools[selectedTool] ? (
-                <div className="flex-1 flex flex-col">
+                <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
                   {/* Tool Details Header */}
-                  <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+                  <div className="flex-shrink-0 p-4 border-b border-gray-200 dark:border-gray-700">
                     <div className="flex items-center justify-between">
                       <div>
                         <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
@@ -501,7 +503,7 @@ def example_function():
                   </div>
 
                   {/* Tool Details */}
-                  <div className="flex-1 overflow-y-auto">
+                  <div className="flex-1 overflow-y-auto min-h-0">
                     <div className="p-4 space-y-6">
                       {/* Metadata */}
                       <div>
