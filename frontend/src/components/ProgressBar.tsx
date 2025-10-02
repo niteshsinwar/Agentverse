@@ -17,7 +17,7 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({ currentStep, steps, is
       initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="fixed inset-0 bg-gradient-to-br from-slate-900/80 via-violet-900/30 to-cyan-900/20 backdrop-blur-sm flex items-center justify-center z-50"
+      className="fixed inset-0 bg-gradient-to-br from-slate-900/80 via-violet-900/30 to-cyan-900/20 backdrop-blur-sm flex items-center justify-center z-[70]"
     >
       {/* Background Animation */}
       <div className="absolute inset-0">

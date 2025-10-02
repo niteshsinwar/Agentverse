@@ -7,18 +7,30 @@ echo 🤖 Agentverse - Setup Script for Windows
 echo ===============================================
 echo.
 
-:: Check Python version
-python --version >nul 2>&1
-if errorlevel 1 (
-    echo ❌ Python is not installed or not in PATH
-    echo ℹ️  Please install Python 3.9-3.12 from https://python.org
-    echo ⚠️  Make sure to check "Add Python to PATH" during installation
-    pause
-    exit /b 1
+:: Check Python version - try specific versions first, then python
+set PYTHON_CMD=python
+"C:\Users\NSinwar\AppData\Local\Programs\Python\Python311\python.exe" --version >nul 2>&1
+if not errorlevel 1 (
+    set PYTHON_CMD="C:\Users\NSinwar\AppData\Local\Programs\Python\Python311\python.exe"
+    echo ✅ Using Python 3.11
+) else (
+    "C:\Users\NSinwar\AppData\Local\Programs\Python\Python310\python.exe" --version >nul 2>&1
+    if not errorlevel 1 (
+        set PYTHON_CMD="C:\Users\NSinwar\AppData\Local\Programs\Python\Python310\python.exe"
+        echo ✅ Using Python 3.10
+    ) else (
+        python --version >nul 2>&1
+        if errorlevel 1 (
+            echo ❌ Python is not installed or not in PATH
+            echo ℹ️  Please install Python 3.9-3.12 from https://python.org
+            echo ⚠️  Make sure to check "Add Python to PATH" during installation
+            exit /b 1
+        )
+    )
 )
 
 :: Get Python version and validate
-for /f "tokens=2" %%i in ('python --version 2^>^&1') do set PYTHON_VERSION=%%i
+for /f "tokens=2" %%i in ('%PYTHON_CMD% --version 2^>^&1') do set PYTHON_VERSION=%%i
 for /f "tokens=1,2 delims=." %%a in ("%PYTHON_VERSION%") do (
     set PYTHON_MAJOR=%%a
     set PYTHON_MINOR=%%b
@@ -27,14 +39,12 @@ for /f "tokens=1,2 delims=." %%a in ("%PYTHON_VERSION%") do (
 if %PYTHON_MAJOR% NEQ 3 (
     echo ❌ Python 3.9-3.12 is required. Found: %PYTHON_VERSION%
     echo ℹ️  Please install Python 3.9-3.12 from https://python.org
-    pause
     exit /b 1
 )
 
 if %PYTHON_MINOR% LSS 9 (
     echo ❌ Python 3.9-3.12 is required. Found: %PYTHON_VERSION%
     echo ℹ️  Please install Python 3.9-3.12 from https://python.org
-    pause
     exit /b 1
 )
 
@@ -50,7 +60,6 @@ node --version >nul 2>&1
 if errorlevel 1 (
     echo ❌ Node.js is not installed or not in PATH
     echo ℹ️  Please install Node.js 18+ from https://nodejs.org
-    pause
     exit /b 1
 )
 
@@ -61,22 +70,20 @@ for /f "tokens=1 delims=." %%a in ("%NODE_VERSION%") do set NODE_MAJOR=%%a
 if %NODE_MAJOR% LSS 18 (
     echo ❌ Node.js 18+ is required. Found: v%NODE_VERSION%
     echo ℹ️  Please install Node.js 18+ from https://nodejs.org
-    pause
     exit /b 1
 ) else (
     echo ✅ Node.js v%NODE_VERSION% found and compatible
 )
 
 :: Check if npm is installed
-npm --version >nul 2>&1
-if errorlevel 1 (
+echo.
+for /f %%i in ('npm --version 2^>nul') do set NPM_VERSION=%%i
+if "%NPM_VERSION%"=="" (
     echo ❌ npm is not installed
     echo ℹ️  npm should be installed with Node.js
-    pause
     exit /b 1
 ) else (
-    echo ✅ npm found:
-    npm --version
+    echo ✅ npm v%NPM_VERSION% found
 )
 
 :: Check if Rust is installed (optional)
@@ -99,7 +106,7 @@ cd backend
 :: Create virtual environment if it doesn't exist
 if not exist "venv" (
     echo ℹ️  Creating Python virtual environment...
-    python -m venv venv
+    %PYTHON_CMD% -m venv venv
     echo ✅ Virtual environment created
 ) else (
     echo ℹ️  Virtual environment already exists
@@ -110,13 +117,12 @@ echo ℹ️  Activating virtual environment and installing dependencies...
 call venv\Scripts\activate.bat
 
 :: Upgrade pip
-python -m pip install --upgrade pip
+%PYTHON_CMD% -m pip install --upgrade pip
 
 :: Install requirements
 pip install -r requirements.txt
 if errorlevel 1 (
     echo ❌ Failed to install backend dependencies
-    pause
     exit /b 1
 )
 echo ✅ Backend dependencies installed
@@ -141,7 +147,6 @@ echo ℹ️  Installing frontend dependencies...
 npm install
 if errorlevel 1 (
     echo ❌ Failed to install frontend dependencies
-    pause
     exit /b 1
 )
 echo ✅ Frontend dependencies installed
@@ -169,4 +174,3 @@ echo 📚 For more information, see README.md
 echo.
 echo ℹ️  To start the application, run start.bat (if available) or follow the manual steps above
 echo.
-pause

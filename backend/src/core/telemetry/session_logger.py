@@ -4,6 +4,7 @@
 # =========================================
 from __future__ import annotations
 import os
+import sys
 import logging
 import json
 from datetime import datetime
@@ -13,6 +14,7 @@ from logging.handlers import RotatingFileHandler
 from src.core.config.settings import get_settings; settings = get_settings()
 from dataclasses import dataclass, asdict
 from enum import Enum
+import re
 
 class LogLevel(str, Enum):
     """Log levels for different types of events"""
@@ -55,12 +57,38 @@ class LogEvent:
 
 class SessionLogger:
     """Production-grade session-wise logger with human-readable formatting"""
-    
+
     def __init__(self):
         self.base_log_dir = Path(settings.logging.session_logs_dir)
         self.base_log_dir.mkdir(parents=True, exist_ok=True)
         self._loggers: Dict[str, logging.Logger] = {}
+        self.is_windows = sys.platform == 'win32'
         self._setup_root_logger()
+
+    @staticmethod
+    def _strip_emojis(text: str) -> str:
+        """Remove emojis from text for Windows console compatibility"""
+        # Remove emojis using regex
+        emoji_pattern = re.compile("["
+            u"\U0001F600-\U0001F64F"  # emoticons
+            u"\U0001F300-\U0001F5FF"  # symbols & pictographs
+            u"\U0001F680-\U0001F6FF"  # transport & map symbols
+            u"\U0001F1E0-\U0001F1FF"  # flags (iOS)
+            u"\U00002500-\U00002BEF"  # chinese char
+            u"\U00002702-\U000027B0"
+            u"\U000024C2-\U0001F251"
+            u"\U0001f926-\U0001f937"
+            u"\U00010000-\U0010ffff"
+            u"\u2640-\u2642"
+            u"\u2600-\u2B55"
+            u"\u200d"
+            u"\u23cf"
+            u"\u23e9"
+            u"\u231a"
+            u"\ufe0f"  # dingbats
+            u"\u3030"
+            "]+", flags=re.UNICODE)
+        return emoji_pattern.sub(r'', text)
     
     def _setup_root_logger(self):
         """Setup root logger for the application"""
@@ -68,22 +96,32 @@ class SessionLogger:
         root_logger.setLevel(getattr(logging, settings.logging.level.upper()))
         
         if not root_logger.handlers:
-            # Console handler
+            # Console handler with Windows emoji stripping
             if settings.logging.enable_console_logging:
                 console_handler = logging.StreamHandler()
                 console_formatter = logging.Formatter(
                     '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
                 )
                 console_handler.setFormatter(console_formatter)
+
+                # On Windows, filter emojis to prevent encoding errors
+                if self.is_windows:
+                    class EmojiFilter(logging.Filter):
+                        def filter(self, record):
+                            record.msg = SessionLogger._strip_emojis(str(record.msg))
+                            return True
+                    console_handler.addFilter(EmojiFilter())
+
                 root_logger.addHandler(console_handler)
             
-            # File handler for general logs
+            # File handler for general logs with UTF-8 encoding
             if settings.logging.enable_file_logging:
                 general_log_file = self.base_log_dir / "application.log"
                 file_handler = RotatingFileHandler(
                     general_log_file,
                     maxBytes=settings.logging.max_file_size,
-                    backupCount=settings.logging.backup_count
+                    backupCount=settings.logging.backup_count,
+                    encoding='utf-8'
                 )
                 file_formatter = logging.Formatter(
                     '%(asctime)s - %(name)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s'
@@ -102,12 +140,13 @@ class SessionLogger:
             session_log_dir = self.base_log_dir / session_id
             session_log_dir.mkdir(exist_ok=True)
             
-            # Human-readable log file
+            # Human-readable log file with UTF-8 encoding for cross-platform compatibility
             readable_log_file = session_log_dir / "session.log"
             readable_handler = RotatingFileHandler(
                 readable_log_file,
                 maxBytes=settings.logging.max_file_size,
-                backupCount=settings.logging.backup_count
+                backupCount=settings.logging.backup_count,
+                encoding='utf-8'
             )
             readable_formatter = logging.Formatter(
                 '%(asctime)s | %(message)s'
@@ -115,12 +154,13 @@ class SessionLogger:
             readable_handler.setFormatter(readable_formatter)
             session_logger.addHandler(readable_handler)
             
-            # JSON log file for structured data
+            # JSON log file for structured data with UTF-8 encoding
             json_log_file = session_log_dir / "events.jsonl"
             json_handler = RotatingFileHandler(
                 json_log_file,
                 maxBytes=settings.logging.max_file_size,
-                backupCount=settings.logging.backup_count
+                backupCount=settings.logging.backup_count,
+                encoding='utf-8'
             )
             json_formatter = logging.Formatter('%(message)s')
             json_handler.setFormatter(json_formatter)
@@ -162,12 +202,15 @@ class SessionLogger:
         # Get loggers
         session_logger = self.get_session_logger(session_id)
         json_logger = logging.getLogger(f"session.{session_id}.json")
-        
+
         # Log human-readable format
         human_message = self._format_human_readable(event)
         log_level = getattr(logging, level.value.upper())
-        session_logger.log(log_level, human_message)
-        
+
+        # Strip emojis for console on Windows, keep for file
+        console_message = self._strip_emojis(human_message) if self.is_windows else human_message
+        session_logger.log(log_level, console_message)
+
         # Log JSON format
         json_logger.debug(json.dumps(asdict(event), default=str))
     
