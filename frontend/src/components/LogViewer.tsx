@@ -9,13 +9,12 @@ import {
   MagnifyingGlassIcon,
   ClockIcon,
   ExclamationTriangleIcon,
-  CheckCircleIcon,
+
   InformationCircleIcon,
   WrenchScrewdriverIcon,
   ServerIcon,
   UserIcon,
-  ChartBarIcon,
-  XMarkIcon
+
 } from '@heroicons/react/24/outline';
 import { toast } from 'react-hot-toast';
 import { apiService } from "@/shared/api";
@@ -86,8 +85,9 @@ export const LogViewer: React.FC<LogViewerProps> = ({ sessionId, className = '' 
 
     setLoading(true);
     try {
-      const data = await apiService.getSessionLogs(sessionId, {}) as { events: LogEvent[] };
-      setLogs(data.events || []);
+      const data = await apiService.getSessionLogs(sessionId, {});
+      const events = Array.isArray(data) ? data : (data as any).events || [];
+      setLogs(events);
     } catch (error) {
       console.error('Failed to fetch logs:', error);
       toast.error('Failed to load logs');

@@ -2,11 +2,16 @@
 # Purpose: Discover + construct agents from folders (agent.yaml + mcp.json + tools.py)
 # =========================================
 from __future__ import annotations
-import os, json, yaml, importlib.util
+import importlib.util
+import json
+import os
+import time
+import yaml
 from dataclasses import dataclass
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
+
 from src.core.agents.base_agent import BaseAgent
-from src.core.mcp.client import mcp_manager, MCPManager
+from src.core.mcp.client import MCPManager
 
 
 AGENTS_ROOT = "agent_store"
@@ -20,7 +25,7 @@ class AgentSpec:
     emoji: str
     llm: Dict[str, str]  # LLM configuration with provider and model
     folder: str
-    mcp_config: Dict[str, Any] = None  # Optional for backward compatibility
+    mcp_config: Optional[Dict[str, Any]] = None  # Optional for backward compatibility
     tools_module: Optional[str] = None
 
 
@@ -29,16 +34,16 @@ def _load_yaml(p: str) -> Dict[str, Any]:
         return yaml.safe_load(f) or {}
 
 
-def _import_tools_py(path: str):
+def _import_tools_py(path: str) -> Any:
     if not os.path.exists(path):
         return None
     # Use unique module name with timestamp to avoid caching issues
-    import time
     agent_dir = os.path.basename(os.path.dirname(path))
     module_name = f"agent_tools_{agent_dir}_{int(time.time() * 1000)}"
     spec = importlib.util.spec_from_file_location(module_name, path)
+    if spec is None or spec.loader is None:
+        return None
     mod = importlib.util.module_from_spec(spec)
-    assert spec.loader is not None
     spec.loader.exec_module(mod)
     return mod
 

@@ -19,7 +19,6 @@ from pptx import Presentation
 
 # OpenAI for intelligent document analysis
 try:
-    import openai
     from openai import OpenAI
     OPENAI_AVAILABLE = True
 except ImportError:

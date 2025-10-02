@@ -3,23 +3,28 @@ Agent Response Models
 Simplified Pydantic models for structured agent outputs - only 3 action types
 """
 
-from pydantic import BaseModel, Field
-from typing import Literal, Dict, Any
 from enum import Enum
+from typing import Any, Dict, Literal
+
+from pydantic import BaseModel, Field
+
 
 class ActionType(str, Enum):
     FINAL = "final"
     CALL_TOOL = "call_tool"
     CALL_MCP = "call_mcp"
 
+
 class AgentResponse(BaseModel):
     """Base agent response model ensuring proper JSON structure"""
     action: ActionType = Field(..., description="The action type the agent wants to perform")
+
 
 class FinalResponse(AgentResponse):
     """Final response with text content"""
     action: Literal[ActionType.FINAL] = ActionType.FINAL
     text: str = Field(..., description="The final response text with proper @mention")
+
 
 class ToolCallResponse(AgentResponse):
     """Tool call response"""
@@ -27,12 +32,14 @@ class ToolCallResponse(AgentResponse):
     tool: str = Field(..., description="Tool name to call")
     inputs: Dict[str, Any] = Field(default_factory=dict, description="Tool inputs")
 
+
 class MCPCallResponse(AgentResponse):
     """MCP call response"""
     action: Literal[ActionType.CALL_MCP] = ActionType.CALL_MCP
     server: str = Field(..., description="MCP server name")
     tool: str = Field(..., description="MCP tool name")
     inputs: Dict[str, Any] = Field(default_factory=dict, description="MCP tool inputs")
+
 
 def get_response_schema() -> str:
     """Get JSON schema for agent responses"""
@@ -65,6 +72,7 @@ IMPORTANT:
 - Use ONLY these 3 action types
 - Return valid JSON only
 """
+
 
 def parse_agent_response(raw_response: str) -> AgentResponse:
     """Parse and validate agent response with proper error handling"""

@@ -10,7 +10,7 @@ import time
 
 from src.core.agents.orchestrator import AgentOrchestrator
 from src.core.agents.router import Router
-from src.core.agents.registry import discover_agents, AgentSpec
+from src.core.agents.registry import AgentSpec
 from src.core.memory import session_store
 from src.core.config.settings import get_settings
 

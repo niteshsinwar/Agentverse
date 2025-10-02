@@ -1,18 +1,13 @@
 """
 Tool Configuration Validator
-Validates tool configurations and Python code using the same logic as agent tool registration
+Validates tool configurations and Python code using the same logic
+as agent tool registration.
 """
 
 import ast
-import inspect
-import importlib.util
-import sys
-import tempfile
-import os
-from typing import Dict, Any, List, Optional, Callable
-from pathlib import Path
+from typing import Dict, Any, List, Optional
 
-from .validation_result import ValidationResult, ValidationError, ValidationWarning
+from .validation_result import ValidationResult
 
 
 class ToolValidator:
@@ -57,13 +52,18 @@ class ToolValidator:
 
         # Test compilation (same as importlib.util.spec_from_file_location would do)
         try:
-            tree = ast.parse(code)
+            ast.parse(code)
         except SyntaxError as e:
-            result.add_error("code", f"Python syntax error: {str(e)}", "SYNTAX_ERROR", {
-                "line": e.lineno,
-                "offset": e.offset,
-                "text": e.text
-            })
+            result.add_error(
+                "code",
+                f"Python syntax error: {str(e)}",
+                "SYNTAX_ERROR",
+                {
+                    "line": e.lineno,
+                    "offset": e.offset,
+                    "text": e.text
+                }
+            )
             return result
 
         # Test actual code execution in isolation (same as spec.loader.exec_module)
@@ -291,22 +291,27 @@ class ToolValidator:
         """
         try:
             # Test the EXACT same process as agent building
-            import tempfile
-            import importlib.util
+            import tempfile as tf
+            import importlib.util as imp_util
+            import time
+            import os as file_os
             from src.core.agents.base_agent import BaseAgent
 
             # Create temporary file with tool code (same as agent discovery)
-            with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+            with tf.NamedTemporaryFile(
+                mode='w', suffix='.py', delete=False
+            ) as f:
                 f.write(code)
                 temp_path = f.name
 
             try:
                 # Test actual module loading (EXACT same as registry.py:39-42)
-                import time
                 module_name = f"test_tool_{int(time.time() * 1000)}"
-                spec = importlib.util.spec_from_file_location(module_name, temp_path)
-                module = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(module)  # This will fail if imports are broken
+                spec = imp_util.spec_from_file_location(
+                    module_name, temp_path
+                )
+                module = imp_util.module_from_spec(spec)
+                spec.loader.exec_module(module)
 
                 # Test actual tool registration (EXACT same as registry.py:106-108)
                 test_agent = BaseAgent(agent_id="test_agent")
@@ -314,17 +319,26 @@ class ToolValidator:
 
                 # Verify tools were registered
                 registered_tools = list(test_agent.tools.keys())
+                tool_count = len(registered_tools)
                 if registered_tools:
-                    result.add_warning("code", f"✅ Successfully registered {len(registered_tools)} tools: {', '.join(registered_tools)}", "REGISTRATION_SUCCESS")
+                    tools_str = ', '.join(registered_tools)
+                    result.add_warning(
+                        "code",
+                        f"✅ Successfully registered {tool_count} tools: {tools_str}",
+                        "REGISTRATION_SUCCESS"
+                    )
                 else:
-                    result.add_warning("code", "⚠️ No tools registered - check @agent_tool decorators", "NO_TOOLS_REGISTERED")
+                    result.add_warning(
+                        "code",
+                        "⚠️ No tools registered - check @agent_tool decorators",
+                        "NO_TOOLS_REGISTERED"
+                    )
 
             finally:
                 # Clean up temp file
-                import os
                 try:
-                    os.unlink(temp_path)
-                except:
+                    file_os.unlink(temp_path)
+                except Exception:
                     pass
 
         except ImportError as e:

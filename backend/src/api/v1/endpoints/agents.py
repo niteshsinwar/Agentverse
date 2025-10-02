@@ -11,7 +11,6 @@ import os
 import json
 import yaml
 import shutil
-import time
 
 from src.services.orchestrator_service import OrchestratorService
 from src.api.v1.dependencies import get_orchestrator_service
@@ -24,10 +23,12 @@ from src.core.telemetry.user_actions import (
 
 router = APIRouter()
 
+
 # Pydantic models for request validation
 class LLMConfig(BaseModel):
     provider: str = "openai"
     model: str = "gpt-4o-mini"
+
 
 class CreateAgentRequest(BaseModel):
     name: str
@@ -40,6 +41,7 @@ class CreateAgentRequest(BaseModel):
     mcp_config: Optional[Dict[str, Any]] = {}
     selected_tools: Optional[List[str]] = []
     selected_mcps: Optional[List[str]] = []
+
 
 class UpdateAgentRequest(BaseModel):
     name: Optional[str] = None
@@ -140,8 +142,6 @@ async def get_agent_details(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get agent details: {str(e)}")
-
-
 
 
 @router.post("/create/")
@@ -520,5 +520,3 @@ async def test_register_agent(request: dict):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to test agent registration: {str(e)}")
-
-

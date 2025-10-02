@@ -10,7 +10,7 @@ import {
   ChevronRightIcon,
   ChevronDownIcon,
   LightBulbIcon,
-  CodeBracketIcon,
+
   CpuChipIcon,
   DocumentTextIcon,
   PlayIcon,
@@ -33,7 +33,7 @@ interface HelpSection {
   content: React.ReactNode;
 }
 
-export const HelpPanel: React.FC<HelpPanelProps> = ({ isVisible }) => {
+export const HelpPanel: React.FC<HelpPanelProps> = ({ isVisible: _isVisible }) => {
   const [activeSection, setActiveSection] = useState<string>('overview');
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['overview']));
 
@@ -100,7 +100,7 @@ export const HelpPanel: React.FC<HelpPanelProps> = ({ isVisible }) => {
             </BrandedCard>
           </div>
 
-          <BrandedCard variant="outline" className="p-6">
+          <BrandedCard variant="glass" className="p-6">
             <h3 className="font-semibold text-slate-800 dark:text-slate-200 mb-4 flex items-center">
               <RocketLaunchIcon className="h-5 w-5 mr-2 text-indigo-600" />
               Quick Start Guide
@@ -225,7 +225,7 @@ export const HelpPanel: React.FC<HelpPanelProps> = ({ isVisible }) => {
             </div>
           </BrandedCard>
 
-          <BrandedCard variant="outline" className="p-6">
+          <BrandedCard variant="glass" className="p-6">
             <h3 className="font-semibold text-slate-800 dark:text-slate-200 mb-4 flex items-center">
               <LightBulbIcon className="h-5 w-5 mr-2 text-yellow-500" />
               Group Management Tips

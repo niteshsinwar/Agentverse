@@ -6,14 +6,13 @@ import {
   TrashIcon,
   CheckIcon,
   WrenchIcon,
-  ServerIcon,
-  CpuChipIcon
+  ServerIcon
 } from '@heroicons/react/24/outline';
 import { Tab } from '@headlessui/react';
 import { toast } from 'react-hot-toast';
 import { apiService } from '@/shared/api';
 import { ProgressBar, useProgressSteps } from './ProgressBar';
-import { BrandedButton, BrandedCard, BrandedBadge, BrandedAlert } from './BrandedComponents';
+import { BrandedButton, BrandedCard } from './BrandedComponents';
 import { BrandLogo } from './BrandLogo';
 
 // Pre-built tools and MCP configurations will be loaded from API
@@ -186,33 +185,6 @@ export const EnhancedAgentCreationPanel: React.FC<EnhancedAgentCreationPanelProp
     }
   };
 
-  const updateSelectionsFromConfig = (config: any) => {
-    // Update tool selections
-    if (config.tools) {
-      setSelectedTools(prev => prev.map(tool => ({
-        ...tool,
-        enabled: config.tools.includes(tool.id)
-      })));
-    }
-
-    // Update MCP selections
-    const mcpServers = config.mcp_config?.mcpServers || config.mcp_servers || {};
-    if (mcpServers && typeof mcpServers === 'object') {
-      setSelectedMCPs(prev => prev.map(mcp => ({
-        ...mcp,
-        enabled: Object.keys(mcpServers).includes(mcp.id),
-        config: mcpServers[mcp.id] || {}
-      })));
-    }
-
-    // Load custom code
-    if (config.custom_tools) {
-      setCustomToolsCode(config.custom_tools);
-    }
-    if (config.custom_mcp) {
-      setCustomMCPConfig(JSON.stringify(config.custom_mcp, null, 2));
-    }
-  };
 
   const generateToolsCode = () => {
     const enabledTools = selectedTools.filter(t => t.enabled);

@@ -20,6 +20,7 @@ BACKEND_CONFIG_PATH = Path("config")
 # Ensure config directories exist
 os.makedirs(BACKEND_CONFIG_PATH, exist_ok=True)
 
+
 # Request models
 class MCPRequest(BaseModel):
     command: str
@@ -127,9 +128,10 @@ async def add_mcp_server(mcp_id: str, mcp_data: MCPRequest):
                 # Test tool discovery
                 server = mcp_manager.servers[mcp_id]
                 if server.tools_cache:
-                    print(f"✅ MCP validation passed: {len(server.tools_cache)} tools discovered")
+                    tool_count = len(server.tools_cache)
+                    print(f"✅ MCP validation passed: {tool_count} tools discovered")
                 else:
-                    print(f"⚠️ MCP validation warning: No tools discovered from server")
+                    print("⚠️ MCP validation warning: No tools discovered from server")
 
                 # Clean up
                 await mcp_manager.stop_all()
@@ -254,9 +256,10 @@ async def update_mcp_server(mcp_id: str, mcp_data: MCPRequest):
                 # Test tool discovery
                 server = mcp_manager.servers[mcp_id]
                 if server.tools_cache:
-                    print(f"✅ MCP validation passed: {len(server.tools_cache)} tools discovered")
+                    tool_count = len(server.tools_cache)
+                    print(f"✅ MCP validation passed: {tool_count} tools discovered")
                 else:
-                    print(f"⚠️ MCP validation warning: No tools discovered from server")
+                    print("⚠️ MCP validation warning: No tools discovered from server")
 
                 # Clean up
                 await mcp_manager.stop_all()

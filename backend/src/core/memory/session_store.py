@@ -4,8 +4,12 @@
 # Purpose: SQLite persistence for groups, memberships, and messages
 # =========================================
 from __future__ import annotations
-import sqlite3, json, uuid, os, time
-from typing import List, Dict, Any, Optional
+import json
+import os
+import sqlite3
+import time
+import uuid
+from typing import Any, Dict, List, Optional
 
 DEFAULT_DB_PATH = os.environ.get("AGENTIC_DB_PATH", os.path.join("data", "app.db"))
 
@@ -44,18 +48,19 @@ CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(created_at);
 CREATE INDEX IF NOT EXISTS idx_group_agents_group_id ON group_agents(group_id);
 """
 
-def _cxn(db_path: str = DEFAULT_DB_PATH) -> sqlite3.Connection:
+def _create_connection(db_path: str = DEFAULT_DB_PATH) -> sqlite3.Connection:
     os.makedirs(os.path.dirname(db_path), exist_ok=True)
     cxn = sqlite3.connect(db_path, check_same_thread=False)
     cxn.execute("PRAGMA foreign_keys=ON")
     return cxn
 
-_cxn = _cxn()
+
+_cxn: sqlite3.Connection = _create_connection()
 _cxn.executescript(SCHEMA)
 _cxn.commit()
 
 # Export connection for other modules that expect _db_conn
-_db_conn = _cxn
+_db_conn: sqlite3.Connection = _cxn
 
 # -------- Groups --------
 
@@ -289,7 +294,7 @@ def append_document_message(
     file_extension: str,
     original_prompt: str = "",
     extracted_content: str = "",
-    content_summary: str = ""
+    content_summary: str = "",
 ) -> int:
     """Store a document upload as a special message type"""
     now = time.time()
@@ -334,7 +339,7 @@ def get_group_documents(group_id: str) -> List[Dict[str, Any]]:
                 "metadata": meta,
                 "created_at": ts
             })
-    
+
     return documents
 
 
@@ -354,5 +359,5 @@ def get_document_details(group_id: str, document_id: str) -> Optional[Dict[str, 
                 "metadata": meta,
                 "created_at": ts
             }
-    
+
     return None

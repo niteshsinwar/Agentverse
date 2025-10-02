@@ -9,12 +9,15 @@ from typing import List
 import os
 
 from src.services.orchestrator_service import OrchestratorService
+from src.api.v1.dependencies import get_orchestrator_service
 
 
 # Request models
 class CreateGroupRequest(BaseModel):
     """Request model for creating a new group"""
-    name: str = Field(..., min_length=1, max_length=100, description="Group name")
+    name: str = Field(
+        ..., min_length=1, max_length=100, description="Group name"
+    )
 
 
 class GroupResponse(BaseModel):
@@ -28,7 +31,7 @@ class GroupResponse(BaseModel):
 class AddAgentRequest(BaseModel):
     """Request model for adding an agent to a group"""
     agent_key: str = Field(..., description="Agent identifier key")
-from src.api.v1.dependencies import get_orchestrator_service
+
 
 router = APIRouter()
 

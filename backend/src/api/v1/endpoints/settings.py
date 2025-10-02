@@ -18,6 +18,7 @@ BACKEND_CONFIG_PATH = Path("config")
 # Ensure config directories exist
 os.makedirs(BACKEND_CONFIG_PATH, exist_ok=True)
 
+
 # Request models
 class SettingsRequest(BaseModel):
     settings: Dict[str, Any]

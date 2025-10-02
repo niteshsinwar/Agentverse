@@ -4,11 +4,12 @@
 # Purpose: Build/hold agents; enforce group membership on agent->agent calls
 # =========================================
 from __future__ import annotations
-from typing import Dict, Any, List, Tuple, Optional
-from src.core.agents.registry import discover_agents, build_agent
+from typing import Any, Dict, List, Optional, Tuple
+
+from src.core.agents.registry import build_agent, discover_agents
+from src.core.document_processing.manager import document_manager
 from src.core.memory import session_store
 from src.core.telemetry.events import emit_agent_call
-from src.core.document_processing.manager import document_manager
 
 
 class AgentOrchestrator:
@@ -26,7 +27,7 @@ class AgentOrchestrator:
     def list_available_agents(self) -> Dict[str, Any]:
         return self.specs
 
-    async def get_agent(self, key: str):
+    async def get_agent(self, key: str) -> Any:
         if key not in self.specs:
             raise ValueError(f"Unknown agent '{key}'")
         if key not in self._agents:

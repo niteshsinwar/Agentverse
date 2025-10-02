@@ -30,33 +30,7 @@ class DocumentManager:
                     with open(config_file, 'r') as f:
                         config = yaml.safe_load(f)
                         self.agent_configs[agent_folder.name] = config
-    
-    def can_agent_process_file(self, agent_id: str, file_extension: str, file_size_mb: float) -> Tuple[bool, str]:
-        """Check if agent can process this file type"""
-        config = self.agent_configs.get(agent_id, {})
-        doc_access = config.get('document_access', {})
-        
-        # All agents now have mandatory document processing capability
-        # No need to check enabled status anymore
-        
-        # Use global document extraction settings from settings.json
-        from src.core.config.settings import get_settings
-        settings = get_settings()
-        doc_config = settings.document_extraction
 
-        # Check file size against global limit
-        max_size = doc_config.max_file_size_mb
-        if file_size_mb > max_size:
-            return False, f"File size ({file_size_mb:.1f}MB) exceeds limit ({max_size}MB)"
-
-        # Check supported formats against global list
-        supported_formats = doc_config.supported_formats
-        file_ext_no_dot = file_extension.lower().lstrip('.')
-        if file_ext_no_dot not in [fmt.lower() for fmt in supported_formats]:
-            return False, f"File type '{file_extension}' not supported. Supported: {', '.join(supported_formats)}"
-        
-        return True, "File can be processed"
-    
     async def process_and_store_document(self,
                                        uploaded_file,
                                        group_id: str,
@@ -88,16 +62,7 @@ class DocumentManager:
             
             # Get file info
             file_extension = Path(file_name).suffix
-            
-            # Check agent permissions
-            can_process, message = self.can_agent_process_file(agent_id, file_extension, file_size_mb)
-            if not can_process:
-                return {
-                    'success': False,
-                    'error': message,
-                    'document_id': None
-                }
-            
+
             # Process document content using global settings
             from src.core.config.settings import get_settings
             settings = get_settings()
@@ -204,23 +169,7 @@ class DocumentManager:
         context_parts.append("\n**Instructions:** You can analyze, summarize, extract insights, answer questions, or perform any operations on the above document content. The full content is available for your processing.")
         
         return "\n".join(context_parts)
-    
-    def get_document_content(self, document_id: str, agent_id: str, group_id: str) -> Optional[str]:
-        """Get full document content for agent use"""
-        
-        # Verify agent has access to this document
-        document = self.storage.get_document_by_id(document_id)
-        if not document:
-            return None
-        
-        if document['agent_id'] != agent_id or document['group_id'] != group_id:
-            return None
-        
-        # Log access
-        self.storage.log_document_access(document_id, agent_id, group_id, 'view')
-        
-        return document['extracted_content']
-    
+
     def _generate_summary(self, content: str, max_length: int = 200) -> str:
         """Generate a simple summary of the content"""
         # Simple summary - you can enhance this with LLM integration
@@ -236,14 +185,6 @@ class DocumentManager:
                 break
         
         return summary.strip() + "..."
-    
-    def list_agent_documents(self, agent_id: str, group_id: str) -> List[Dict[str, Any]]:
-        """List all documents for an agent"""
-        return self.storage.get_agent_documents(agent_id, group_id)
-    
-    def get_recent_documents(self, agent_id: str, group_id: str, limit: int = 5) -> List[Dict[str, Any]]:
-        """Get recent documents for an agent (wrapper for storage method)"""
-        return self.storage.get_recent_documents(agent_id, group_id, limit)
 
 
 # Global instance

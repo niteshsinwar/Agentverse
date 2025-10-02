@@ -30,5 +30,14 @@
     "functions": [
       "sum_of_num"
     ]
+  },
+  "pytest_test_tool": {
+    "name": "pytest_tool",
+    "description": "Tool created by pytest",
+    "category": "testing",
+    "code": "# Test tool code\ndef test_function():\n    return 'test'",
+    "functions": [
+      "test_function"
+    ]
   }
 }

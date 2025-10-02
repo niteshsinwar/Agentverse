@@ -60,7 +60,7 @@ const initialState: AgentsState = {
   },
 };
 
-export const useAgentsStore = create<AgentsStore>((set, get) => ({
+export const useAgentsStore = create<AgentsStore>((set) => ({
   ...initialState,
 
   // Agent Actions
@@ -71,7 +71,7 @@ export const useAgentsStore = create<AgentsStore>((set, get) => ({
 
     try {
       const agents = await agentsApi.getAgents();
-      set((state) => ({
+      set(() => ({
         agents: {
           data: Array.isArray(agents) ? agents : [],
           status: 'success',
@@ -158,7 +158,7 @@ export const useAgentsStore = create<AgentsStore>((set, get) => ({
     try {
       const result = await agentsApi.validateAgent(data);
 
-      set((state) => ({
+      set(() => ({
         agentValidation: {
           isValidating: false,
           result,
@@ -170,7 +170,7 @@ export const useAgentsStore = create<AgentsStore>((set, get) => ({
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Validation failed';
 
-      set((state) => ({
+      set(() => ({
         agentValidation: {
           isValidating: false,
           result: null,
@@ -194,7 +194,7 @@ export const useAgentsStore = create<AgentsStore>((set, get) => ({
     try {
       const result = await agentsApi.validateAgentFolder(folderPath);
 
-      set((state) => ({
+      set(() => ({
         agentValidation: {
           isValidating: false,
           result,
@@ -206,7 +206,7 @@ export const useAgentsStore = create<AgentsStore>((set, get) => ({
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Folder validation failed';
 
-      set((state) => ({
+      set(() => ({
         agentValidation: {
           isValidating: false,
           result: null,

@@ -13,6 +13,7 @@ from src.core.validation.mcp_validator import McpValidator
 
 router = APIRouter()
 
+
 # Request models
 class ToolRequest(BaseModel):
     name: str
@@ -20,6 +21,7 @@ class ToolRequest(BaseModel):
     category: str
     code: str
     functions: List[str]
+
 
 class MCPRequest(BaseModel):
     command: str
@@ -32,13 +34,15 @@ class MCPRequest(BaseModel):
 
 
 # ===== VALIDATION ENDPOINTS =====
-# These endpoints validate configurations before creation/modification using the same logic as registry.py
+# These endpoints validate configurations before creation/modification
+# using the same logic as registry.py
 
 @router.post("/agent/")
 async def validate_agent_config(request: dict):
     """
-    Validate agent configuration before creation/modification
-    Uses the COMPLETE agent building process to test runtime functionality
+    Validate agent configuration before creation/modification.
+    Uses the COMPLETE agent building process to test runtime
+    functionality.
     """
     try:
         result = await AgentValidator.validate_agent_config(
@@ -55,20 +59,25 @@ async def validate_agent_config(request: dict):
 
         return result.to_dict()
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to validate agent config: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to validate agent config: {str(e)}"
+        )
 
 
 @router.post("/agent/folder/")
 async def validate_agent_folder(request: dict):
     """
-    Validate existing agent folder structure
-    Uses the exact same logic as discover_agents() in registry.py
+    Validate existing agent folder structure.
+    Uses the exact same logic as discover_agents() in registry.py.
     """
     try:
         folder_path = request.get("folder_path", "")
 
         if not folder_path:
-            raise HTTPException(status_code=400, detail="folder_path is required")
+            raise HTTPException(
+                status_code=400, detail="folder_path is required"
+            )
 
         result = AgentValidator.validate_agent_folder(folder_path)
 
@@ -76,14 +85,17 @@ async def validate_agent_folder(request: dict):
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to validate agent folder: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to validate agent folder: {str(e)}"
+        )
 
 
 @router.post("/tool/")
 async def validate_tool_config(tool_data: ToolRequest):
     """
-    Validate tool configuration before creation/modification
-    Uses the exact same validation logic as tool registration
+    Validate tool configuration before creation/modification.
+    Uses the exact same validation logic as tool registration.
     """
     try:
         result = ToolValidator.validate_tool_config(
@@ -96,31 +108,39 @@ async def validate_tool_config(tool_data: ToolRequest):
 
         return result.to_dict()
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to validate tool config: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to validate tool config: {str(e)}"
+        )
 
 
 @router.post("/tool/code/")
 async def validate_tool_code(request: dict):
     """
-    Validate tool code execution without saving
-    Tests compilation and execution in isolation
+    Validate tool code execution without saving.
+    Tests compilation and execution in isolation.
     """
     try:
         code = request.get("code", "")
         function_names = request.get("function_names", [])
 
-        result = ToolValidator.validate_tool_code_execution(code, function_names)
+        result = ToolValidator.validate_tool_code_execution(
+            code, function_names
+        )
 
         return result.to_dict()
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to validate tool code: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to validate tool code: {str(e)}"
+        )
 
 
 @router.post("/mcp/")
 async def validate_mcp_config(mcp_data: MCPRequest):
     """
-    Validate MCP server configuration before creation/modification
-    Uses the exact same validation logic as MCP server initialization
+    Validate MCP server configuration before creation/modification.
+    Uses the exact same validation logic as MCP server initialization.
     """
     try:
         result = McpValidator.validate_mcp_server_config(
@@ -132,25 +152,33 @@ async def validate_mcp_config(mcp_data: MCPRequest):
 
         return result.to_dict()
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to validate MCP config: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to validate MCP config: {str(e)}"
+        )
 
 
 @router.post("/mcp/connectivity/")
 async def validate_mcp_connectivity(request: dict):
     """
-    Test MCP server connectivity without persistent connection
-    Validates that the command exists and responds correctly
+    Test MCP server connectivity without persistent connection.
+    Validates that the command exists and responds correctly.
     """
     try:
         name = request.get("name", "test_server")
         config = request.get("config", {})
         timeout = request.get("timeout", 10.0)
 
-        result = await McpValidator.validate_mcp_server_connectivity(name, config, timeout)
+        result = await McpValidator.validate_mcp_server_connectivity(
+            name, config, timeout
+        )
 
         return result.to_dict()
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to test MCP connectivity: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to test MCP connectivity: {str(e)}"
+        )
 
 
 # Template endpoints
@@ -166,7 +194,10 @@ async def get_tool_templates():
             "base_template": code_template
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get tool templates: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to get tool templates: {str(e)}"
+        )
 
 
 @router.get("/templates/mcp/")
@@ -179,4 +210,7 @@ async def get_mcp_templates():
             "templates": templates
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get MCP templates: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to get MCP templates: {str(e)}"
+        )

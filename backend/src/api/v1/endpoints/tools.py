@@ -5,7 +5,7 @@ Handle tools.json management via API
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from typing import Dict, Any, List
+from typing import List
 import json
 import os
 from pathlib import Path
@@ -19,6 +19,7 @@ BACKEND_CONFIG_PATH = Path("config")
 
 # Ensure config directories exist
 os.makedirs(BACKEND_CONFIG_PATH, exist_ok=True)
+
 
 # Request models
 class ToolRequest(BaseModel):
@@ -41,7 +42,9 @@ async def get_tools():
             return {"tools": tools, "count": len(tools)}
         return {"tools": {}, "count": 0}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to load tools: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to load tools: {str(e)}"
+        )
 
 
 @router.post("/")
@@ -68,9 +71,11 @@ async def add_tool(tool_id: str, tool_data: ToolRequest):
 
         # Step 2: Validate Code Execution
         if tool_data.code.strip():
-            code_validation_result = ToolValidator.validate_tool_code_execution(
-                code=tool_data.code,
-                function_names=tool_data.functions
+            code_validation_result = (
+                ToolValidator.validate_tool_code_execution(
+                    code=tool_data.code,
+                    function_names=tool_data.functions
+                )
             )
             if not code_validation_result.valid:
                 raise HTTPException(
@@ -92,7 +97,9 @@ async def add_tool(tool_id: str, tool_data: ToolRequest):
 
         # Check if tool already exists
         if tool_id in tools:
-            raise HTTPException(status_code=400, detail=f"Tool '{tool_id}' already exists")
+            raise HTTPException(
+                status_code=400, detail=f"Tool '{tool_id}' already exists"
+            )
 
         # Add new tool
         tools[tool_id] = tool_data.dict()
@@ -110,7 +117,9 @@ async def add_tool(tool_id: str, tool_data: ToolRequest):
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to add tool: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to add tool: {str(e)}"
+        )
 
 
 @router.put("/{tool_id}")
@@ -137,9 +146,11 @@ async def update_tool(tool_id: str, tool_data: ToolRequest):
 
         # Step 2: Validate Code Execution
         if tool_data.code.strip():
-            code_validation_result = ToolValidator.validate_tool_code_execution(
-                code=tool_data.code,
-                function_names=tool_data.functions
+            code_validation_result = (
+                ToolValidator.validate_tool_code_execution(
+                    code=tool_data.code,
+                    function_names=tool_data.functions
+                )
             )
             if not code_validation_result.valid:
                 raise HTTPException(
@@ -155,14 +166,19 @@ async def update_tool(tool_id: str, tool_data: ToolRequest):
 
         # Load existing tools
         if not tools_path.exists():
-            raise HTTPException(status_code=404, detail="Tools configuration file not found")
+            raise HTTPException(
+                status_code=404,
+                detail="Tools configuration file not found"
+            )
 
         with open(tools_path, 'r') as f:
             tools = json.load(f)
 
         # Check if tool exists
         if tool_id not in tools:
-            raise HTTPException(status_code=404, detail=f"Tool '{tool_id}' not found")
+            raise HTTPException(
+                status_code=404, detail=f"Tool '{tool_id}' not found"
+            )
 
         # Update tool
         tools[tool_id] = tool_data.dict()
@@ -179,7 +195,9 @@ async def update_tool(tool_id: str, tool_data: ToolRequest):
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to update tool: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to update tool: {str(e)}"
+        )
 
 
 @router.delete("/{tool_id}")
@@ -190,14 +208,19 @@ async def delete_tool(tool_id: str):
 
         # Load existing tools
         if not tools_path.exists():
-            raise HTTPException(status_code=404, detail="Tools configuration file not found")
+            raise HTTPException(
+                status_code=404,
+                detail="Tools configuration file not found"
+            )
 
         with open(tools_path, 'r') as f:
             tools = json.load(f)
 
         # Check if tool exists
         if tool_id not in tools:
-            raise HTTPException(status_code=404, detail=f"Tool '{tool_id}' not found")
+            raise HTTPException(
+                status_code=404, detail=f"Tool '{tool_id}' not found"
+            )
 
         # Delete tool
         del tools[tool_id]
@@ -214,4 +237,6 @@ async def delete_tool(tool_id: str):
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to delete tool: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to delete tool: {str(e)}"
+        )

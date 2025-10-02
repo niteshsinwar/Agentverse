@@ -1,16 +1,21 @@
 # =========================================
-# File: app/agents/base_agent.py  
+# File: app/agents/base_agent.py
 # Purpose: Agent decides: respond vs custom tool vs MCP vs other agent, with multi-step control loop
 # =========================================
 from __future__ import annotations
-import json
 import inspect
-import re
-from typing import Any, Callable, Optional, Dict, List
+import json
+from typing import Any, Callable, Dict, List, Optional
+
 from src.core.llm.factory import get_llm
 
-# Import structured response models
-from .response_models import parse_agent_response, get_response_schema, FinalResponse, ToolCallResponse, MCPCallResponse
+from .response_models import (
+    FinalResponse,
+    MCPCallResponse,
+    ToolCallResponse,
+    get_response_schema,
+    parse_agent_response,
+)
 
 # Agent memory system is handled through session_store
 # No separate memory manager needed
@@ -36,10 +41,10 @@ class BaseAgent:
 
         # Memory is handled through session_store conversation history
 
-    def load_metadata(self, name: str, description: str, folder_path: str):
+    def load_metadata(self, name: str, description: str, folder_path: str) -> None:
         self.metadata = {"name": name, "description": description, "folder_path": folder_path}
 
-    def attach_mcp(self, mcp_client: Any):
+    def attach_mcp(self, mcp_client: Any) -> None:
         self.mcp = mcp_client
 
     def get_capabilities_summary(self) -> str:
@@ -102,12 +107,12 @@ class BaseAgent:
         result = " | ".join(parts)
         return result
 
-    def register_tools_from_module(self, mod: Any):
+    def register_tools_from_module(self, mod: Any) -> None:
         for _, fn in inspect.getmembers(mod, inspect.isfunction):
             if getattr(fn, "__agent_tool__", False):
                 self.tools[fn.__name__] = fn
 
-    async def call_tool(self, group_id: str, tool_name: str, **kwargs):
+    async def call_tool(self, group_id: str, tool_name: str, **kwargs: Any) -> Any:
         """Call a custom tool with logging and error handling"""
         # If tool isn't registered, log as error and return structured error (do not raise)
         if tool_name not in self.tools:
@@ -193,15 +198,14 @@ class BaseAgent:
             )
             # Do not interrupt the agent loop; return error object for planning
             return {"isError": True, "tool": tool_name, "error": str(e), "error_type": type(e).__name__}
-    
-    
+
     def list_mcp_tools(self) -> List[Dict[str, Any]]:
         """List all available MCP tools for this agent"""
         if not self.mcp:
             return []
         return self.mcp.list_all_tools()
 
-    async def respond(self, prompt: str, group_id: str, orchestrator=None, depth: int = 2) -> str:
+    async def respond(self, prompt: str, group_id: str, orchestrator: Any = None, depth: int = 2) -> str:
         """Multi-step planner loop with structured output parsing.
         Agent responses are parsed using Pydantic models to ensure reliable JSON handling.
         Supported actions: final, call_tool, call_mcp
@@ -266,7 +270,6 @@ class BaseAgent:
 
         # Conversation context is already included in history_context
 
-        
         # Build detailed MCP tools listing for agent awareness
         mcp_tools_detail = ""
         if self.mcp and self.mcp.servers:
@@ -301,7 +304,6 @@ class BaseAgent:
             mcp_tools_detail += "⚡ Parameters marked with * are REQUIRED. Use exact parameter names shown above.\n"
             mcp_tools_detail += "=== END MCP TOOLS ===\n"
 
-        
         # BUILD COLLABORATIVE PROMPT with structured response schema
         response_schema = get_response_schema()
 
@@ -411,7 +413,7 @@ class BaseAgent:
                 # Feed the observation back to the model
                 obs = {"kind": "tool_result", "tool": tool, "result": result}
                 observations.append(obs)
-                
+
                 # Build context with ALL previous observations AND chat history so agent remembers everything
                 # Rebuild history context to include just-written tool_call/result entries
                 history_context = build_history_context()
@@ -422,7 +424,7 @@ class BaseAgent:
                 for i, observation in enumerate(observations, 1):
                     obs_context += f"{i}. {observation['kind']}: {observation['tool']} → {str(observation['result'])[:100]}{'...' if len(str(observation['result'])) > 100 else ''}\n"
                 obs_context += f"\nLatest result: {json.dumps(obs, ensure_ascii=False)}\n\nWhat should I do next?"
-                
+
                 state = await decide(obs_context)
                 continue
 
@@ -482,7 +484,7 @@ class BaseAgent:
                     await emit_error(group_id, f"mcp_call:{server}/{tool}", str(me), {"agent_id": self.agent_id, "duration_ms": duration_ms})
 
                     result = err_obj
-                
+
                 # Build context with ALL previous observations AND chat history so agent remembers everything
                 # Rebuild history context to include just-written mcp_call/result entries
                 history_context = build_history_context()
@@ -493,7 +495,7 @@ class BaseAgent:
                 for i, observation in enumerate(observations, 1):
                     obs_context += f"{i}. {observation['kind']}: {observation['tool']} → {str(observation['result'])[:100]}{'...' if len(str(observation['result'])) > 100 else ''}\n"
                 obs_context += f"\nLatest result: {json.dumps(obs, ensure_ascii=False)}\n\nWhat should I do next?"
-                
+
                 state = await decide(obs_context)
                 continue
 
@@ -502,7 +504,14 @@ class BaseAgent:
 
         return "[error] Stopped after max planning steps]"
 
-    async def _validate_and_fix_response(self, response: str, roster: List, group_id: str, system_prompt: str, max_attempts: int = MAX_VALIDATION_ATTEMPTS) -> str:
+    async def _validate_and_fix_response(
+        self,
+        response: str,
+        roster: List[Any],
+        group_id: str,
+        system_prompt: str,
+        max_attempts: int = MAX_VALIDATION_ATTEMPTS,
+    ) -> str:
         """
         Validation wall: Ensures response contains exactly one @mention.
         If not, sends response back to agent for correction.

@@ -20,7 +20,7 @@ import {
 import { Menu, Transition } from '@headlessui/react';
 import { DocumentsListPanel } from './DocumentsListPanel';
 import { BrandLogo } from './BrandLogo';
-import { BrandedButton, BrandedCard, BrandedBadge, BrandedStatus } from './BrandedComponents';
+import { BrandedCard, BrandedBadge, BrandedStatus } from './BrandedComponents';
 
 interface MainWorkspaceProps {
   selectedGroup: Group | null;

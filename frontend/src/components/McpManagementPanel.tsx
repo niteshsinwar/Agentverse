@@ -9,10 +9,11 @@ import {
   ArrowPathIcon,
   CheckCircleIcon,
   XCircleIcon,
+  XMarkIcon,
 } from '@heroicons/react/24/outline';
 import { mcpApi } from "@/shared/api";
 import { ProgressBar, useProgressSteps } from './ProgressBar';
-import { BrandedButton, BrandedCard, BrandedBadge, BrandedAlert } from './BrandedComponents';
+import { BrandedButton, BrandedCard } from './BrandedComponents';
 import { BrandLogo } from './BrandLogo';
 
 // Backend MCP structure (matches backend exactly)
@@ -217,7 +218,7 @@ export const McpManagementPanel: React.FC<McpManagementPanelProps> = ({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-gradient-to-br from-slate-900/80 via-violet-900/50 to-cyan-900/30 backdrop-blur-sm flex items-center justify-center p-4 z-[10]"
+        className="fixed inset-0 bg-gradient-to-br from-slate-900/80 via-violet-900/50 to-cyan-900/30 backdrop-blur-sm flex items-center justify-center p-4 z-[60]"
         onClick={onClose}
       >
         <motion.div
@@ -254,9 +255,10 @@ export const McpManagementPanel: React.FC<McpManagementPanelProps> = ({
               </button>
               <button
                 onClick={onClose}
-                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                title="Close"
               >
-                ✕
+                <XMarkIcon className="h-6 w-6" />
               </button>
             </div>
           </div>

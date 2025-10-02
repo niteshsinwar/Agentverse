@@ -73,28 +73,6 @@ class NotificationService {
       // Create a simple notification sound using Web Audio API
       this.audio = new Audio();
 
-      // Create a simple bell-like sound using data URL
-      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const oscillator = audioContext.createOscillator();
-      const gainNode = audioContext.createGain();
-
-      // Create a short bell sound
-      const createBellSound = () => {
-        const sampleRate = audioContext.sampleRate;
-        const duration = 0.3; // 300ms
-        const samples = sampleRate * duration;
-        const buffer = audioContext.createBuffer(1, samples, sampleRate);
-        const data = buffer.getChannelData(0);
-
-        for (let i = 0; i < samples; i++) {
-          const t = i / sampleRate;
-          // Bell-like sound with decay
-          data[i] = Math.sin(2 * Math.PI * 800 * t) * Math.exp(-t * 3) * 0.3;
-        }
-
-        return buffer;
-      };
-
       // Set up a simple notification sound using a data URL
       this.audio.src = 'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmsfCjiR2u/NeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmsfCjiR2u/NeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmsfCjiR2u/NeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmsfCjiR2u/NeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmsfCjiR2u/NeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmsfCjiR2u/NeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmsfCjiR2u/NeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmsfCjiR2u/NeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmsfCjiR2u/NeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmsfCjiR2u/NeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmsfCjiR2u/NeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmsfCjiR2u/NeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmsfCjiR2u/NeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmsfCjiR2u/NeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmsfCg==';
     } catch (error) {

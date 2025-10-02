@@ -1,12 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
   ChartBarIcon,
   UserIcon,
   CogIcon,
   ExclamationTriangleIcon,
-  CheckCircleIcon,
-  ClockIcon,
   WrenchScrewdriverIcon,
   ServerIcon,
   FolderPlusIcon,
@@ -14,9 +12,6 @@ import {
   TrashIcon,
   EyeIcon,
   FunnelIcon,
-  CalendarIcon,
-  TrendingUpIcon,
-  TrendingDownIcon
 } from '@heroicons/react/24/outline';
 import { toast } from 'react-hot-toast';
 import { apiService } from "@/shared/api";
@@ -130,10 +125,11 @@ export const UserActivityDashboard: React.FC<UserActivityDashboardProps> = ({
       const response = await apiService.getSessionLogs(sessionId, {
         format: 'json',
         limit: 1000
-      }) as { events: LogEvent[] };
+      });
+      const events = Array.isArray(response) ? response : (response as any).events || [];
 
       // Filter for user action events
-      const userActionEvents = response.events?.filter((event: LogEvent) =>
+      const userActionEvents = events.filter((event: LogEvent) =>
         event.details?.action_type ||
         event.event_type.includes('create') ||
         event.event_type.includes('update') ||
@@ -309,7 +305,7 @@ export const UserActivityDashboard: React.FC<UserActivityDashboardProps> = ({
           <div>
             <h3 className="text-lg font-medium text-gray-900 mb-3">Most Used Features</h3>
             <div className="space-y-2">
-              {metrics.mostUsedFeatures.map((feature, index) => (
+              {metrics.mostUsedFeatures.map((feature, _index) => (
                 <div key={feature.feature} className="flex items-center justify-between">
                   <span className="text-sm text-gray-600 capitalize">{feature.feature}</span>
                   <div className="flex items-center space-x-2">

@@ -5,14 +5,16 @@
 # =========================================
 from __future__ import annotations
 import os
-from typing import Optional, Dict, Any
-from src.core.config.settings import get_settings; settings = get_settings()
-from src.core.llm.base import LLM, LLMConfig, LLMProvider, LLMError
+from typing import Any, Dict, Optional
 
-# Import all providers
-from src.core.llm.openai_provider import OpenAILLM
-from src.core.llm.gemini_provider import GeminiLLM
+from src.core.config.settings import get_settings
+from src.core.llm.base import LLM, LLMConfig, LLMError, LLMProvider
+
+settings = get_settings()
+
 from src.core.llm.claude_provider import ClaudeLLM
+from src.core.llm.gemini_provider import GeminiLLM
+from src.core.llm.openai_provider import OpenAILLM
 
 # Provider registry
 PROVIDER_CLASSES = {
@@ -21,7 +23,8 @@ PROVIDER_CLASSES = {
     LLMProvider.CLAUDE: ClaudeLLM
 }
 
-def get_llm(provider: Optional[str] = None, model: Optional[str] = None, **kwargs) -> LLM:
+
+def get_llm(provider: Optional[str] = None, model: Optional[str] = None, **kwargs: Any) -> LLM:
     """
     Get LLM instance based on configuration
     Args:
@@ -59,7 +62,8 @@ def get_llm(provider: Optional[str] = None, model: Optional[str] = None, **kwarg
                 )
         raise
 
-def create_llm_config(provider: LLMProvider, model: Optional[str] = None, **kwargs) -> LLMConfig:
+
+def create_llm_config(provider: LLMProvider, model: Optional[str] = None, **kwargs: Any) -> LLMConfig:
     """
     Create LLM configuration with proper defaults for each provider
     Args:
@@ -123,6 +127,7 @@ def create_llm_config(provider: LLMProvider, model: Optional[str] = None, **kwar
         base_url=base_url
     )
 
+
 def get_llm_from_settings() -> LLM:
     """
     Get LLM using current settings (backward compatibility)
@@ -130,6 +135,7 @@ def get_llm_from_settings() -> LLM:
         Configured LLM instance
     """
     return get_llm()
+
 
 def list_available_providers() -> Dict[str, Dict[str, Any]]:
     """
@@ -188,8 +194,10 @@ def list_available_providers() -> Dict[str, Dict[str, Any]]:
             provider_info["error"] = str(e)
         
         providers[provider.value] = provider_info
-    
+
+
     return providers
+
 
 async def health_check_all_providers() -> Dict[str, Dict[str, Any]]:
     """
@@ -211,6 +219,5 @@ async def health_check_all_providers() -> Dict[str, Dict[str, Any]]:
                 "error": str(e),
                 "error_type": type(e).__name__
             }
-    
-    return results
 
+    return results

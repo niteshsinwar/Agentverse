@@ -5,15 +5,16 @@
 from __future__ import annotations
 import asyncio
 import re
-from typing import Optional, Tuple
+from typing import Any, Optional, Tuple
+
 from src.core.memory import session_store
-from src.core.telemetry.events import emit_message, emit_error
+from src.core.telemetry.events import emit_error, emit_message
 
 MENTION = re.compile(r"@([A-Za-z0-9_\-]+)", re.DOTALL)
 
 
 class Router:
-    def __init__(self, orchestrator_service):
+    def __init__(self, orchestrator_service: Any):
         self.orchestrator_service = orchestrator_service
 
     def parse(self, text: str) -> Optional[Tuple[str, str]]:
@@ -118,7 +119,7 @@ class Router:
         """Legacy method - delegates to unified route_message"""
         return await self.route_message(group_id, text, sender)
 
-    async def _process_agent_response(self, group_id: str, agent_key: str, content: str, mentioned_by: str = "user"):
+    async def _process_agent_response(self, group_id: str, agent_key: str, content: str, mentioned_by: str = "user") -> None:
         """
         Process agent response asynchronously - enables immediate UI display.
         This method runs in the background while the user sees their message immediately.
@@ -158,7 +159,7 @@ class Router:
 
     # Legacy methods removed - now using unified route_message approach
 
-    async def _emit_user_notification(self, group_id: str, agent_key: str, message: str):
+    async def _emit_user_notification(self, group_id: str, agent_key: str, message: str) -> None:
         """
         Emit special notification event when user is mentioned - triggers sound notification.
         """
@@ -171,5 +172,3 @@ class Router:
                 agent_key=agent_key,
                 payload={"message": message, "notification": "sound"}
             ))
-
-

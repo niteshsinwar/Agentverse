@@ -147,34 +147,6 @@ class AgentValidator:
         return result
 
     @staticmethod
-    def validate_agent_config_syntax_only(
-        name: str,
-        description: str,
-        emoji: str,
-        tools_code: Optional[str] = None,
-        mcp_config: Optional[Dict[str, Any]] = None,
-        agent_key: Optional[str] = None
-    ) -> ValidationResult:
-        """
-        Legacy syntax-only validation (DEPRECATED)
-        Only validates configuration syntax, not actual functionality
-        """
-        result = ValidationResult(valid=True, errors=[], warnings=[])
-
-        # Validate basic fields (same as registry.py AgentSpec validation)
-        AgentValidator._validate_basic_fields(result, name, description, emoji, agent_key)
-
-        # Validate tools code (same as _import_tools_py validation)
-        if tools_code:
-            AgentValidator._validate_tools_code(result, tools_code)
-
-        # Validate MCP configuration (same as MCPManager.from_config validation)
-        if mcp_config:
-            AgentValidator._validate_mcp_config(result, mcp_config)
-
-        return result
-
-    @staticmethod
     def validate_agent_folder(agent_folder: str) -> ValidationResult:
         """
         Validate existing agent folder structure

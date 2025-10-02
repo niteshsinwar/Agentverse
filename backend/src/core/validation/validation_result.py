@@ -46,7 +46,9 @@ class ValidationResult:
             self.valid = False
 
     @classmethod
-    def success(cls, warnings: Optional[List[ValidationWarning]] = None) -> 'ValidationResult':
+    def success(
+        cls, warnings: Optional[List[ValidationWarning]] = None
+    ) -> 'ValidationResult':
         """Create a successful validation result"""
         return cls(
             valid=True,
@@ -55,7 +57,11 @@ class ValidationResult:
         )
 
     @classmethod
-    def failure(cls, errors: List[ValidationError], warnings: Optional[List[ValidationWarning]] = None) -> 'ValidationResult':
+    def failure(
+        cls,
+        errors: List[ValidationError],
+        warnings: Optional[List[ValidationWarning]] = None
+    ) -> 'ValidationResult':
         """Create a failed validation result"""
         return cls(
             valid=False,
@@ -63,12 +69,24 @@ class ValidationResult:
             warnings=warnings or []
         )
 
-    def add_error(self, field: str, message: str, code: str, details: Optional[Dict[str, Any]] = None):
+    def add_error(
+        self,
+        field: str,
+        message: str,
+        code: str,
+        details: Optional[Dict[str, Any]] = None
+    ):
         """Add a validation error"""
         self.errors.append(ValidationError(field, message, code, details))
         self.valid = False
 
-    def add_warning(self, field: str, message: str, code: str, details: Optional[Dict[str, Any]] = None):
+    def add_warning(
+        self,
+        field: str,
+        message: str,
+        code: str,
+        details: Optional[Dict[str, Any]] = None
+    ):
         """Add a validation warning"""
         self.warnings.append(ValidationWarning(field, message, code, details))
 

@@ -8,12 +8,6 @@ import {
   EllipsisVerticalIcon,
   UserGroupIcon,
   CpuChipIcon,
-  SparklesIcon,
-  Cog6ToothIcon,
-  QuestionMarkCircleIcon,
-  WrenchScrewdriverIcon,
-  ServerIcon,
-  DocumentTextIcon
 } from '@heroicons/react/24/outline';
 import { Menu, Transition } from '@headlessui/react';
 import { BrandLogo } from './BrandLogo';
@@ -210,8 +204,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </AnimatePresence>
           </div>
 
-          {/* Groups List - Scrollable, limited height to show ~3-4 items */}
-          <div className="overflow-y-auto p-4 space-y-2 scrollbar-thin scrollbar-thumb-violet-300 dark:scrollbar-thumb-violet-700 scrollbar-track-transparent hover:scrollbar-thumb-violet-400 dark:hover:scrollbar-thumb-violet-600" style={{ maxHeight: '280px' }}>
+          {/* Groups List - Independent scrollbar, max 3 items visible */}
+          <div className="flex-shrink-0 overflow-y-auto p-4 space-y-2 scrollbar-thin scrollbar-thumb-violet-300 dark:scrollbar-thumb-violet-700 scrollbar-track-transparent hover:scrollbar-thumb-violet-400 dark:hover:scrollbar-thumb-violet-600" style={{ maxHeight: '240px' }}>
             {groups.map((group) => (
               <motion.div
                 key={group.id}
@@ -253,7 +247,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         leaveFrom="transform scale-100 opacity-100"
                         leaveTo="transform scale-95 opacity-0"
                       >
-                        <Menu.Items className="absolute right-0 top-full mt-1 w-32 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50">
+                        <Menu.Items static className="absolute right-0 top-full mt-1 w-32 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50">
                           <Menu.Item>
                             {({ active }) => (
                               <button
@@ -288,9 +282,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
             )}
           </div>
 
-          {/* Agents Section - Fixed at bottom with scrollable content */}
+          {/* Agents Section - Fixed at bottom */}
           {selectedGroup && expanded && (
-            <div className="border-t border-gray-200 dark:border-gray-700 flex flex-col" style={{ maxHeight: '45vh' }}>
+            <div className="flex-shrink-0 border-t border-gray-200 dark:border-gray-700 flex flex-col">
               {/* Agents Header */}
               <div className="flex-shrink-0 p-4 border-b border-gray-200 dark:border-gray-700">
                 <div className="flex items-center justify-between">
@@ -307,8 +301,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 </div>
               </div>
 
-              {/* Active Agents - Scrollable independently */}
-              <div className="flex-shrink-0 overflow-y-auto p-4 space-y-2 scrollbar-thin scrollbar-thumb-violet-300 dark:scrollbar-thumb-violet-700 scrollbar-track-transparent" style={{ maxHeight: showAgentsPanel ? '150px' : '250px' }}>
+              {/* Active Agents - Independent scrollbar, max 3 items visible */}
+              <div className="flex-shrink-0 overflow-y-auto p-4 space-y-2 scrollbar-thin scrollbar-thumb-violet-300 dark:scrollbar-thumb-violet-700 scrollbar-track-transparent" style={{ maxHeight: '210px' }}>
                 {groupAgents.map((agent) => (
                   <motion.div
                     key={agent.key}
@@ -340,17 +334,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <AnimatePresence>
                 {showAgentsPanel && (
                   <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="flex-shrink-0 border-t border-gray-200 dark:border-gray-700 flex flex-col"
+                    initial={{ opacity: 0, maxHeight: 0 }}
+                    animate={{ opacity: 1, maxHeight: 300 }}
+                    exit={{ opacity: 0, maxHeight: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="flex-shrink-0 border-t border-gray-200 dark:border-gray-700 flex flex-col overflow-hidden"
                   >
                     <div className="flex-shrink-0 p-4 pb-2">
                       <h4 className="text-xs font-semibold text-gray-600 dark:text-gray-400">
                         AVAILABLE AGENTS
                       </h4>
                     </div>
-                    <div className="overflow-y-auto p-4 pt-2 space-y-1 scrollbar-thin scrollbar-thumb-violet-300 dark:scrollbar-thumb-violet-700 scrollbar-track-transparent" style={{ maxHeight: '150px' }}>
+                    <div className="flex-shrink-0 overflow-y-auto p-4 pt-2 space-y-1 scrollbar-thin scrollbar-thumb-violet-300 dark:scrollbar-thumb-violet-700 scrollbar-track-transparent" style={{ maxHeight: '210px' }}>
                       {availableAgents.map((agent) => (
                         <motion.div
                           key={agent.key}

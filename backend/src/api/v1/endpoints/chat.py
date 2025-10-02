@@ -233,7 +233,6 @@ async def upload_document(
         raise HTTPException(status_code=500, detail=f"Failed to upload document: {str(e)}")
 
 
-
 @router.get("/groups/{group_id}/events")
 async def stream_group_events(group_id: str):
     """

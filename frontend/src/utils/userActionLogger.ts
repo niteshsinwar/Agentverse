@@ -91,7 +91,7 @@ class UserActionLogger {
 
   private handlePageUnload() {
     // Log any incomplete operations
-    this.activeOperations.forEach((startTime, operationId) => {
+    this.activeOperations.forEach((_startTime, operationId) => {
       this.completeOperation(operationId, {
         success: false,
         errorMessage: 'Operation interrupted by page unload'
@@ -209,9 +209,6 @@ class UserActionLogger {
       userAgent: navigator.userAgent,
       pageUrl: window.location.href
     };
-
-    // Calculate complexity score
-    const complexityScore = this.calculateComplexity(action);
 
     // Log locally for immediate feedback
     if (process.env.NODE_ENV === 'development') {
@@ -339,57 +336,5 @@ class UserActionLogger {
 
 // Global instance
 export const userActionLogger = new UserActionLogger();
-
-// Convenience functions
-export const trackAgentCreation = (agentData: Record<string, any>) => {
-  return userActionLogger.startOperation('agent_create', {
-    resourceType: 'agent',
-    resourceId: agentData.key || agentData.name,
-    resourceName: agentData.name,
-    data: {
-      hasTools: !!agentData.tools_code,
-      hasMcpConfig: !!agentData.mcp_config,
-      selectedToolsCount: agentData.selected_tools?.length || 0,
-      selectedMcpsCount: agentData.selected_mcps?.length || 0
-    }
-  });
-};
-
-export const trackToolCreation = (toolData: Record<string, any>) => {
-  return userActionLogger.startOperation('tool_create', {
-    resourceType: 'tool',
-    resourceId: toolData.name,
-    resourceName: toolData.name,
-    data: {
-      hasCode: !!toolData.code,
-      codeLength: toolData.code?.length || 0,
-      functionCount: toolData.functions?.length || 0
-    }
-  });
-};
-
-export const trackMcpCreation = (mcpData: Record<string, any>) => {
-  return userActionLogger.startOperation('mcp_create', {
-    resourceType: 'mcp',
-    resourceId: mcpData.name,
-    resourceName: mcpData.name,
-    data: {
-      serverType: mcpData.type,
-      hasConfig: !!mcpData.config,
-      toolCount: mcpData.tools?.length || 0
-    }
-  });
-};
-
-export const trackFormValidationError = (field: string, value: any, rule: string, message: string, resourceType: string) => {
-  userActionLogger.trackValidationError({
-    field,
-    value,
-    rule,
-    message
-  }, {
-    resourceType
-  });
-};
 
 export default userActionLogger;

@@ -4,8 +4,9 @@
  */
 
 import { env, isDevelopment } from '../../config/env';
-import { API_ENDPOINTS, ERROR_MESSAGES } from '../../constants/app';
-import type { ApiResponse } from '../../types/common';
+import { ERROR_MESSAGES } from '../../constants/app';
+// import { API_ENDPOINTS } from '../../constants/app';
+// import type { ApiResponse } from '../../types/common';
 
 export interface RequestConfig extends RequestInit {
   timeout?: number;
@@ -268,7 +269,7 @@ class HttpClient {
       onProgress?: (progress: number) => void;
     }
   ): Promise<T> {
-    const { onProgress, ...requestConfig } = config || {};
+    const { onProgress } = config || {};
     const url = `${this.baseURL}${endpoint}`;
 
     return new Promise((resolve, reject) => {

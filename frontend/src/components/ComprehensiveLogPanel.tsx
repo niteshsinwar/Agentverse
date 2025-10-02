@@ -4,12 +4,8 @@ import {
   ChartBarIcon,
   ClockIcon,
   UserIcon,
-  CogIcon,
-  ServerIcon,
   DocumentTextIcon,
   ExclamationTriangleIcon,
-  EyeIcon,
-  FunnelIcon,
   XMarkIcon
 } from '@heroicons/react/24/outline';
 import { Tab } from '@headlessui/react';
@@ -80,13 +76,14 @@ export const ComprehensiveLogPanel: React.FC<ComprehensiveLogPanelProps> = ({
     setLoading(true);
     setError(null);
     try {
-      const response = await apiService.getLogSessions() as { sessions: LogSession[] };
-      console.log('Sessions loaded:', response.sessions?.length || 0);
-      setSessions(response.sessions || []);
+      const response = await apiService.getLogSessions();
+      const sessionsData = Array.isArray(response) ? response : (response as any).sessions || [];
+      console.log('Sessions loaded:', sessionsData.length);
+      setSessions(sessionsData);
 
       // Auto-select current session or most recent
-      if (!selectedSession && response.sessions?.length > 0) {
-        const sessionToSelect = currentSessionId || response.sessions[0].session_id;
+      if (!selectedSession && sessionsData.length > 0) {
+        const sessionToSelect = currentSessionId || sessionsData[0].session_id;
         setSelectedSession(sessionToSelect);
         await fetchSessionSummary(sessionToSelect);
       }
@@ -186,7 +183,7 @@ export const ComprehensiveLogPanel: React.FC<ComprehensiveLogPanelProps> = ({
           </div>
 
           {Object.keys(sessionSummary.event_counts || {}).length > 0 && (
-            <BrandedCard variant="outline" className="p-6">
+            <BrandedCard variant="glass" className="p-6">
               <h4 className="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-4">Event Distribution</h4>
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                 {Object.entries(sessionSummary.event_counts).map(([eventType, count]) => (
@@ -315,12 +312,15 @@ export const ComprehensiveLogPanel: React.FC<ComprehensiveLogPanelProps> = ({
                     <ExclamationTriangleIcon className="h-3 w-3 mr-1" />
                     {sessionSummary.error_count} errors
                   </BrandedBadge>
-                  <BrandedStatus
-                    status={sessionSummary.status === 'success' ? 'active' : 'error'}
-                    size="sm"
-                  >
-                    {sessionSummary.status.toUpperCase()}
-                  </BrandedStatus>
+                  <div className="flex items-center space-x-2">
+                    <BrandedStatus
+                      status={sessionSummary.status === 'success' ? 'online' : 'offline'}
+                      size="sm"
+                    />
+                    <span className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                      {sessionSummary.status.toUpperCase()}
+                    </span>
+                  </div>
                 </div>
               </div>
             )}
@@ -331,7 +331,7 @@ export const ComprehensiveLogPanel: React.FC<ComprehensiveLogPanelProps> = ({
         <div className="border-b border-violet-200/30 dark:border-violet-800/30">
           <Tab.Group selectedIndex={selectedTab} onChange={setSelectedTab}>
             <Tab.List className="flex">
-              {tabs.map((tab, index) => (
+              {tabs.map((tab, _index) => (
                 <Tab
                   key={tab.name}
                   className={({ selected }) =>

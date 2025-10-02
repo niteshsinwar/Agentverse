@@ -93,7 +93,7 @@ export const useGroupsStore = create<GroupsStore>((set, get) => ({
 
     try {
       const groups = await groupsApi.getGroups();
-      set((state) => ({
+      set(() => ({
         groups: {
           data: Array.isArray(groups) ? groups : [],
           status: 'success',
@@ -182,7 +182,7 @@ export const useGroupsStore = create<GroupsStore>((set, get) => ({
 
     try {
       const agents = await groupsApi.getGroupAgents(groupId);
-      set((state) => ({
+      set(() => ({
         groupAgents: {
           data: Array.isArray(agents) ? agents : [],
           status: 'success',
@@ -232,7 +232,7 @@ export const useGroupsStore = create<GroupsStore>((set, get) => ({
 
     try {
       const messages = await groupsApi.getGroupMessages(groupId);
-      set((state) => ({
+      set(() => ({
         messages: {
           data: Array.isArray(messages) ? messages.filter(msg => msg && msg.role) : [],
           status: 'success',
@@ -318,7 +318,7 @@ export const useGroupsStore = create<GroupsStore>((set, get) => ({
 
     try {
       const documents = await groupsApi.getGroupDocuments(groupId);
-      set((state) => ({
+      set(() => ({
         documents: {
           data: Array.isArray(documents) ? documents : [],
           status: 'success',

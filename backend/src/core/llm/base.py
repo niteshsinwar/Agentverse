@@ -19,7 +19,7 @@ class LLMMessage:
     """Standardized message format for all LLM providers"""
     role: str  # "system", "user", "assistant", "tool"
     content: str
-    metadata: Optional[Dict[str, Any]] = None
+    metadata: Optional[Dict[str, Any]] = None  # type: ignore[assignment]
 
 @dataclass
 class LLMConfig:

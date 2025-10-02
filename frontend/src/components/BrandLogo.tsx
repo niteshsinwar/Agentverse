@@ -5,15 +5,13 @@ interface BrandLogoProps {
   size?: 'sm' | 'md' | 'lg' | 'xl';
   className?: string;
   showText?: boolean;
-  theme?: 'light' | 'dark' | 'auto';
 }
 
 export const BrandLogo: React.FC<BrandLogoProps> = ({
   variant = 'horizontal',
   size = 'md',
   className = '',
-  showText = true,
-  theme = 'auto'
+  showText = true
 }) => {
   const getSizeClasses = () => {
     switch (size) {

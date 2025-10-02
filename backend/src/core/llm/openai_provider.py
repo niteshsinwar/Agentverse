@@ -3,13 +3,18 @@
 # Purpose: Production-grade OpenAI provider with comprehensive functionality
 # =========================================
 from __future__ import annotations
-import asyncio
-import os
 import json
-from typing import List, Dict, Any, AsyncIterator, Optional
+import os
+from typing import Any, AsyncIterator, Dict, List, Optional
 from src.core.llm.base import (
-    LLM, LLMConfig, LLMMessage, LLMProvider, 
-    LLMError, LLMConnectionError, LLMRateLimitError, LLMInvalidRequestError
+    LLM,
+    LLMConfig,
+    LLMConnectionError,
+    LLMError,
+    LLMInvalidRequestError,
+    LLMMessage,
+    LLMProvider,
+    LLMRateLimitError,
 )
 
 try:
@@ -19,6 +24,7 @@ except ImportError:
     OpenAI = None
     AsyncOpenAI = None
     OPENAI_AVAILABLE = False
+
 
 class OpenAILLM(LLM):
     """Production-grade OpenAI LLM provider"""
@@ -249,4 +255,3 @@ class OpenAILLM(LLM):
             api_key=getattr(settings, 'OPENAI_API_KEY', None)
         )
         return cls(config)
-

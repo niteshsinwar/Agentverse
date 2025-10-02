@@ -120,8 +120,12 @@ source venv/bin/activate
 pip install --upgrade pip
 
 # Install requirements
-pip install -r requirements.txt
-print_success "Backend dependencies installed"
+if pip install -r requirements.txt; then
+    print_success "Backend dependencies installed"
+else
+    print_error "Failed to install backend dependencies"
+    exit 1
+fi
 
 # Create .env file if it doesn't exist
 if [ ! -f ".env" ]; then
@@ -140,8 +144,12 @@ cd frontend
 
 # Install frontend dependencies
 print_info "Installing frontend dependencies..."
-npm install
-print_success "Frontend dependencies installed"
+if npm install; then
+    print_success "Frontend dependencies installed"
+else
+    print_error "Failed to install frontend dependencies"
+    exit 1
+fi
 
 cd ..
 

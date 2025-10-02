@@ -6,9 +6,8 @@ RESTful endpoints for accessing and analyzing log data
 from fastapi import APIRouter, HTTPException, Query
 from typing import List, Dict, Any, Optional
 import json
-import os
 from pathlib import Path
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from src.core.config.settings import get_settings
 from src.core.telemetry.session_logger import session_logger
