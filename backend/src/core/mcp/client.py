@@ -4,6 +4,9 @@
 # =========================================
 from __future__ import annotations
 import os
+import sys
+import subprocess
+import shutil
 import json
 import asyncio
 import time
@@ -87,13 +90,33 @@ class MCPServerHandle:
                 # Expand environment variables in command and args
                 command = os.path.expandvars(self.spec.command)
                 args = [os.path.expandvars(arg) for arg in self.spec.args]
-                
+
+                # Cross-platform command resolution - simple approach like Claude Desktop
+                if sys.platform == 'win32':
+                    cmd_lower = command.lower()
+
+                    # 1. Node.js ecosystem - add .cmd extension
+                    if cmd_lower in ['npx', 'npm', 'node', 'yarn', 'pnpm']:
+                        if not command.endswith('.cmd'):
+                            command = f"{command}.cmd"
+
+                    # 2. Python UV ecosystem - add .exe extension
+                    elif cmd_lower in ['uvx', 'uv', 'python', 'python3', 'pip', 'pipx']:
+                        if not command.endswith('.exe'):
+                            command = f"{command}.exe"
+
+                    # 3. Unix shell paths - extract basename
+                    elif command.startswith('/bin/') or command.startswith('/usr/bin/'):
+                        command = os.path.basename(command)
+
+                # Note: Absolute paths (like C:\...\script.bat) are used as-is
+
                 # Validate command
                 if not command:
                     self.status = MCPServerStatus.ERROR
                     logger.error(f"MCP server {self.name} has empty command")
                     return False
-                
+
                 # Retry with exponential backoff for robustness
                 max_retries = max(1, settings.mcp.max_retries)
                 last_error: Optional[Exception] = None
@@ -101,6 +124,12 @@ class MCPServerHandle:
                     try:
                         # Start process with configurable buffer sizes
                         buffer_limit = int(settings.mcp.buffer_size_mb * 1024 * 1024)
+
+                        # Debug logging for Windows subprocess
+                        logger.info(f"[MCP {self.name}] Executing: {command} {' '.join(args)}")
+
+                        # Execute command directly - cross-platform
+                        # Threading workaround in API/validator handles Windows ProactorEventLoop issues
                         self.proc = await asyncio.create_subprocess_exec(
                             command, *args,
                             stdin=asyncio.subprocess.PIPE,
@@ -109,6 +138,7 @@ class MCPServerHandle:
                             env=env,
                             limit=buffer_limit
                         )
+                        logger.info(f"[MCP {self.name}] Process created, PID: {self.proc.pid}")
                         # Perform handshake
                         if await self._handshake():
                             self.status = MCPServerStatus.RUNNING
@@ -121,7 +151,9 @@ class MCPServerHandle:
                             logger.warning(f"MCP server {self.name} handshake failed on attempt {attempt}/{max_retries}")
                     except Exception as e:
                         last_error = e
-                        logger.warning(f"Failed to start MCP server {self.name} (attempt {attempt}/{max_retries}): {e}")
+                        import traceback
+                        error_detail = ''.join(traceback.format_exception(type(e), e, e.__traceback__))
+                        logger.error(f"Failed to start MCP server {self.name} (attempt {attempt}/{max_retries}):\n{error_detail}")
                         await self.stop()
                     
                     # Backoff before next attempt
@@ -143,18 +175,42 @@ class MCPServerHandle:
         """Stop the MCP server process"""
         async with self._lock:
             if self.proc:
+                proc = self.proc
+                self.proc = None  # Clear reference immediately
+                self.status = MCPServerStatus.STOPPED
+
                 try:
-                    self.proc.terminate()
-                    try:
-                        await asyncio.wait_for(self.proc.wait(), timeout=5.0)
-                    except asyncio.TimeoutError:
-                        self.proc.kill()
-                        await self.proc.wait()
+                    # Use direct process termination without async wait to avoid event loop issues
+                    import sys
+                    if sys.platform == 'win32':
+                        # On Windows, use synchronous termination to avoid cross-event-loop issues
+                        try:
+                            proc.terminate()
+                            # Give it a moment to terminate gracefully
+                            import time
+                            time.sleep(0.5)
+                            # Force kill if still running
+                            if proc.returncode is None:
+                                proc.kill()
+                            # Explicitly close stdin/stdout/stderr to prevent cleanup errors
+                            if proc.stdin:
+                                proc.stdin.close()
+                            if proc.stdout:
+                                proc.stdout.close()
+                            if proc.stderr:
+                                proc.stderr.close()
+                        except Exception as e:
+                            logger.debug(f"Windows process cleanup for {self.name}: {e}")
+                    else:
+                        # Unix/Mac - use normal async cleanup
+                        proc.terminate()
+                        try:
+                            await asyncio.wait_for(proc.wait(), timeout=5.0)
+                        except asyncio.TimeoutError:
+                            proc.kill()
+                            await proc.wait()
                 except Exception as e:
-                    logger.error(f"Error stopping MCP server {self.name}: {e}")
-                finally:
-                    self.proc = None
-                    self.status = MCPServerStatus.STOPPED
+                    logger.debug(f"Error stopping MCP server {self.name}: {e}")
 
     async def _handshake(self) -> bool:
         """Perform MCP handshake and discover tools"""
@@ -247,7 +303,7 @@ class MCPServerHandle:
         """Send JSON-RPC message to MCP server"""
         if not self.proc or not self.proc.stdin:
             raise ValueError("MCP server not running")
-        
+
         message_str = json.dumps(message) + "\n"
         self.proc.stdin.write(message_str.encode())
         await self.proc.stdin.drain()
@@ -264,6 +320,7 @@ class MCPServerHandle:
 
             while time.time() < end_time:
                 try:
+                    # Just use readline directly - the threading workaround in API/validator handles event loop
                     line = await asyncio.wait_for(
                         self.proc.stdout.readline(),
                         timeout=max(0.1, end_time - time.time())
@@ -316,7 +373,7 @@ class MCPServerHandle:
         if self.status != MCPServerStatus.RUNNING:
             if not await self.start():
                 raise RuntimeError(f"MCP server {self.name} is not running")
-        
+
         try:
             max_retries = max(1, settings.mcp.max_retries)
             last_error: Optional[Exception] = None
@@ -392,10 +449,31 @@ class MCPServerHandle:
 
 class MCPManager:
     """Production-grade MCP manager with connection pooling and error handling"""
-    
+
     def __init__(self) -> None:
         self.servers: Dict[str, MCPServerHandle] = {}
         self._health_check_task: Optional[asyncio.Task] = None
+
+        # Windows: Create persistent event loop in background thread
+        import sys
+        if sys.platform == 'win32':
+            import threading
+            self._loop_thread = None
+            self._background_loop = None
+            self._loop_ready = threading.Event()
+
+            def run_background_loop():
+                """Run persistent ProactorEventLoop in background thread"""
+                self._background_loop = asyncio.ProactorEventLoop()
+                asyncio.set_event_loop(self._background_loop)
+                self._loop_ready.set()
+                self._background_loop.run_forever()
+
+            self._loop_thread = threading.Thread(target=run_background_loop, daemon=True)
+            self._loop_thread.start()
+            self._loop_ready.wait()  # Wait for loop to be ready
+        else:
+            self._background_loop = None
 
     @classmethod
     def from_config(cls, mcp_config: Dict[str, Any]) -> "MCPManager":
@@ -429,24 +507,45 @@ class MCPManager:
         """Start background health check task"""
         if self._health_check_task:
             return
-        
-        async def health_check_loop():
-            while True:
-                try:
-                    await asyncio.sleep(settings.mcp.health_check_interval)
-                    await self.health_check_all()
-                except asyncio.CancelledError:
-                    break
-                except Exception as e:
-                    logger.error(f"Health check error: {e}")
 
-        # Only start if there is a running loop (e.g., in app runtime). In sync contexts (like tests), skip.
-        try:
-            loop = asyncio.get_running_loop()
-            self._health_check_task = loop.create_task(health_check_loop())
-        except RuntimeError:
-            # No running event loop; defer starting until explicitly called under async context
-            logger.debug("Skipping health check task start: no running event loop")
+        import sys
+        # Windows: Health checks MUST run in the persistent ProactorEventLoop
+        if sys.platform == 'win32' and self._background_loop:
+            async def health_check_loop():
+                while True:
+                    try:
+                        await asyncio.sleep(settings.mcp.health_check_interval)
+                        await self.health_check_all()
+                    except asyncio.CancelledError:
+                        break
+                    except Exception as e:
+                        logger.error(f"Health check error: {e}")
+
+            # Schedule health check in the persistent ProactorEventLoop
+            self._health_check_task = asyncio.run_coroutine_threadsafe(
+                health_check_loop(),
+                self._background_loop
+            )
+            logger.debug("Started health check task in persistent ProactorEventLoop (Windows)")
+        else:
+            # Mac/Unix: Use current loop
+            async def health_check_loop():
+                while True:
+                    try:
+                        await asyncio.sleep(settings.mcp.health_check_interval)
+                        await self.health_check_all()
+                    except asyncio.CancelledError:
+                        break
+                    except Exception as e:
+                        logger.error(f"Health check error: {e}")
+
+            # Only start if there is a running loop (e.g., in app runtime). In sync contexts (like tests), skip.
+            try:
+                loop = asyncio.get_running_loop()
+                self._health_check_task = loop.create_task(health_check_loop())
+            except RuntimeError:
+                # No running event loop; defer starting until explicitly called under async context
+                logger.debug("Skipping health check task start: no running event loop")
 
     async def health_check_all(self) -> Dict[str, bool]:
         """Perform health check on all servers"""
@@ -461,6 +560,21 @@ class MCPManager:
 
     async def start_all(self) -> Dict[str, bool]:
         """Start all MCP servers"""
+        import sys
+        if sys.platform == 'win32' and self._background_loop:
+            # Windows: Use persistent background loop
+            import concurrent.futures
+            future = asyncio.run_coroutine_threadsafe(
+                self._start_all_impl(),
+                self._background_loop
+            )
+            return future.result(timeout=30.0)
+        else:
+            # Mac/Unix or validation: Use current loop
+            return await self._start_all_impl()
+
+    async def _start_all_impl(self) -> Dict[str, bool]:
+        """Implementation of start_all"""
         results = {}
         for name, server in self.servers.items():
             results[name] = await server.start()
@@ -469,12 +583,21 @@ class MCPManager:
     async def stop_all(self) -> None:
         """Stop all MCP servers"""
         if self._health_check_task:
-            self._health_check_task.cancel()
-            try:
-                await self._health_check_task
-            except asyncio.CancelledError:
-                pass
-        
+            import sys
+            # Windows: _health_check_task is a Future, cancel differently
+            if sys.platform == 'win32' and hasattr(self._health_check_task, 'cancel'):
+                try:
+                    self._health_check_task.cancel()
+                except Exception as e:
+                    logger.debug(f"Health check task cancellation: {e}")
+            else:
+                # Mac/Unix: _health_check_task is an asyncio.Task
+                self._health_check_task.cancel()
+                try:
+                    await self._health_check_task
+                except asyncio.CancelledError:
+                    pass
+
         for server in self.servers.values():
             await server.stop()
 
@@ -499,10 +622,10 @@ class MCPManager:
         """Invoke MCP tool with full logging and error handling"""
         if server_name not in self.servers:
             raise ValueError(f"Unknown MCP server '{server_name}'")
-        
+
         server = self.servers[server_name]
         start_time = time.time()
-        
+
         try:
             # Check if server is healthy before invoking tool
             if server.status != MCPServerStatus.RUNNING:
@@ -510,23 +633,32 @@ class MCPManager:
                 restart_success = await server.start()
                 if not restart_success:
                     raise RuntimeError(f"Failed to restart MCP server {server_name}")
-            
+
             # Log MCP call start
             session_logger.log_mcp_call(
                 session_id=group_id,
-                agent_id=agent_key, 
+                agent_id=agent_key,
                 server_name=server_name,
                 tool_name=tool_name,
                 params=params
             )
-            
-            # Execute the tool call with timeout
-            result = await asyncio.wait_for(
-                server.call_tool(tool_name, params),
-                timeout=15.0  # 15 second timeout per tool call
-            )
+
+            # Windows: Use persistent background loop
+            import sys
+            if sys.platform == 'win32' and self._background_loop:
+                future = asyncio.run_coroutine_threadsafe(
+                    server.call_tool(tool_name, params),
+                    self._background_loop
+                )
+                result = future.result(timeout=15.0)
+            else:
+                # Mac/Unix: Use normal async
+                result = await asyncio.wait_for(
+                    server.call_tool(tool_name, params),
+                    timeout=15.0  # 15 second timeout per tool call
+                )
             duration_ms = (time.time() - start_time) * 1000
-            
+
             # Log successful result
             session_logger.log_mcp_call(
                 session_id=group_id,
@@ -537,7 +669,7 @@ class MCPManager:
                 duration_ms=duration_ms,
                 result=result
             )
-            
+
             return result
             
         except Exception as e:

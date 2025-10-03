@@ -197,7 +197,7 @@ class OrchestratorService:
             file_size = len(file_content)
 
             # Step 1: Add document upload notification (minimal, visible to UI)
-            session_store.append_document_message(
+            doc_msg_id = session_store.append_document_message(
                 group_id=group_id,
                 sender="user",
                 filename=file.filename,
@@ -210,7 +210,11 @@ class OrchestratorService:
                 content_summary=""  # Keep UI message clean
             )
 
-            # No need for separate SSE emission - document upload message is stored and will be visible
+            # Emit document upload notification as SSE event for real-time display
+            from src.core.telemetry.events import emit_message
+            size_kb = file_size / 1024 if file_size > 0 else 0
+            doc_content = f"📄 **Document uploaded**: {file.filename}\n**Target Agent**: @{agent_id}\n**Size**: {size_kb:.1f} KB • **ID**: {result['document_id']}"
+            await emit_message(group_id, sender="system", role="system", content=doc_content)
 
             # Step 2: Add document analysis to conversation history (hidden from UI, available to agents)
             # Use extracted_content (which contains AI analysis) rather than content_summary (which is just a basic summary)
@@ -229,10 +233,11 @@ class OrchestratorService:
                     }
                 )
 
-            # Step 3: Route user's message to agent (clean, without embedded analysis)
+            # Step 3: Route user's message to agent (router will emit SSE event)
+            user_message_content = f"@{agent_id} {message}" if message else f"@{agent_id}"
             await self.router.route_message(
                 group_id=group_id,
-                message=f"@{agent_id} {message}",
+                message=user_message_content,
                 mentioner="user"
             )
 

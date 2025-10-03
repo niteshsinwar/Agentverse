@@ -411,20 +411,29 @@ export const useGroupsStore = create<GroupsStore>((set, get) => ({
               get().loadGroupAgents(groupId);
               break;
             case 'document_uploaded':
+              // Reload both documents and messages to show upload notification
               get().loadDocuments(groupId);
+              get().loadMessages(groupId);
               break;
             case 'tool_call':
               console.log('Processing tool_call event:', data.payload);
               // Add tool call as a special message to show real-time tool execution
+              let toolContent = `🔧 Tool call: ${data.payload.tool}`;
+
+              // Show params if available
+              if (data.payload.params) {
+                toolContent += `\nargs: ${JSON.stringify(data.payload.params)}`;
+              }
+
               const toolCallMessage = {
                 id: Date.now(),
                 group_id: data.group_id,
                 sender: data.agent_key || 'system',
                 role: 'tool_call' as const,
-                content: `🔧 Tool call: ${data.payload.tool}\nStatus: ${data.payload.status}`,
+                content: toolContent,
                 created_at: data.timestamp,
                 updated_at: data.timestamp,
-                metadata: { tool: data.payload.tool, status: data.payload.status }
+                metadata: { tool: data.payload.tool, status: data.payload.status, params: data.payload.params }
               };
               get().addMessage(toolCallMessage);
               break;
@@ -445,16 +454,28 @@ export const useGroupsStore = create<GroupsStore>((set, get) => ({
               break;
             case 'mcp_call':
               console.log('Processing mcp_call event:', data.payload);
-              // Add MCP call as a special message
+              // Add MCP call as a special message with args/result
+              let mcpContent = `🔧 MCP call: ${data.payload.server}/${data.payload.tool}`;
+
+              // If status is "calling", show params
+              if (data.payload.status === 'calling' && data.payload.params) {
+                mcpContent += `\nargs: ${JSON.stringify(data.payload.params)}`;
+              }
+
+              // If status is "success", show result
+              if (data.payload.status === 'success' && data.payload.result_preview) {
+                mcpContent = `✅ MCP result: ${data.payload.server}/${data.payload.tool}\nresult: ${data.payload.result_preview}`;
+              }
+
               const mcpCallMessage = {
                 id: Date.now(),
                 group_id: data.group_id,
                 sender: data.agent_key || 'system',
-                role: 'mcp_call' as const,
-                content: `🔧 MCP call: ${data.payload.server}/${data.payload.tool}\nStatus: ${data.payload.status}`,
+                role: data.payload.status === 'success' ? 'mcp_result' as const : 'mcp_call' as const,
+                content: mcpContent,
                 created_at: data.timestamp,
                 updated_at: data.timestamp,
-                metadata: { server: data.payload.server, tool: data.payload.tool, status: data.payload.status }
+                metadata: { server: data.payload.server, tool: data.payload.tool, status: data.payload.status, ...data.payload }
               };
               get().addMessage(mcpCallMessage);
               break;

@@ -160,7 +160,7 @@ class BaseAgent:
             )
 
             # Emit real-time events for UI
-            await emit_tool_call(group_id, self.agent_id, tool_name, "success", {"duration_ms": duration_ms})
+            await emit_tool_call(group_id, self.agent_id, tool_name, "success", {"duration_ms": duration_ms, "params": kwargs})
             await emit_tool_result(group_id, self.agent_id, tool_name, str(res)[:100], {"duration_ms": duration_ms})
             # Persist tool result to conversation history
             session_store.append_message(
@@ -300,8 +300,9 @@ class BaseAgent:
                         mcp_tools_detail += f"  - {tool.name}: {desc}\n"
                         mcp_tools_detail += f"    Params: {param_str}\n"
                     mcp_tools_detail += "\n"
-            mcp_tools_detail += "To call MCP tools use: {\"action\":\"call_mcp\",\"server\":\"<server>\",\"tool\":\"<tool_name>\",\"params\":{...}}\n"
-            mcp_tools_detail += "⚡ Parameters marked with * are REQUIRED. Use exact parameter names shown above.\n"
+            mcp_tools_detail += "\nTo call MCP tools: {\"action\":\"call_mcp\",\"server\":\"<server>\",\"tool\":\"<tool>\",\"params\":{...}}\n"
+            mcp_tools_detail += "⚡ Parameters marked with * are REQUIRED - extract them from user's request.\n"
+            mcp_tools_detail += "Example: 'navigate to google.com' → params: {\"url\": \"https://google.com\"}\n"
             mcp_tools_detail += "=== END MCP TOOLS ===\n"
 
         # BUILD COLLABORATIVE PROMPT with structured response schema

@@ -4,6 +4,7 @@ Validates MCP server configurations using the same logic as mcp/client.py
 """
 
 import os
+import sys
 import shutil
 import subprocess
 from typing import Dict, Any, List, Optional
@@ -91,11 +92,37 @@ class McpValidator:
 
             # Test ACTUAL server startup (same as build_agent()) with timeout
             import asyncio
+            import sys
+
+            # Windows subprocess workaround - ALWAYS use threading on Windows
+            # Uvicorn with reload uses SelectorEventLoop which doesn't support subprocesses
             try:
-                startup_results = await asyncio.wait_for(
-                    mcp_manager.start_all(),
-                    timeout=timeout  # Use the provided timeout parameter
-                )
+                if sys.platform == 'win32':
+                    from concurrent.futures import ThreadPoolExecutor, TimeoutError as ThreadTimeoutError
+
+                    def run_mcp_startup():
+                        """Run MCP startup in separate thread with ProactorEventLoop"""
+                        # Create ProactorEventLoop directly on Windows
+                        new_loop = asyncio.ProactorEventLoop()
+                        asyncio.set_event_loop(new_loop)
+                        try:
+                            print(f"[MCP Validator Thread] Event loop type: {type(new_loop).__name__}")
+                            return new_loop.run_until_complete(mcp_manager.start_all())
+                        finally:
+                            new_loop.close()
+
+                    try:
+                        with ThreadPoolExecutor(max_workers=1) as executor:
+                            future = executor.submit(run_mcp_startup)
+                            startup_results = future.result(timeout=timeout)
+                    except ThreadTimeoutError:
+                        result.add_error("startup", f"MCP server '{name}' startup timeout after {timeout}s", "STARTUP_TIMEOUT")
+                        return result
+                else:
+                    startup_results = await asyncio.wait_for(
+                        mcp_manager.start_all(),
+                        timeout=timeout  # Use the provided timeout parameter
+                    )
             except asyncio.TimeoutError:
                 result.add_error("startup", f"MCP server '{name}' startup timeout after {timeout}s", "STARTUP_TIMEOUT")
                 return result
@@ -143,12 +170,31 @@ class McpValidator:
             result.add_error("command", "Command is required for connectivity test", "MISSING_COMMAND")
             return result
 
-        # Test command availability (same as MCPServerHandle validation)
+        # Simple cross-platform command resolution (like Claude Desktop)
         expanded_command = os.path.expandvars(command)
 
-        # Check if command exists in PATH
-        if not shutil.which(expanded_command):
-            result.add_error("command", f"Command '{expanded_command}' not found in PATH", "COMMAND_NOT_FOUND")
+        if sys.platform == 'win32':
+            cmd_lower = expanded_command.lower()
+
+            # 1. Node.js ecosystem - add .cmd extension
+            if cmd_lower in ['npx', 'npm', 'node', 'yarn', 'pnpm']:
+                if not expanded_command.endswith('.cmd'):
+                    expanded_command = f"{expanded_command}.cmd"
+
+            # 2. Python UV ecosystem - add .exe extension
+            elif cmd_lower in ['uvx', 'uv', 'python', 'python3', 'pip', 'pipx']:
+                if not expanded_command.endswith('.exe'):
+                    expanded_command = f"{expanded_command}.exe"
+
+            # 3. Unix shell paths - extract basename
+            elif expanded_command.startswith('/bin/') or expanded_command.startswith('/usr/bin/'):
+                expanded_command = os.path.basename(expanded_command)
+
+        # Note: Absolute paths (like C:\...\script.bat) are used as-is
+
+        # Check if command exists (let PATH resolve it)
+        if not shutil.which(expanded_command) and not (os.path.isabs(expanded_command) and os.path.isfile(expanded_command)):
+            result.add_error("command", f"Command '{command}' not found in system PATH", "COMMAND_NOT_FOUND")
             return result
 
         # Test basic command execution (non-persistent test)
@@ -161,13 +207,23 @@ class McpValidator:
             expanded_args = [os.path.expandvars(arg) for arg in args]
 
             # Test command with --help flag to see if it responds
-            test_proc = await asyncio.create_subprocess_exec(
-                expanded_command,
-                "--help",
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-                env=test_env
-            )
+            # Note: Use the platform-adjusted expanded_command
+            # On Windows with .cmd files, execute through cmd.exe
+            if sys.platform == 'win32' and expanded_command.lower().endswith('.cmd'):
+                test_proc = await asyncio.create_subprocess_exec(
+                    'cmd.exe', '/c', expanded_command, "--help",
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                    env=test_env
+                )
+            else:
+                test_proc = await asyncio.create_subprocess_exec(
+                    expanded_command,
+                    "--help",
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                    env=test_env
+                )
 
             try:
                 stdout, stderr = await asyncio.wait_for(test_proc.communicate(), timeout=timeout)
