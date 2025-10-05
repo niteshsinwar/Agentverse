@@ -38,7 +38,10 @@ class MCPCallResponse(AgentResponse):
     action: Literal[ActionType.CALL_MCP] = ActionType.CALL_MCP
     server: str = Field(..., description="MCP server name")
     tool: str = Field(..., description="MCP tool name")
-    inputs: Dict[str, Any] = Field(default_factory=dict, description="MCP tool inputs")
+    inputs: Dict[str, Any] = Field(default_factory=dict, description="MCP tool inputs", alias="params")
+
+    class Config:
+        populate_by_name = True  # Allow both 'inputs' and 'params'
 
 
 def get_response_schema() -> str:

@@ -1,18 +1,16 @@
 """
 Agent Configuration Validator
 Validates agent configurations using the exact same logic as registry.py
+
+REFACTORED: Delegates to ToolValidator and McpValidator to eliminate code duplication (DRY principle)
 """
 
 import os
 import yaml
 import json
-import importlib.util
-import inspect
-import ast
 from typing import Dict, Any, Optional, List
-from pathlib import Path
 
-from .validation_result import ValidationResult, ValidationError, ValidationWarning
+from .validation_result import ValidationResult
 
 
 class AgentValidator:
@@ -38,6 +36,19 @@ class AgentValidator:
 
         # Validate basic fields (same as registry.py AgentSpec validation)
         AgentValidator._validate_basic_fields(result, name, description, emoji, agent_key)
+
+        # DELEGATE to specialized validators (DRY principle)
+        # 1. Validate tools code (delegate to ToolValidator)
+        if tools_code:
+            AgentValidator._validate_tools_code(result, tools_code)
+
+        # 2. Validate MCP config (delegate to McpValidator)
+        if mcp_config:
+            AgentValidator._validate_mcp_config(result, mcp_config)
+
+        # If validation already failed, don't attempt build
+        if not result.valid:
+            return result
 
         # Test COMPLETE agent building process (same as build_agent())
         try:
@@ -240,96 +251,42 @@ class AgentValidator:
     @staticmethod
     def _validate_tools_code(result: ValidationResult, tools_code: str):
         """
-        Validate tools.py code using the same logic as _import_tools_py and register_tools_from_module
+        Validate tools.py code by delegating to ToolValidator.
+        Ensures consistency with tool endpoint validation (DRY principle).
         """
         if not tools_code.strip():
             return  # Empty tools code is valid
 
-        # Parse Python syntax (same validation as importlib would do)
-        try:
-            tree = ast.parse(tools_code)
-        except SyntaxError as e:
-            result.add_error("tools_code", f"Python syntax error: {str(e)}", "SYNTAX_ERROR", {
-                "line": e.lineno,
-                "offset": e.offset
-            })
-            return
+        # DELEGATE to ToolValidator (reuse existing validation logic)
+        from src.core.validation.tool_validator import ToolValidator
 
-        # Security validation - check for dangerous imports/calls
-        dangerous_imports = ['os', 'subprocess', 'sys', '__import__', 'eval', 'exec', 'open']
-        dangerous_calls = ['eval', 'exec', '__import__', 'getattr', 'setattr', 'delattr']
+        tool_validation = ToolValidator.validate_tool_code_execution(
+            code=tools_code,
+            function_names=None  # Auto-discover functions
+        )
 
-        for node in ast.walk(tree):
-            if isinstance(node, ast.Import):
-                for alias in node.names:
-                    if alias.name in dangerous_imports:
-                        result.add_warning("tools_code", f"Potentially dangerous import: {alias.name}", "DANGEROUS_IMPORT", {
-                            "import": alias.name,
-                            "line": node.lineno
-                        })
+        # Merge validation results with proper field context
+        for error in tool_validation.errors:
+            result.add_error(
+                "tools_code",
+                error.message,
+                error.code,
+                error.details
+            )
 
-            elif isinstance(node, ast.ImportFrom) and node.module:
-                if node.module in dangerous_imports:
-                    result.add_warning("tools_code", f"Potentially dangerous import from: {node.module}", "DANGEROUS_IMPORT", {
-                        "import": node.module,
-                        "line": node.lineno
-                    })
-
-            elif isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
-                if node.func.id in dangerous_calls:
-                    result.add_warning("tools_code", f"Potentially dangerous function call: {node.func.id}", "DANGEROUS_CALL", {
-                        "function": node.func.id,
-                        "line": node.lineno
-                    })
-
-        # Validate agent tools (same logic as register_tools_from_module)
-        tool_functions = []
-        function_names = set()
-
-        for node in ast.walk(tree):
-            if isinstance(node, ast.FunctionDef):
-                function_names.add(node.name)
-
-                # Check if function has @agent_tool decorator
-                has_agent_tool_decorator = False
-                for decorator in node.decorator_list:
-                    if isinstance(decorator, ast.Name) and decorator.id == "agent_tool":
-                        has_agent_tool_decorator = True
-                        break
-
-                if has_agent_tool_decorator:
-                    tool_functions.append(node.name)
-
-                    # Validate function signature
-                    if len(node.args.args) == 0:
-                        result.add_warning("tools_code", f"Tool function '{node.name}' has no parameters", "NO_PARAMETERS", {
-                            "function": node.name,
-                            "line": node.lineno
-                        })
-
-        # Check for @agent_tool import (more flexible pattern matching)
-        has_agent_tool_import = False
-        for node in ast.walk(tree):
-            if isinstance(node, ast.ImportFrom):
-                if node.module and ("base_agent" in node.module or "decorators" in node.module):
-                    for alias in node.names:
-                        if alias.name == "agent_tool":
-                            has_agent_tool_import = True
-                            break
-
-        if tool_functions and not has_agent_tool_import:
-            result.add_warning("tools_code", "Recommended import: from src.core.agents.base_agent import agent_tool", "MISSING_IMPORT", {
-                "recommended_import": "from src.core.agents.base_agent import agent_tool"
-            })
-
-        if not tool_functions:
-            result.add_warning("tools_code", "No @agent_tool decorated functions found", "NO_TOOLS_FOUND")
+        for warning in tool_validation.warnings:
+            result.add_warning(
+                "tools_code",
+                warning.message,
+                warning.code,
+                warning.details
+            )
 
     @staticmethod
     def _validate_mcp_config(result: ValidationResult, mcp_config: Dict[str, Any]):
         """
-        Validate MCP configuration using the same logic as MCPManager.from_config
-        Supports both direct server config and mcpServers wrapper format
+        Validate MCP configuration by delegating to McpValidator.
+        Ensures consistency with MCP endpoint validation (DRY principle).
         """
         if not isinstance(mcp_config, dict):
             result.add_error("mcp_config", "MCP configuration must be a dictionary", "INVALID_TYPE")
@@ -339,36 +296,24 @@ class AgentValidator:
         if not mcp_config:
             return
 
-        # Handle the actual format used by working agents: {"mcpServers": {...}}
-        servers_config = mcp_config
-        if "mcpServers" in mcp_config:
-            servers_config = mcp_config["mcpServers"]
-            if not isinstance(servers_config, dict):
-                result.add_error("mcp_config", "mcpServers must be a dictionary", "INVALID_TYPE")
-                return
+        # DELEGATE to McpValidator (reuse existing validation logic)
+        from src.core.validation.mcp_validator import McpValidator
 
-        for server_name, server_config in servers_config.items():
-            if not isinstance(server_config, dict):
-                result.add_error("mcp_config", f"MCP server '{server_name}' configuration must be a dictionary", "INVALID_SERVER_CONFIG")
-                continue
+        mcp_validation = McpValidator.validate_mcp_servers_config(mcp_config)
 
-            # Validate required fields (same as MCPServerSpec validation)
-            command = server_config.get("command", "")
-            if not command or not command.strip():
-                result.add_error("mcp_config", f"MCP server '{server_name}' missing required 'command' field", "MISSING_COMMAND")
+        # Merge validation results with proper field context
+        for error in mcp_validation.errors:
+            result.add_error(
+                "mcp_config",
+                error.message,
+                error.code,
+                error.details
+            )
 
-            args = server_config.get("args", [])
-            if not isinstance(args, list):
-                result.add_error("mcp_config", f"MCP server '{server_name}' 'args' must be a list", "INVALID_ARGS")
-
-            env = server_config.get("env", {})
-            if not isinstance(env, dict):
-                result.add_error("mcp_config", f"MCP server '{server_name}' 'env' must be a dictionary", "INVALID_ENV")
-
-            timeout = server_config.get("timeout", 30.0)
-            if not isinstance(timeout, (int, float)) or timeout <= 0:
-                result.add_error("mcp_config", f"MCP server '{server_name}' 'timeout' must be a positive number", "INVALID_TIMEOUT")
-
-            # Validate server name format
-            if not server_name.replace("_", "").replace("-", "").isalnum():
-                result.add_error("mcp_config", f"MCP server name '{server_name}' can only contain letters, numbers, underscores, and hyphens", "INVALID_SERVER_NAME")
+        for warning in mcp_validation.warnings:
+            result.add_warning(
+                "mcp_config",
+                warning.message,
+                warning.code,
+                warning.details
+            )

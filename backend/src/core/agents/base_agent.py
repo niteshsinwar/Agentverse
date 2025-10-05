@@ -1,6 +1,6 @@
 # =========================================
-# File: app/agents/base_agent.py
-# Purpose: Agent decides: respond vs custom tool vs MCP vs other agent, with multi-step control loop
+# File: src/core/agents/base_agent.py
+# Purpose: Enhanced agent with LangChain LLM, preserving all business logic
 # =========================================
 from __future__ import annotations
 import inspect
@@ -17,21 +17,30 @@ from .response_models import (
     parse_agent_response,
 )
 
-# Agent memory system is handled through session_store
-# No separate memory manager needed
-
 # Constants
-MAX_CONVERSATION_HISTORY = 20  # Number of recent messages to include in context
-MAX_PLANNING_STEPS = 8         # Maximum steps for agent planning loop
-MAX_VALIDATION_ATTEMPTS = 3    # Maximum attempts to fix @mention validation
+MAX_CONVERSATION_HISTORY = 20
+MAX_PLANNING_STEPS = 8
+MAX_VALIDATION_ATTEMPTS = 3
 
 
 def agent_tool(fn: Callable):
+    """Decorator for custom tools - keeps tools simple and smooth"""
     setattr(fn, "__agent_tool__", True)
     return fn
 
 
 class BaseAgent:
+    """
+    Enhanced agent with LangChain LLM integration.
+
+    Business Logic (PRESERVED):
+    - Agent only uses tools from its tools.py or mcp.json
+    - Three actions: final, call_tool, call_mcp
+    - @mention routing for agent-to-agent communication
+    - Group-aware: knows roster, history, descriptions
+    - Multi-tenant: same agent in multiple groups with separate history
+    """
+
     def __init__(self, agent_id: str, llm_config: Optional[Dict[str, str]] = None):
         self.agent_id = agent_id
         self.metadata: Dict[str, Any] = {}
@@ -39,27 +48,25 @@ class BaseAgent:
         self.mcp = None
         self.llm_config = llm_config or {"provider": "openai", "model": "gpt-4o-mini"}
 
-        # Memory is handled through session_store conversation history
-
     def load_metadata(self, name: str, description: str, folder_path: str) -> None:
+        """Load agent metadata"""
         self.metadata = {"name": name, "description": description, "folder_path": folder_path}
 
     def attach_mcp(self, mcp_client: Any) -> None:
+        """Attach MCP client for external tools"""
         self.mcp = mcp_client
 
     def get_capabilities_summary(self) -> str:
-        """Return a summary of this agent's capabilities including tools and MCP servers."""
+        """Return a summary of this agent's capabilities"""
         parts = []
-        
-        # Add specialty/description
+
         specialty = self.metadata.get('description', 'General purpose agent')
         parts.append(f"Specialty: {specialty}")
-        
-        # Add custom tools
+
+        # Custom tools
         if self.tools:
             tool_details = []
             for name, func in self.tools.items():
-                # Get function signature for better tool understanding
                 try:
                     sig = inspect.signature(func)
                     params = []
@@ -79,8 +86,8 @@ class BaseAgent:
             parts.append(f"Custom tools: {' | '.join(tool_details)}")
         else:
             parts.append("Custom tools: none")
-        
-        # Add MCP servers with actual tool names
+
+        # MCP servers
         if self.mcp is None:
             parts.append("MCP servers: none (mcp is None)")
         elif not hasattr(self.mcp, 'servers'):
@@ -90,31 +97,28 @@ class BaseAgent:
         else:
             mcp_summary = []
             for server_name, server_handle in self.mcp.servers.items():
-                tool_count = len(server_handle.tools_cache)
+                tool_count = len(server_handle._tools_cache)
                 if tool_count > 0:
-                    # Show first few tool names for context
-                    tool_names = [tool.name for tool in server_handle.tools_cache[:3]]
+                    tool_names = [tool.name for tool in server_handle._tools_cache[:3]]
                     if tool_count > 3:
                         tool_names.append(f"...+{tool_count-3} more")
                     mcp_summary.append(f"{server_name}({tool_count} tools: {', '.join(tool_names)})")
                 else:
                     mcp_summary.append(f"{server_name}(0 tools)")
             parts.append(f"MCP servers: {' | '.join(mcp_summary)}")
-        
-        # Add conversation history capabilities
+
         parts.append("Conversation Memory: enabled via session_store")
-        
-        result = " | ".join(parts)
-        return result
+
+        return " | ".join(parts)
 
     def register_tools_from_module(self, mod: Any) -> None:
+        """Register tools from module - only @agent_tool decorator"""
         for _, fn in inspect.getmembers(mod, inspect.isfunction):
             if getattr(fn, "__agent_tool__", False):
                 self.tools[fn.__name__] = fn
 
     async def call_tool(self, group_id: str, tool_name: str, **kwargs: Any) -> Any:
         """Call a custom tool with logging and error handling"""
-        # If tool isn't registered, log as error and return structured error (do not raise)
         if tool_name not in self.tools:
             from src.core.memory import session_store
             session_store.append_message(
@@ -130,12 +134,10 @@ class BaseAgent:
         from src.core.telemetry.events import emit_tool_call, emit_tool_result, emit_error
         from src.core.memory import session_store
         import time
-        import json
-        
+
         start_time = time.time()
-        
+
         try:
-            # Persist tool call to conversation history
             session_store.append_message(
                 group_id=group_id,
                 sender=self.agent_id,
@@ -146,10 +148,9 @@ class BaseAgent:
             res = self.tools[tool_name](**kwargs)
             if inspect.isawaitable(res):
                 res = await res
-            
+
             duration_ms = (time.time() - start_time) * 1000
 
-            # Log successful tool call
             session_logger.log_tool_call(
                 session_id=group_id,
                 agent_id=self.agent_id,
@@ -159,10 +160,9 @@ class BaseAgent:
                 result=res
             )
 
-            # Emit real-time events for UI
             await emit_tool_call(group_id, self.agent_id, tool_name, "success", {"duration_ms": duration_ms, "params": kwargs})
             await emit_tool_result(group_id, self.agent_id, tool_name, str(res)[:100], {"duration_ms": duration_ms})
-            # Persist tool result to conversation history
+
             session_store.append_message(
                 group_id=group_id,
                 sender=self.agent_id,
@@ -170,13 +170,12 @@ class BaseAgent:
                 content=f"✅ Tool result: {tool_name}\nresult: " + json.dumps(res, ensure_ascii=False, default=str)[:2000],
                 metadata={"tool": tool_name, "result": res}
             )
-            
+
             return res
-            
+
         except Exception as e:
             duration_ms = (time.time() - start_time) * 1000
-            
-            # Log failed tool call
+
             session_logger.log_tool_call(
                 session_id=group_id,
                 agent_id=self.agent_id,
@@ -186,9 +185,8 @@ class BaseAgent:
                 error=str(e)
             )
 
-            # Emit real-time error event for UI
             await emit_error(group_id, f"tool_call:{tool_name}", str(e), {"agent_id": self.agent_id, "duration_ms": duration_ms})
-            # Persist tool error to conversation history
+
             session_store.append_message(
                 group_id=group_id,
                 sender=self.agent_id,
@@ -196,37 +194,40 @@ class BaseAgent:
                 content=f"❌ Tool error: {tool_name}\nerror: {str(e)}",
                 metadata={"tool": tool_name, "error": str(e), "error_type": type(e).__name__}
             )
-            # Do not interrupt the agent loop; return error object for planning
+
             return {"isError": True, "tool": tool_name, "error": str(e), "error_type": type(e).__name__}
 
     def list_mcp_tools(self) -> List[Dict[str, Any]]:
-        """List all available MCP tools for this agent"""
+        """List all available MCP tools"""
         if not self.mcp:
             return []
         return self.mcp.list_all_tools()
 
     async def respond(self, prompt: str, group_id: str, orchestrator: Any = None, depth: int = 2) -> str:
-        """Multi-step planner loop with structured output parsing.
-        Agent responses are parsed using Pydantic models to ensure reliable JSON handling.
-        Supported actions: final, call_tool, call_mcp
         """
-        # Use agent-specific LLM configuration
+        Multi-step planner loop with LangChain LLM.
+
+        Uses LangChain for automatic retries, better error handling, multi-provider support.
+        Preserves all business logic: three actions, @mention routing, group context.
+        """
+        # LangChain LLM from new factory.py
         llm = get_llm(
             provider=self.llm_config.get("provider"),
             model=self.llm_config.get("model")
         )
+
         roster = []
         if orchestrator:
             roster = orchestrator.group_roster(group_id)
         roster_lines = "\n".join([f"- @{k} — {n}: {d}" for (k, n, d) in roster]) or "- (no other members)"
 
-        # CONVERSATION CONTEXT - Get recent conversation history with enhanced context
         from src.core.memory import session_store
+
         def build_history_context() -> str:
             hist = session_store.get_history(group_id) if group_id else []
             if not hist:
                 return ""
-            recent = hist[-MAX_CONVERSATION_HISTORY:]  # Get recent messages
+            recent = hist[-MAX_CONVERSATION_HISTORY:]
             lines: List[str] = []
             last_user_message = ""
 
@@ -237,7 +238,7 @@ class BaseAgent:
 
                 if role == "user":
                     lines.append(f"User: {content}")
-                    last_user_message = content  # Track last user message for context
+                    last_user_message = content
                 elif role == "agent":
                     agent_key = msg.get("metadata", {}).get("agent_key", sender)
                     lines.append(f"{agent_key}: {content}")
@@ -246,12 +247,10 @@ class BaseAgent:
                 elif role in ("tool_call", "tool_result", "tool_error", "mcp_call", "mcp_result"):
                     lines.append(f"[{role}]: {content}")
 
-            # Add context about who is currently being addressed
             context_note = ""
             if last_user_message and f"@{self.agent_id}" in last_user_message:
                 context_note = f"\n📍 IMPORTANT: You ({self.agent_id}) are being directly addressed by the user.\n"
             elif prompt and f"@{self.agent_id}" in prompt:
-                # Find who mentioned this agent in the current prompt
                 import re
                 mention_pattern = r'(\w+):\s*.*@' + re.escape(self.agent_id)
                 mention_match = re.search(mention_pattern, prompt)
@@ -268,34 +267,30 @@ class BaseAgent:
 
         history_context = build_history_context()
 
-        # Conversation context is already included in history_context
-
-        # Build detailed MCP tools listing for agent awareness
+        # Build MCP tools listing
         mcp_tools_detail = ""
         if self.mcp and self.mcp.servers:
             mcp_tools_detail = "\n=== MCP TOOLS AVAILABLE TO YOU ===\n"
             for server_name, server_handle in self.mcp.servers.items():
-                if server_handle.tools_cache:
+                if server_handle._tools_cache:
                     mcp_tools_detail += f"Server: {server_name}\n"
-                    for tool in server_handle.tools_cache:
-                        # Truncate long descriptions
+                    for tool in server_handle._tools_cache:
                         desc = tool.description[:100] + "..." if len(tool.description) > 100 else tool.description
-                        
-                        # Extract required and optional parameters
+
                         params = tool.parameters.get("properties", {})
                         required_params = tool.parameters.get("required", [])
-                        
+
                         param_info = []
                         for param_name, param_def in params.items():
                             param_desc = param_def.get("description", "")[:50]
                             if len(param_desc) > 47:
                                 param_desc = param_desc[:47] + "..."
-                            
+
                             if param_name in required_params:
                                 param_info.append(f"{param_name}* ({param_desc})")
                             else:
                                 param_info.append(f"{param_name} ({param_desc})")
-                        
+
                         param_str = ", ".join(param_info) if param_info else "none"
                         mcp_tools_detail += f"  - {tool.name}: {desc}\n"
                         mcp_tools_detail += f"    Params: {param_str}\n"
@@ -305,7 +300,6 @@ class BaseAgent:
             mcp_tools_detail += "Example: 'navigate to google.com' → params: {\"url\": \"https://google.com\"}\n"
             mcp_tools_detail += "=== END MCP TOOLS ===\n"
 
-        # BUILD COLLABORATIVE PROMPT with structured response schema
         response_schema = get_response_schema()
 
         sys = (
@@ -348,18 +342,12 @@ class BaseAgent:
         last_server: Optional[str] = None
 
         async def decide(user_or_obs: str) -> Dict[str, Any]:
-            # Support both old and new LLM interface
-            if hasattr(llm, 'simple_chat'):
-                raw = await llm.simple_chat(system=sys, user=user_or_obs)
-            else:
-                # Fallback to old interface
-                raw = await llm.chat(system=sys, user=user_or_obs)
+            """Make decision using LangChain LLM"""
+            raw = await llm.simple_chat(system=sys, user=user_or_obs)
 
-            # Use structured response parsing
             try:
                 parsed_response = parse_agent_response(raw)
 
-                # Convert to dict format expected by existing logic
                 if isinstance(parsed_response, FinalResponse):
                     return {"action": "final", "text": parsed_response.text}
                 elif isinstance(parsed_response, ToolCallResponse):
@@ -367,16 +355,13 @@ class BaseAgent:
                 elif isinstance(parsed_response, MCPCallResponse):
                     return {"action": "call_mcp", "server": parsed_response.server, "tool": parsed_response.tool, "params": parsed_response.inputs}
                 else:
-                    # Fallback to final response
                     return {"action": "final", "text": str(parsed_response)}
 
             except Exception as e:
                 print(f"⚠️ Structured parsing failed for {self.agent_id}: {e}")
                 print(f"Raw response: {repr(raw)}")
-                # Fallback to final response with error notice
                 return {"action": "final", "text": f"[Parsing error occurred] {raw} @user"}
 
-        # First decision based on the user prompt
         state = await decide(f"User prompt: {prompt}")
         steps = 0
 
@@ -386,37 +371,26 @@ class BaseAgent:
 
             if act == "final":
                 final_response = state.get("text", "")
-
-                # VALIDATION WALL: Check for mandatory @mentions
                 validated_response = await self._validate_and_fix_response(final_response, roster, group_id, sys)
-
-                # Experience is automatically stored in session_store conversation history
-
                 return validated_response
 
             if act == "call_tool":
                 tool = state.get("tool_name")
                 kwargs = state.get("kwargs", {})
 
-                # Validate tool exists before calling
                 if tool not in self.tools:
                     obs = {"kind": "tool_error", "tool": tool, "result": f"Tool '{tool}' not found. Available tools: {list(self.tools.keys())}"}
                     observations.append(obs)
-
-                    # Update state to continue with error context
                     obs_context = f"Tool '{tool}' not found. Available tools: {list(self.tools.keys())}\nWhat should I do next?"
                     state = await decide(obs_context)
                     continue
 
                 result = await self.call_tool(group_id, tool, **kwargs)
                 last_tool = tool
-                
-                # Feed the observation back to the model
+
                 obs = {"kind": "tool_result", "tool": tool, "result": result}
                 observations.append(obs)
 
-                # Build context with ALL previous observations AND chat history so agent remembers everything
-                # Rebuild history context to include just-written tool_call/result entries
                 history_context = build_history_context()
                 obs_context = f"Original user request: {prompt}\n\n"
                 if history_context.strip():
@@ -433,7 +407,6 @@ class BaseAgent:
                 if not self.mcp:
                     obs = {"kind": "mcp_error", "server": "unknown", "tool": "unknown", "result": "MCP not attached to this agent"}
                     observations.append(obs)
-
                     obs_context = f"MCP not available. No MCP tools can be called.\nWhat should I do next?"
                     state = await decide(obs_context)
                     continue
@@ -442,23 +415,19 @@ class BaseAgent:
                 tool = state.get("tool")
                 params = state.get("params", {})
 
-                # Validate MCP server and tool exist
                 if not server or not tool:
                     obs = {"kind": "mcp_error", "server": server, "tool": tool, "result": "Missing server or tool name"}
                     observations.append(obs)
-
                     obs_context = f"MCP call failed: Missing server or tool name. Available MCP tools: {self.list_mcp_tools()}\nWhat should I do next?"
                     state = await decide(obs_context)
                     continue
-                # Persist MCP call
-                from src.core.memory import session_store
+
                 from src.core.telemetry.events import emit_mcp_call, emit_error
                 import time
 
                 start_time = time.time()
                 session_store.append_message(group_id, sender=self.agent_id, role="mcp_call", content=f"🔧 MCP call: {server}/{tool}\nargs: " + json.dumps(params, ensure_ascii=False, default=str)[:1000], metadata={"server": server, "tool": tool, "params": params})
 
-                # Emit real-time MCP call event for UI
                 await emit_mcp_call(group_id, self.agent_id, server, tool, "calling", {"params": params})
 
                 try:
@@ -469,10 +438,8 @@ class BaseAgent:
                     obs = {"kind": "mcp_result", "server": server, "tool": tool, "result": result}
                     observations.append(obs)
 
-                    # Persist MCP result
                     session_store.append_message(group_id, sender=self.agent_id, role="mcp_result", content=f"✅ MCP result: {server}/{tool}\nresult: " + json.dumps(result, ensure_ascii=False, default=str)[:2000], metadata={"server": server, "tool": tool, "result": result})
 
-                    # Emit real-time MCP result event for UI
                     await emit_mcp_call(group_id, self.agent_id, server, tool, "success", {"duration_ms": duration_ms, "result_preview": str(result)[:200]})
 
                 except Exception as me:
@@ -481,13 +448,10 @@ class BaseAgent:
                     observations.append({"kind": "mcp_error", "server": server, "tool": tool, "error": str(me)})
                     session_store.append_message(group_id, sender=self.agent_id, role="mcp_error", content=f"❌ MCP error: {server}/{tool}\nerror: {str(me)}", metadata=err_obj)
 
-                    # Emit real-time MCP error event for UI
                     await emit_error(group_id, f"mcp_call:{server}/{tool}", str(me), {"agent_id": self.agent_id, "duration_ms": duration_ms})
 
                     result = err_obj
 
-                # Build context with ALL previous observations AND chat history so agent remembers everything
-                # Rebuild history context to include just-written mcp_call/result entries
                 history_context = build_history_context()
                 obs_context = f"Original user request: {prompt}\n\n"
                 if history_context.strip():
@@ -500,7 +464,6 @@ class BaseAgent:
                 state = await decide(obs_context)
                 continue
 
-            # Unknown action
             return "[error] Unknown action"
 
         return "[error] Stopped after max planning steps]"
@@ -513,39 +476,33 @@ class BaseAgent:
         system_prompt: str,
         max_attempts: int = MAX_VALIDATION_ATTEMPTS,
     ) -> str:
-        """
-        Validation wall: Ensures response contains exactly one @mention.
-        If not, sends response back to agent for correction.
-        """
+        """Validation wall: Ensures response contains exactly one @mention"""
         import re
-        from src.core.llm.factory import get_llm
 
-        # Extract @mentions from response
         MENTION_PATTERN = re.compile(r"@([A-Za-z0-9_\-]+)", re.DOTALL)
         mentions = MENTION_PATTERN.findall(response)
 
-        # Get available agent keys from roster (exclude self to prevent infinite loops)
         available_agents = [agent[0] for agent in roster if agent[0] != self.agent_id] + ["user"]
 
-        # Check if response has exactly one @mention
         if len(mentions) == 1:
             mentioned_agent = mentions[0]
-            # Validate mention is to a valid agent or user
             if mentioned_agent in available_agents:
                 return response
             else:
-                # Invalid mention target - need to fix
-                mentions = []  # Treat as no valid mention
+                mentions = []
 
-        # Invalid response - needs correction
         attempt = 0
         current_response = response
+
+        llm = get_llm(
+            provider=self.llm_config.get("provider"),
+            model=self.llm_config.get("model")
+        )
 
         while attempt < max_attempts:
             attempt += 1
             print(f"🔄 Validation wall: Response from {self.agent_id} attempt {attempt} - fixing missing/multiple @mentions")
 
-            # Prepare validation error message
             if len(mentions) == 0:
                 error_msg = (
                     f"⚠️ VALIDATION ERROR: Your response is missing a required @mention.\n"
@@ -563,26 +520,11 @@ class BaseAgent:
                     f"Please rewrite your response with exactly one appropriate @mention:"
                 )
 
-            # Get LLM to fix the response
-            llm = get_llm(
-                provider=self.llm_config.get("provider"),
-                model=self.llm_config.get("model")
-            )
-
             try:
-                # Use simple format for correction
-                from src.core.llm.base import LLMMessage
-                messages = [
-                    LLMMessage(role="system", content=system_prompt),
-                    LLMMessage(role="user", content=error_msg)
-                ]
-
-                corrected_response = await llm.chat(messages)
-
-                # Check corrected response
+                corrected_response = await llm.simple_chat(system=system_prompt, user=error_msg)
                 corrected_mentions = MENTION_PATTERN.findall(corrected_response)
 
-                if len(corrected_mentions) == 1:
+                if len(corrected_mentions) == 1 and corrected_mentions[0] in available_agents:
                     print(f"✅ Validation wall: Response corrected after {attempt} attempts")
                     return corrected_response
                 else:
@@ -594,7 +536,6 @@ class BaseAgent:
                 print(f"❌ Validation wall: Error during correction attempt {attempt}: {e}")
                 continue
 
-        # If all attempts failed, force add @user mention
         print(f"⚠️ Validation wall: Max attempts reached, forcing @user mention")
         if not response.strip().endswith("@user"):
             return f"{response.rstrip()} @user"

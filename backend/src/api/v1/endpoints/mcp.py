@@ -1,37 +1,31 @@
 """
-MCP Management API Endpoints
-Handle mcp.json management via API
+MCP Management API Endpoints - Modern Architecture
+Uses Official Anthropic MCP SDK for validation and testing
 """
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Dict, Any, Optional, List
 import json
-import os
+import asyncio
 from pathlib import Path
 
 from src.core.validation.mcp_validator import McpValidator
+from src.core.mcp.client import MCPManager
 
 router = APIRouter()
 
 # Configuration file paths
 BACKEND_CONFIG_PATH = Path("config")
-
-# Ensure config directories exist
-os.makedirs(BACKEND_CONFIG_PATH, exist_ok=True)
+BACKEND_CONFIG_PATH.mkdir(parents=True, exist_ok=True)
 
 
 # Request models
 class MCPRequest(BaseModel):
+    """Modern MCP server request - simplified format"""
     command: str
     args: List[str] = []
-    env: Optional[Dict[str, str]] = {}
-
-    # For backward compatibility with old format
-    name: Optional[str] = None
-    description: Optional[str] = None
-    category: Optional[str] = None
-    config: Optional[Dict[str, Any]] = None
+    env: Dict[str, str] = {}
 
 
 # MCP Management Endpoints
@@ -59,29 +53,19 @@ async def get_mcp_servers():
 
 @router.post("/")
 async def add_mcp_server(mcp_id: str, mcp_data: MCPRequest):
-    """Add a new MCP server to mcp.json with validation"""
+    """Add a new MCP server with Official SDK validation"""
     try:
-        # Step 1: Validate Configuration - handle both old and new format
-        if mcp_data.config is not None:
-            # Old format - use existing validation
-            validation_result = McpValidator.validate_mcp_server_config(
-                name=mcp_data.name or mcp_id,
-                description=mcp_data.description or "",
-                category=mcp_data.category or "",
-                config=mcp_data.config
-            )
-            server_config = mcp_data.config
-        else:
-            # New simplified format - create config from direct fields
-            server_config = {
-                "command": mcp_data.command,
-                "args": mcp_data.args,
-                "env": mcp_data.env or {}
-            }
-            # Validate using the new simplified format
-            validation_result = McpValidator.validate_mcp_servers_config(
-                {mcp_id: server_config}
-            )
+        # Step 1: Create server config (modern format)
+        server_config = {
+            "command": mcp_data.command,
+            "args": mcp_data.args,
+            "env": mcp_data.env
+        }
+
+        # Step 2: Validate using McpValidator
+        validation_result = McpValidator.validate_mcp_servers_config(
+            {mcp_id: server_config}
+        )
 
         if not validation_result.valid:
             raise HTTPException(
@@ -92,64 +76,24 @@ async def add_mcp_server(mcp_id: str, mcp_data: MCPRequest):
                 }
             )
 
-        # Step 2: Test ACTUAL MCP Protocol Startup (REQUIRED)
-        if server_config.get("command"):
-            try:
-                # Test the complete MCP startup process like real agent building
-                from src.core.mcp.client import MCPManager
-                test_config = {"mcpServers": {mcp_id: server_config}}
-                mcp_manager = MCPManager.from_config(test_config)
+        # Step 3: Test MCP connectivity using validator
+        print(f"🔍 Validating MCP '{mcp_id}' connectivity...")
+        connectivity_result = await McpValidator.validate_mcp_server_connectivity(
+            name=mcp_id,
+            config=server_config,
+            timeout=15.0
+        )
 
-                # This must succeed or MCP creation fails (with timeout)
-                import asyncio
-                try:
-                    startup_results = await asyncio.wait_for(
-                        mcp_manager.start_all(),
-                        timeout=15.0  # 15 second timeout for MCP startup
-                    )
-                except asyncio.TimeoutError:
-                    raise HTTPException(
-                        status_code=400,
-                        detail={
-                            "message": f"MCP server '{mcp_id}' startup timeout",
-                            "error": "MCP server took too long to start (>15s)",
-                            "hint": "Check if the MCP server command is responsive"
-                        }
-                    )
-                if not startup_results.get(mcp_id, False):
-                    raise HTTPException(
-                        status_code=400,
-                        detail={
-                            "message": f"MCP server '{mcp_id}' failed to start during validation",
-                            "error": "MCP server startup failed - this would cause agent building to fail"
-                        }
-                    )
+        if not connectivity_result.valid:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "message": f"MCP server '{mcp_id}' validation failed",
+                    "validation_errors": connectivity_result.to_dict()
+                }
+            )
 
-                # Test tool discovery
-                server = mcp_manager.servers[mcp_id]
-                if server.tools_cache:
-                    tool_count = len(server.tools_cache)
-                    print(f"✅ MCP validation passed: {tool_count} tools discovered")
-                else:
-                    print("⚠️ MCP validation warning: No tools discovered from server")
-
-                # Clean up
-                await mcp_manager.stop_all()
-
-            except HTTPException:
-                raise  # Re-raise HTTP exceptions
-            except Exception as conn_error:
-                # Real connectivity failures should FAIL the creation
-                raise HTTPException(
-                    status_code=400,
-                    detail={
-                        "message": f"MCP server '{mcp_id}' validation failed",
-                        "error": f"Failed to start MCP server: {str(conn_error)}",
-                        "hint": "This MCP configuration would cause agent building to fail"
-                    }
-                )
-
-        # Step 3: Save MCP Server
+        # Step 4: Save MCP Server
         mcp_path = BACKEND_CONFIG_PATH / "mcp.json"
 
         # Load existing MCPs
@@ -187,29 +131,19 @@ async def add_mcp_server(mcp_id: str, mcp_data: MCPRequest):
 
 @router.put("/{mcp_id}")
 async def update_mcp_server(mcp_id: str, mcp_data: MCPRequest):
-    """Update an existing MCP server in mcp.json with validation"""
+    """Update an existing MCP server with Official SDK validation"""
     try:
-        # Step 1: Validate Configuration - handle both old and new format
-        if mcp_data.config is not None:
-            # Old format - use existing validation
-            validation_result = McpValidator.validate_mcp_server_config(
-                name=mcp_data.name or mcp_id,
-                description=mcp_data.description or "",
-                category=mcp_data.category or "",
-                config=mcp_data.config
-            )
-            server_config = mcp_data.config
-        else:
-            # New simplified format - create config from direct fields
-            server_config = {
-                "command": mcp_data.command,
-                "args": mcp_data.args,
-                "env": mcp_data.env or {}
-            }
-            # Validate using the new simplified format
-            validation_result = McpValidator.validate_mcp_servers_config(
-                {mcp_id: server_config}
-            )
+        # Step 1: Create server config (modern format)
+        server_config = {
+            "command": mcp_data.command,
+            "args": mcp_data.args,
+            "env": mcp_data.env
+        }
+
+        # Step 2: Validate using McpValidator
+        validation_result = McpValidator.validate_mcp_servers_config(
+            {mcp_id: server_config}
+        )
 
         if not validation_result.valid:
             raise HTTPException(
@@ -220,64 +154,24 @@ async def update_mcp_server(mcp_id: str, mcp_data: MCPRequest):
                 }
             )
 
-        # Step 2: Test ACTUAL MCP Protocol Startup (REQUIRED) - Same as CREATE
-        if server_config.get("command"):
-            try:
-                # Test the complete MCP startup process like real agent building
-                from src.core.mcp.client import MCPManager
-                test_config = {"mcpServers": {mcp_id: server_config}}
-                mcp_manager = MCPManager.from_config(test_config)
+        # Step 3: Test MCP connectivity using validator
+        print(f"🔍 Validating MCP '{mcp_id}' connectivity...")
+        connectivity_result = await McpValidator.validate_mcp_server_connectivity(
+            name=mcp_id,
+            config=server_config,
+            timeout=15.0
+        )
 
-                # This must succeed or MCP update fails (with timeout)
-                import asyncio
-                try:
-                    startup_results = await asyncio.wait_for(
-                        mcp_manager.start_all(),
-                        timeout=15.0  # 15 second timeout for MCP startup
-                    )
-                except asyncio.TimeoutError:
-                    raise HTTPException(
-                        status_code=400,
-                        detail={
-                            "message": f"MCP server '{mcp_id}' startup timeout",
-                            "error": "MCP server took too long to start (>15s)",
-                            "hint": "Check if the MCP server command is responsive"
-                        }
-                    )
-                if not startup_results.get(mcp_id, False):
-                    raise HTTPException(
-                        status_code=400,
-                        detail={
-                            "message": f"MCP server '{mcp_id}' failed to start during validation",
-                            "error": "MCP server startup failed - this would cause agent building to fail"
-                        }
-                    )
+        if not connectivity_result.valid:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "message": f"MCP server '{mcp_id}' validation failed",
+                    "validation_errors": connectivity_result.to_dict()
+                }
+            )
 
-                # Test tool discovery
-                server = mcp_manager.servers[mcp_id]
-                if server.tools_cache:
-                    tool_count = len(server.tools_cache)
-                    print(f"✅ MCP validation passed: {tool_count} tools discovered")
-                else:
-                    print("⚠️ MCP validation warning: No tools discovered from server")
-
-                # Clean up
-                await mcp_manager.stop_all()
-
-            except HTTPException:
-                raise  # Re-raise HTTP exceptions
-            except Exception as conn_error:
-                # Real connectivity failures should FAIL the update
-                raise HTTPException(
-                    status_code=400,
-                    detail={
-                        "message": f"MCP server '{mcp_id}' validation failed",
-                        "error": f"Failed to start MCP server: {str(conn_error)}",
-                        "hint": "This MCP configuration would cause agent building to fail"
-                    }
-                )
-
-        # Step 3: Update MCP Server
+        # Step 4: Update MCP Server
         mcp_path = BACKEND_CONFIG_PATH / "mcp.json"
 
         # Load existing MCPs

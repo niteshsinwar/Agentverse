@@ -111,6 +111,8 @@ class ToolValidator:
         """
         Validate tool code using the same logic as register_tools_from_module
         This includes security checks and function validation
+
+        IMPORTANT: If code has functions defined, at least one MUST have @agent_tool decorator
         """
 
         # Parse code for analysis
@@ -153,6 +155,19 @@ class ToolValidator:
         for func_name in declared_functions:
             if func_name in found_functions and func_name not in agent_tool_functions:
                 result.add_warning("functions", f"Function '{func_name}' missing @agent_tool decorator", "MISSING_DECORATOR")
+
+        # CRITICAL: If functions are defined but NONE have @agent_tool, agent registration will fail
+        if found_functions and not agent_tool_functions:
+            result.add_error(
+                "functions",
+                "At least one function must have @agent_tool decorator for agent registration to work",
+                "NO_AGENT_TOOL_FUNCTIONS",
+                {
+                    "functions_found": list(found_functions.keys()),
+                    "functions_with_decorator": [],
+                    "fix": "Add @agent_tool decorator to at least one function"
+                }
+            )
 
         # Check for @agent_tool import
         has_agent_tool_import = False
@@ -320,18 +335,20 @@ class ToolValidator:
                 # Verify tools were registered
                 registered_tools = list(test_agent.tools.keys())
                 tool_count = len(registered_tools)
-                if registered_tools:
+
+                # ✅ FIX: At least one tool must be registered with @agent_tool
+                if tool_count == 0:
+                    result.add_error(
+                        "code",
+                        "❌ No tools registered - at least one function must have @agent_tool decorator",
+                        "NO_TOOLS_REGISTERED"
+                    )
+                else:
                     tools_str = ', '.join(registered_tools)
                     result.add_warning(
                         "code",
-                        f"✅ Successfully registered {tool_count} tools: {tools_str}",
+                        f"✅ Successfully registered {tool_count} tool(s): {tools_str}",
                         "REGISTRATION_SUCCESS"
-                    )
-                else:
-                    result.add_warning(
-                        "code",
-                        "⚠️ No tools registered - check @agent_tool decorators",
-                        "NO_TOOLS_REGISTERED"
                     )
 
             finally:
@@ -342,7 +359,7 @@ class ToolValidator:
                     pass
 
         except ImportError as e:
-            result.add_error("code", f"Import error during real tool loading: {str(e)}", "IMPORT_ERROR")
+            result.add_error("code", f"Import error during tool loading: {str(e)}", "IMPORT_ERROR")
         except Exception as e:
             result.add_error("code", f"Tool registration failed: {str(e)}", "REGISTRATION_ERROR")
 

@@ -93,9 +93,9 @@ async def build_agent(spec: AgentSpec) -> BaseAgent:
         mcp_manager = MCPManager.from_config(spec.mcp_config)
         agent.attach_mcp(mcp_manager)
 
-        # Auto-start MCP servers to discover tools at initialization
+        # Auto-discover tools from MCP servers at initialization
         if mcp_manager.servers:
-            await mcp_manager.start_all()
+            await mcp_manager.discover_tools()
 
     if spec.tools_module:
         mod = _import_tools_py(spec.tools_module)

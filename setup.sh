@@ -44,23 +44,32 @@ check_command() {
 # Check prerequisites
 echo "🔍 Checking prerequisites..."
 
-# Check Python
-if check_command python3; then
-    PYTHON_VERSION=$(python3 --version 2>&1 | grep -o '[0-9]\+\.[0-9]\+')
+# Check Python - try python3.11 first, then python3
+PYTHON_CMD="python3"
+if check_command python3.11; then
+    PYTHON_CMD="python3.11"
+elif check_command python3.10; then
+    PYTHON_CMD="python3.10"
+elif check_command python3.12; then
+    PYTHON_CMD="python3.12"
+fi
+
+if check_command $PYTHON_CMD; then
+    PYTHON_VERSION=$($PYTHON_CMD --version 2>&1 | grep -o '[0-9]\+\.[0-9]\+')
     PYTHON_MAJOR=$(echo "$PYTHON_VERSION" | cut -d. -f1)
     PYTHON_MINOR=$(echo "$PYTHON_VERSION" | cut -d. -f2)
 
-    if [[ "$PYTHON_MAJOR" -eq 3 ]] && [[ "$PYTHON_MINOR" -ge 9 ]] && [[ "$PYTHON_MINOR" -le 12 ]]; then
-        print_success "Python $PYTHON_VERSION found: $(python3 --version)"
-    elif [[ "$PYTHON_MAJOR" -eq 3 ]] && [[ "$PYTHON_MINOR" -ge 9 ]]; then
+    if [[ "$PYTHON_MAJOR" -eq 3 ]] && [[ "$PYTHON_MINOR" -ge 10 ]] && [[ "$PYTHON_MINOR" -le 12 ]]; then
+        print_success "Python $PYTHON_VERSION found: $($PYTHON_CMD --version)"
+    elif [[ "$PYTHON_MAJOR" -eq 3 ]] && [[ "$PYTHON_MINOR" -ge 10 ]]; then
         print_warning "Python $PYTHON_VERSION - newer than tested versions"
-        print_info "Tested with Python 3.9-3.12. Should work but not guaranteed."
+        print_info "Tested with Python 3.10-3.12. Should work but not guaranteed."
     else
-        print_error "Python 3.9-3.12 is required. Found: $(python3 --version)"
+        print_error "Python 3.10-3.12 is required. Found: $(python3 --version)"
         exit 1
     fi
 else
-    print_error "Python 3.9-3.12 is required but not found."
+    print_error "Python 3.10-3.12 is required but not found."
     print_info "Install Python from: https://python.org"
     exit 1
 fi
@@ -106,7 +115,7 @@ cd backend
 # Create virtual environment
 if [ ! -d "venv" ]; then
     print_info "Creating Python virtual environment..."
-    python3 -m venv venv
+    $PYTHON_CMD -m venv venv
     print_success "Virtual environment created"
 else
     print_info "Virtual environment already exists"

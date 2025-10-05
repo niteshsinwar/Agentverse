@@ -22,7 +22,7 @@ if not errorlevel 1 (
         python --version >nul 2>&1
         if errorlevel 1 (
             echo ❌ Python is not installed or not in PATH
-            echo ℹ️  Please install Python 3.9-3.12 from https://python.org
+            echo ℹ️  Please install Python 3.10-3.12 from https://python.org
             echo ⚠️  Make sure to check "Add Python to PATH" during installation
             exit /b 1
         )
@@ -37,20 +37,20 @@ for /f "tokens=1,2 delims=." %%a in ("%PYTHON_VERSION%") do (
 )
 
 if %PYTHON_MAJOR% NEQ 3 (
-    echo ❌ Python 3.9-3.12 is required. Found: %PYTHON_VERSION%
-    echo ℹ️  Please install Python 3.9-3.12 from https://python.org
+    echo ❌ Python 3.10-3.12 is required. Found: %PYTHON_VERSION%
+    echo ℹ️  Please install Python 3.10-3.12 from https://python.org
     exit /b 1
 )
 
-if %PYTHON_MINOR% LSS 9 (
-    echo ❌ Python 3.9-3.12 is required. Found: %PYTHON_VERSION%
-    echo ℹ️  Please install Python 3.9-3.12 from https://python.org
+if %PYTHON_MINOR% LSS 10 (
+    echo ❌ Python 3.10-3.12 is required. Found: %PYTHON_VERSION%
+    echo ℹ️  Please install Python 3.10-3.12 from https://python.org
     exit /b 1
 )
 
 if %PYTHON_MINOR% GTR 12 (
     echo ⚠️  Python %PYTHON_VERSION% - newer than tested versions
-    echo ℹ️  Tested with Python 3.9-3.12. Should work but not guaranteed.
+    echo ℹ️  Tested with Python 3.10-3.12. Should work but not guaranteed.
 ) else (
     echo ✅ Python %PYTHON_VERSION% found and compatible
 )

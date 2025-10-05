@@ -12,7 +12,7 @@
 
 A professional, production-ready platform for creating, managing, and deploying intelligent AI agents with advanced tooling, real-time collaboration, and MCP (Model Context Protocol) integration. Welcome to the AgentVerse - where AI agents collaborate, evolve, and thrive in a unified ecosystem! 🌌
 
-[![Python](https://img.shields.io/badge/Python-3.9--3.12-blue.svg)](https://python.org)
+[![Python](https://img.shields.io/badge/Python-3.10--3.12-blue.svg)](https://python.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)](https://typescriptlang.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.104+-green.svg)](https://fastapi.tiangolo.com)
 [![React](https://img.shields.io/badge/React-18.2+-cyan.svg)](https://react.dev)
@@ -94,12 +94,14 @@ AgentVerse/ (Enterprise-Grade Platform)
 | Layer | Technology | Purpose |
 |-------|-----------|---------|
 | **Frontend** | Tauri + React 18 + TypeScript | Cross-platform desktop app with web technologies |
-| **Backend** | FastAPI + Python 3.9-3.12 | High-performance async API server |
-| **Agent Framework** | LangChain + LangGraph | Multi-agent orchestration & workflows |
-| **LLM Providers** | OpenAI, Anthropic, Gemini | Multi-model AI capabilities |
+| **Backend** | FastAPI + Python 3.10-3.12 | High-performance async API server |
+| **Agent Framework** | LangChain 0.3+ + LangGraph | Multi-agent orchestration & workflows |
+| **MCP Integration** | Official Anthropic MCP SDK | Model Context Protocol for extensibility |
+| **LLM Providers** | OpenAI, Anthropic, Gemini (Official SDKs) | Multi-model AI capabilities |
 | **UI Framework** | TailwindCSS + Framer Motion | Professional design system |
 | **Real-time** | WebSocket + Server-Sent Events | Live messaging & updates |
 | **Data Storage** | SQLite + JSON configs | Lightweight data persistence |
+| **Cross-Platform** | Unified Windows/macOS utilities | Native command/env resolution |
 | **Documentation** | Pydantic + FastAPI auto-docs | Type-safe API documentation |
 
 ## 🚀 Quick Start
@@ -135,13 +137,13 @@ python3 verify-setup.py
 ### Prerequisites
 
 **Windows:**
-- **Python 3.9-3.12** (Download from [python.org](https://python.org) - ensure "Add to PATH" is checked)
+- **Python 3.10-3.12** (Download from [python.org](https://python.org) - ensure "Add to PATH" is checked)
 - **Node.js 18+** (Download from [nodejs.org](https://nodejs.org))
 - **Rust** (Download from [rustup.rs](https://rustup.rs/) - run `rustup-init.exe`)
 - **Visual Studio Build Tools** (for Tauri): Download from [Microsoft](https://visualstudio.microsoft.com/visual-cpp-build-tools/)
 
 **macOS:**
-- **Python 3.9-3.12** (Install via Homebrew: `brew install python` or download from [python.org](https://python.org))
+- **Python 3.10-3.12** (Install via Homebrew: `brew install python` or download from [python.org](https://python.org))
 - **Node.js 18+** (Install via Homebrew: `brew install node` or download from [nodejs.org](https://nodejs.org))
 - **Rust** (Install via Homebrew: `brew install rust` or from [rustup.rs](https://rustup.rs/))
 - **Xcode Command Line Tools**: `xcode-select --install`
@@ -613,6 +615,20 @@ For support and questions:
 ### **Market Position**
 **Target Competitors**: CrewAI, AutoGen, LangFlow, n8n, Zapier
 **Differentiators**: Desktop performance, MCP integration, enterprise architecture, multi-LLM support
+
+---
+
+## 📝 **Recent Updates (Jan 2025)**
+
+### **Backend Modernization**
+- ✅ **MCP Integration**: Migrated to Official Anthropic MCP SDK (71% code reduction)
+- ✅ **LangChain 0.3+**: Upgraded to latest LangChain with official tool calling
+- ✅ **Cross-Platform**: Added Windows/macOS unified utilities for commands, env vars, event loops
+- ✅ **Code Quality**: Eliminated 425 lines through official library adoption and DRY refactoring
+- ✅ **Validation**: Refactored validators to delegate (Agent → Tool/MCP validators)
+- ✅ **Python**: Upgraded minimum version from 3.9 to 3.10
+
+See [backend/README.md](backend/README.md) for detailed technical changes.
 
 ---
 

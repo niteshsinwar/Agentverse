@@ -1,17 +1,15 @@
 """
 MCP Configuration Validator
 Validates MCP server configurations using the same logic as mcp/client.py
+Leverages cross-platform utilities for command resolution and event loop management
 """
 
-import os
-import sys
-import shutil
-import subprocess
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List
 import asyncio
-from pathlib import Path
 
-from .validation_result import ValidationResult, ValidationError, ValidationWarning
+from .validation_result import ValidationResult
+from src.core.utils.platform_commands import CrossPlatformCommands
+from src.core.utils.event_loop import platform_loop
 
 
 class McpValidator:
@@ -26,14 +24,13 @@ class McpValidator:
     ) -> ValidationResult:
         """
         Validate MCP server configuration using the same logic as MCPServerHandle
-        This mirrors the exact validation that happens during MCP server initialization
         """
         result = ValidationResult(valid=True, errors=[], warnings=[])
 
         # Validate basic fields
         McpValidator._validate_basic_fields(result, name, description, category)
 
-        # Validate server configuration (same as MCPServerSpec validation)
+        # Validate server configuration
         McpValidator._validate_server_config(result, name, config)
 
         return result
@@ -42,7 +39,6 @@ class McpValidator:
     def validate_mcp_servers_config(mcp_config: Dict[str, Any]) -> ValidationResult:
         """
         Validate entire MCP servers configuration dictionary
-        Uses the same logic as MCPManager.from_config
         Handles both old and new format (with mcpServers wrapper)
         """
         result = ValidationResult(valid=True, errors=[], warnings=[])
@@ -55,7 +51,7 @@ class McpValidator:
         if not mcp_config:
             return result
 
-        # Handle the actual format used by working agents: {"mcpServers": {...}}
+        # Handle format: {"mcpServers": {...}}
         servers_config = mcp_config
         if "mcpServers" in mcp_config:
             servers_config = mcp_config["mcpServers"]
@@ -75,174 +71,55 @@ class McpValidator:
         timeout: float = 10.0
     ) -> ValidationResult:
         """
-        Test COMPLETE MCP server startup and protocol communication
-        Uses EXACTLY the same logic as agent building: MCPManager.from_config() -> start_all()
+        Test MCP server startup and protocol communication with timeout.
+
+        Uses asyncio.shield() to protect cleanup from cancellation, avoiding
+        "Attempted to exit cancel scope in a different task" errors.
         """
         result = ValidationResult(valid=True, errors=[], warnings=[])
+        mcp_manager = None
 
-        try:
-            # Test the EXACT same process as agent building
+        async def _validate():
+            """Inner validation function that handles its own cleanup"""
+            nonlocal mcp_manager
             from src.core.mcp.client import MCPManager
             test_config = {"mcpServers": {name: config}}
             mcp_manager = MCPManager.from_config(test_config)
 
             if name not in mcp_manager.servers:
                 result.add_error("server_creation", f"Failed to create MCP server '{name}' from config", "SERVER_CREATION_FAILED")
-                return result
+                return
 
-            # Test ACTUAL server startup (same as build_agent()) with timeout
-            import asyncio
-            import sys
+            # Discover tools
+            tools = await mcp_manager.discover_tools()
 
-            # Windows subprocess workaround - ALWAYS use threading on Windows
-            # Uvicorn with reload uses SelectorEventLoop which doesn't support subprocesses
-            try:
-                if sys.platform == 'win32':
-                    from concurrent.futures import ThreadPoolExecutor, TimeoutError as ThreadTimeoutError
-
-                    def run_mcp_startup():
-                        """Run MCP startup in separate thread with ProactorEventLoop"""
-                        # Create ProactorEventLoop directly on Windows
-                        new_loop = asyncio.ProactorEventLoop()
-                        asyncio.set_event_loop(new_loop)
-                        try:
-                            print(f"[MCP Validator Thread] Event loop type: {type(new_loop).__name__}")
-                            return new_loop.run_until_complete(mcp_manager.start_all())
-                        finally:
-                            new_loop.close()
-
-                    try:
-                        with ThreadPoolExecutor(max_workers=1) as executor:
-                            future = executor.submit(run_mcp_startup)
-                            startup_results = future.result(timeout=timeout)
-                    except ThreadTimeoutError:
-                        result.add_error("startup", f"MCP server '{name}' startup timeout after {timeout}s", "STARTUP_TIMEOUT")
-                        return result
-                else:
-                    startup_results = await asyncio.wait_for(
-                        mcp_manager.start_all(),
-                        timeout=timeout  # Use the provided timeout parameter
-                    )
-            except asyncio.TimeoutError:
-                result.add_error("startup", f"MCP server '{name}' startup timeout after {timeout}s", "STARTUP_TIMEOUT")
-                return result
-
-            if not startup_results.get(name, False):
-                result.add_error("startup", f"MCP server '{name}' failed to start", "STARTUP_FAILED")
-                return result
-
-            server = mcp_manager.servers[name]
-
-            # Test tool discovery (this is what agents expect)
-            if server.tools_cache:
-                result.add_warning("tools", f"Successfully discovered {len(server.tools_cache)} tools", "TOOLS_DISCOVERED")
-                for tool in server.tools_cache[:3]:  # Show first 3 tools
-                    result.add_warning("tools", f"  - {tool.name}: {tool.description[:50]}...", "TOOL_DETAIL")
+            # Check tools discovered
+            server_tools = [t for t in tools if t.server_name == name]
+            if server_tools:
+                result.add_warning("tools", f"✅ Discovered {len(server_tools)} tools", "TOOLS_DISCOVERED")
+                for tool in server_tools[:3]:
+                    desc = tool.description[:50] + "..." if len(tool.description) > 50 else tool.description
+                    result.add_warning("tools", f"  - {tool.name}: {desc}", "TOOL_DETAIL")
             else:
                 result.add_warning("tools", "No tools discovered from MCP server", "NO_TOOLS")
 
-            # Clean up
-            await mcp_manager.stop_all()
             result.add_warning("overall", "✅ Full MCP protocol validation passed", "VALIDATION_SUCCESS")
 
+        try:
+            # Run with timeout, but DON'T cancel - just raise TimeoutError
+            await asyncio.wait_for(_validate(), timeout=timeout)
+        except asyncio.TimeoutError:
+            result.add_error("timeout", f"MCP server '{name}' validation timeout after {timeout}s", "VALIDATION_TIMEOUT")
         except Exception as e:
             result.add_error("protocol", f"MCP server validation failed: {str(e)}", "VALIDATION_FAILED")
-
-        return result
-
-    @staticmethod
-    async def validate_mcp_server_connectivity_legacy(
-        name: str,
-        config: Dict[str, Any],
-        timeout: float = 10.0
-    ) -> ValidationResult:
-        """
-        Legacy connectivity test - only tests command availability (not full protocol)
-        DEPRECATED: Use validate_mcp_server_connectivity() for complete validation
-        """
-        result = ValidationResult(valid=True, errors=[], warnings=[])
-
-        command = config.get("command", "")
-        args = config.get("args", [])
-        env_vars = config.get("env", {})
-
-        if not command:
-            result.add_error("command", "Command is required for connectivity test", "MISSING_COMMAND")
-            return result
-
-        # Simple cross-platform command resolution (like Claude Desktop)
-        expanded_command = os.path.expandvars(command)
-
-        if sys.platform == 'win32':
-            cmd_lower = expanded_command.lower()
-
-            # 1. Node.js ecosystem - add .cmd extension
-            if cmd_lower in ['npx', 'npm', 'node', 'yarn', 'pnpm']:
-                if not expanded_command.endswith('.cmd'):
-                    expanded_command = f"{expanded_command}.cmd"
-
-            # 2. Python UV ecosystem - add .exe extension
-            elif cmd_lower in ['uvx', 'uv', 'python', 'python3', 'pip', 'pipx']:
-                if not expanded_command.endswith('.exe'):
-                    expanded_command = f"{expanded_command}.exe"
-
-            # 3. Unix shell paths - extract basename
-            elif expanded_command.startswith('/bin/') or expanded_command.startswith('/usr/bin/'):
-                expanded_command = os.path.basename(expanded_command)
-
-        # Note: Absolute paths (like C:\...\script.bat) are used as-is
-
-        # Check if command exists (let PATH resolve it)
-        if not shutil.which(expanded_command) and not (os.path.isabs(expanded_command) and os.path.isfile(expanded_command)):
-            result.add_error("command", f"Command '{command}' not found in system PATH", "COMMAND_NOT_FOUND")
-            return result
-
-        # Test basic command execution (non-persistent test)
-        try:
-            # Prepare environment (same as MCPServerHandle.start())
-            test_env = os.environ.copy()
-            test_env.update(env_vars)
-
-            # Expand environment variables in args (same as MCPServerHandle)
-            expanded_args = [os.path.expandvars(arg) for arg in args]
-
-            # Test command with --help flag to see if it responds
-            # Note: Use the platform-adjusted expanded_command
-            # On Windows with .cmd files, execute through cmd.exe
-            if sys.platform == 'win32' and expanded_command.lower().endswith('.cmd'):
-                test_proc = await asyncio.create_subprocess_exec(
-                    'cmd.exe', '/c', expanded_command, "--help",
-                    stdout=asyncio.subprocess.PIPE,
-                    stderr=asyncio.subprocess.PIPE,
-                    env=test_env
-                )
-            else:
-                test_proc = await asyncio.create_subprocess_exec(
-                    expanded_command,
-                    "--help",
-                    stdout=asyncio.subprocess.PIPE,
-                    stderr=asyncio.subprocess.PIPE,
-                    env=test_env
-                )
-
-            try:
-                stdout, stderr = await asyncio.wait_for(test_proc.communicate(), timeout=timeout)
-
-                if test_proc.returncode != 0:
-                    error_msg = stderr.decode('utf-8', errors='ignore') if stderr else "Unknown error"
-                    result.add_warning("command", f"Command test failed with non-zero exit code: {error_msg}", "COMMAND_TEST_FAILED")
-
-            except asyncio.TimeoutError:
-                test_proc.kill()
-                await test_proc.wait()
-                result.add_warning("command", f"Command test timed out after {timeout}s", "COMMAND_TIMEOUT")
-
-        except FileNotFoundError:
-            result.add_error("command", f"Command '{expanded_command}' not found", "COMMAND_NOT_FOUND")
-        except PermissionError:
-            result.add_error("command", f"Permission denied executing command '{expanded_command}'", "PERMISSION_DENIED")
-        except Exception as e:
-            result.add_warning("command", f"Command test failed: {str(e)}", "COMMAND_TEST_ERROR")
+        finally:
+            # CRITICAL: Use shield to protect cleanup from cancellation
+            if mcp_manager:
+                try:
+                    await asyncio.shield(mcp_manager.stop_all())
+                except Exception as cleanup_error:
+                    # Cleanup errors are non-critical, just log them
+                    result.add_warning("cleanup", f"Cleanup warning: {cleanup_error}", "CLEANUP_WARNING")
 
         return result
 
@@ -257,7 +134,7 @@ class McpValidator:
         elif len(name.strip()) > 100:
             result.add_error("name", "MCP server name must be less than 100 characters", "NAME_TOO_LONG")
 
-        # Validate server name format (same as registry validation)
+        # Validate server name format
         if name and not name.replace("_", "").replace("-", "").replace(".", "").isalnum():
             result.add_error("name", "MCP server name can only contain letters, numbers, underscores, hyphens, and dots", "INVALID_NAME_FORMAT")
 
@@ -273,8 +150,7 @@ class McpValidator:
     def _validate_server_config(result: ValidationResult, server_name: str, config: Dict[str, Any]):
         """
         Validate server configuration structure
-        Uses the same logic as MCPServerSpec initialization
-        Handles simplified format with direct command/args structure
+        Uses cross-platform command utilities for validation
         """
         if not isinstance(config, dict):
             result.add_error("config", "Server configuration must be a dictionary", "INVALID_CONFIG_TYPE")
@@ -285,6 +161,10 @@ class McpValidator:
         if not command or not isinstance(command, str) or not command.strip():
             result.add_error("command", "Command is required and must be a non-empty string", "MISSING_COMMAND")
         else:
+            # Use cross-platform command validation
+            if not CrossPlatformCommands.validate_command(command):
+                result.add_error("command", f"Command '{command}' not found in system PATH", "COMMAND_NOT_FOUND")
+
             # Check for common command patterns
             command_lower = command.strip().lower()
             if command_lower in ['python', 'python3']:
@@ -292,7 +172,7 @@ class McpValidator:
             elif command_lower == 'node':
                 result.add_warning("command", "Using bare 'node' command - consider using full path", "BARE_NODE_COMMAND")
 
-        # Validate args (must be list, defaults to empty list)
+        # Validate args (must be list)
         args = config.get("args", [])
         if args is None:
             args = []
@@ -303,7 +183,7 @@ class McpValidator:
                 if not isinstance(arg, str):
                     result.add_error("args", f"Argument {i} must be a string", "INVALID_ARG_TYPE")
 
-        # Validate environment variables (optional, defaults to empty dict)
+        # Validate environment variables (optional)
         env_vars = config.get("env", {})
         if env_vars is None:
             env_vars = {}
@@ -316,7 +196,7 @@ class McpValidator:
                 if not isinstance(value, str):
                     result.add_error("env", f"Environment variable value must be string: {key}={value}", "INVALID_ENV_VALUE")
 
-        # Validate timeout (optional, defaults to 30.0)
+        # Validate timeout (optional)
         if "timeout" in config:
             timeout = config.get("timeout")
             if not isinstance(timeout, (int, float)):
@@ -328,13 +208,13 @@ class McpValidator:
             elif timeout > 120:
                 result.add_warning("timeout", "Timeout is very long (>120s), may cause delays", "LONG_TIMEOUT")
 
-        # Validate health_check flag (optional, defaults to True)
+        # Validate health_check flag (optional)
         if "health_check" in config:
             health_check = config.get("health_check")
             if not isinstance(health_check, bool):
                 result.add_error("health_check", "Health check flag must be boolean", "INVALID_HEALTH_CHECK_TYPE")
 
-        # NPX-specific validation (same logic as MCPServerHandle.__init__)
+        # NPX-specific validation (using cross-platform command info)
         if command and command.strip().lower() == "npx":
             if isinstance(args, list):
                 normalized_args = [str(arg).strip().lower() for arg in args]
@@ -361,7 +241,6 @@ class McpValidator:
         """
         Return common MCP server configuration templates
         These are pre-validated configurations for popular MCP servers
-        Now uses simplified format matching working agent configurations
         """
         return [
             {
