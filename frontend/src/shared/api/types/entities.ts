@@ -67,7 +67,7 @@ export interface Message extends BaseEntity {
   id: number;
   group_id: ID;
   sender: string;
-  role: 'user' | 'agent' | 'system' | 'tool_call' | 'tool_result' | 'mcp_call' | 'error';
+  role: 'user' | 'agent' | 'system' | 'tool_call' | 'tool_result' | 'mcp_call' | 'error' | 'agent_thought';
   content: string;
   metadata?: Record<string, any>;
 }

@@ -581,6 +581,7 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = ({
                         return msg && msg.role;
                       }).map((msg, index) => {
                         const isUser = msg.role === 'user';
+                        const isAgentThought = msg.role === 'agent_thought';
                         const agentInfo = !isUser ? getAgentInfo(msg.sender) : null;
 
                         return (
@@ -613,21 +614,33 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = ({
                                 <div className={`inline-block max-w-full ${
                                   isUser
                                     ? 'bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white rounded-t-2xl rounded-bl-2xl rounded-br-md shadow-lg shadow-violet-500/25'
-                                    : 'bg-white/80 dark:bg-slate-800/80 backdrop-blur-xl text-slate-900 dark:text-slate-100 border border-violet-200/30 dark:border-violet-800/30 rounded-t-2xl rounded-br-2xl rounded-bl-md shadow-lg shadow-violet-500/10'
+                                    : isAgentThought
+                                      ? 'bg-gradient-to-br from-violet-50/90 to-indigo-50/90 dark:from-violet-900/40 dark:to-indigo-900/40 text-slate-700 dark:text-slate-300 border border-violet-200/40 dark:border-violet-700/40 rounded-2xl shadow-lg shadow-violet-500/5'
+                                      : 'bg-white/80 dark:bg-slate-800/80 backdrop-blur-xl text-slate-900 dark:text-slate-100 border border-violet-200/30 dark:border-violet-800/30 rounded-t-2xl rounded-br-2xl rounded-bl-md shadow-lg shadow-violet-500/10'
                                 } px-4 py-3`}>
                                   {!isUser && agentInfo && (
-                                    <div className="flex items-center space-x-2 mb-2 pb-2 border-b border-violet-200/30 dark:border-violet-800/30">
-                                      <BrandedBadge variant="primary" size="sm">
+                                    <div className={`flex items-center space-x-2 mb-2 pb-2 border-b ${
+                                      isAgentThought
+                                        ? 'border-violet-200/20 dark:border-violet-700/30'
+                                        : 'border-violet-200/30 dark:border-violet-800/30'
+                                    }`}>
+                                      <BrandedBadge variant={isAgentThought ? 'secondary' : 'primary'} size="sm">
                                         {agentInfo.name}
                                       </BrandedBadge>
-                                      <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                                        Agent Response
+                                      <span className={`text-xs font-medium ${
+                                        isAgentThought ? 'text-slate-500 dark:text-slate-400 italic' : 'text-slate-500 dark:text-slate-400'
+                                      }`}>
+                                        {isAgentThought ? 'Internal Reflection' : 'Agent Response'}
                                       </span>
                                     </div>
                                   )}
 
                                   <div className="text-left">
-                                    <p className="whitespace-pre-wrap leading-relaxed">
+                                    <p
+                                      className={`whitespace-pre-wrap leading-relaxed ${
+                                        isAgentThought ? 'italic text-slate-600 dark:text-slate-300' : ''
+                                      }`}
+                                    >
                                       {msg.content}
                                     </p>
                                   </div>

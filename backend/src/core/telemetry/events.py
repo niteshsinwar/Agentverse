@@ -13,7 +13,7 @@ import time
 class TelemetryEvent:
     ts: float
     group_id: str
-    kind: str  # 'message' | 'tool_call' | 'tool_result' | 'mcp_call' | 'agent_call' | 'error'
+    kind: str  # 'message' | 'tool_call' | 'tool_result' | 'mcp_call' | 'agent_call' | 'agent_thought' | 'error'
     agent_key: Optional[str]
     payload: Dict[str, Any]
 
@@ -58,13 +58,25 @@ EVENT_BUS = EventBus()
 def now_ts() -> float:
     return time.time()
 
-async def emit_message(group_id: str, sender: str, role: str, content: str, agent_key: Optional[str] = None) -> None:
+async def emit_message(
+    group_id: str,
+    sender: str,
+    role: str,
+    content: str,
+    agent_key: Optional[str] = None,
+    metadata: Optional[Dict[str, Any]] = None
+) -> None:
     await EVENT_BUS.publish(TelemetryEvent(
         ts=now_ts(),
         group_id=group_id,
         kind="message",
         agent_key=agent_key,
-        payload={"sender": sender, "role": role, "content": content}
+        payload={
+            "sender": sender,
+            "role": role,
+            "content": content,
+            "metadata": metadata or {}
+        }
     ))
 
 async def emit_tool_call(group_id: str, agent_key: str, tool_name: str, status: str, meta: Optional[Dict[str, Any]] = None) -> None:
@@ -110,4 +122,21 @@ async def emit_error(group_id: str, where: str, message: str, meta: Optional[Dic
         kind="error",
         agent_key=None,
         payload={"where": where, "message": message, **(meta or {})}
+    ))
+
+async def emit_agent_thought(
+    group_id: str,
+    agent_key: str,
+    thought: str,
+    meta: Optional[Dict[str, Any]] = None
+) -> None:
+    await EVENT_BUS.publish(TelemetryEvent(
+        ts=now_ts(),
+        group_id=group_id,
+        kind="agent_thought",
+        agent_key=agent_key,
+        payload={
+            "thought": thought,
+            **(meta or {})
+        }
     ))

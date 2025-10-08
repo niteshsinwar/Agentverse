@@ -16,7 +16,7 @@ A modern React + TypeScript desktop application for multi-agent orchestration an
 
 ## 🎯 Overview
 
-AgentVerse Frontend is a desktop application built with Tauri that provides a beautiful, performant interface for managing AI agents, groups, tools, and MCP servers. It features real-time updates via Server-Sent Events (SSE), comprehensive logging, and a polished UI with dark mode support.
+AgentVerse Frontend is a desktop application built with Tauri that provides a beautiful, performant interface for managing AI agents, groups, tools, and MCP servers. It features real-time updates via Server-Sent Events (SSE), in-stream self-reflection indicators, comprehensive logging, and a polished UI with dark mode support.
 
 ## 🏗️ Architecture
 
@@ -25,7 +25,7 @@ AgentVerse Frontend is a desktop application built with Tauri that provides a be
 - **API Layer**: Centralized HTTP client with interceptors and logging
 - **Component Architecture**: Atomic design with branded components
 - **Type Safety**: Full TypeScript coverage with strict mode
-- **Real-time Updates**: SSE (Server-Sent Events) for live message streaming
+- **Real-time Updates**: SSE (Server-Sent Events) for live message streaming, tool telemetry, and reflective planning states
 
 ### **Key Architectural Decisions**
 

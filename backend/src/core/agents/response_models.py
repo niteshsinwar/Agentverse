@@ -1,10 +1,10 @@
 """
 Agent Response Models
-Simplified Pydantic models for structured agent outputs - only 3 action types
+Lean Pydantic models for structured agent outputs
 """
 
 from enum import Enum
-from typing import Any, Dict, Literal
+from typing import Any, Dict, Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -13,6 +13,7 @@ class ActionType(str, Enum):
     FINAL = "final"
     CALL_TOOL = "call_tool"
     CALL_MCP = "call_mcp"
+    SELF_REFLECT = "self_reflect"
 
 
 class AgentResponse(BaseModel):
@@ -44,10 +45,29 @@ class MCPCallResponse(AgentResponse):
         populate_by_name = True  # Allow both 'inputs' and 'params'
 
 
+class SelfReflectResponse(AgentResponse):
+    """Self reflection / planning response"""
+    action: Literal[ActionType.SELF_REFLECT] = ActionType.SELF_REFLECT
+    thought: str = Field(..., description="Internal reasoning or reflection summary")
+    plan: Optional[str] = Field(None, description="Planned next step or approach")
+    evaluation: Optional[str] = Field(
+        None,
+        description="Assessment of current progress or blockers"
+    )
+    metric: Optional[str] = Field(
+        None,
+        description="Goal metric or success criterion being tracked"
+    )
+    should_continue: Optional[bool] = Field(
+        None,
+        description="Whether additional external actions are required"
+    )
+
+
 def get_response_schema() -> str:
     """Get JSON schema for agent responses"""
     return """
-You MUST respond with valid JSON matching one of these 3 schemas:
+You MUST respond with valid JSON matching one of these 4 schemas:
 
 1. Final Response (most common):
 {
@@ -70,9 +90,19 @@ You MUST respond with valid JSON matching one of these 3 schemas:
   "inputs": {"param": "value"}
 }
 
+4. Self-Reflection (use for internal planning/thinking steps):
+{
+  "action": "self_reflect",
+  "thought": "What you learned or considered",
+  "plan": "Optional concrete next step you intend to take",
+  "evaluation": "Optional assessment of progress or blockers",
+  "metric": "Optional success metric you are tracking",
+  "should_continue": true             // Optional; set true ONLY when another external action is required
+}
+
 IMPORTANT:
 - Always include proper @mention in final responses!
-- Use ONLY these 3 action types
+- Use ONLY these 4 action types
 - Return valid JSON only
 """
 
@@ -102,6 +132,8 @@ def parse_agent_response(raw_response: str) -> AgentResponse:
             return ToolCallResponse(**data)
         elif action == "call_mcp":
             return MCPCallResponse(**data)
+        elif action == "self_reflect":
+            return SelfReflectResponse(**data)
         else:
             # Unknown action, treat as final response
             return FinalResponse(action="final", text=clean_response)

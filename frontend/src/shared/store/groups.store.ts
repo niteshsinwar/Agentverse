@@ -397,7 +397,7 @@ export const useGroupsStore = create<GroupsStore>((set, get) => ({
                   content: data.payload.content,
                   created_at: data.timestamp,
                   updated_at: data.timestamp,
-                  metadata: {}
+                  metadata: data.payload.metadata || {}
                 };
                 get().addMessage(message);
               } else {
@@ -478,6 +478,44 @@ export const useGroupsStore = create<GroupsStore>((set, get) => ({
                 metadata: { server: data.payload.server, tool: data.payload.tool, status: data.payload.status, ...data.payload }
               };
               get().addMessage(mcpCallMessage);
+              break;
+            case 'agent_thought':
+              console.log('Processing agent_thought event:', data.payload);
+              {
+                const payload = data.payload || {};
+                const thoughtContent = payload.thought || 'Agent is reflecting...';
+                const plan = payload.plan;
+                const evaluation = payload.evaluation;
+                const metric = payload.metric;
+                const confidence = typeof payload.confidence === 'number'
+                  ? `${Math.round(payload.confidence * 100)}%`
+                  : undefined;
+
+                let combinedContent = `🧠 Reflection: ${thoughtContent}`;
+                if (plan) combinedContent += `\nPlan: ${plan}`;
+                if (evaluation) combinedContent += `\nEvaluation: ${evaluation}`;
+                if (metric) combinedContent += `\nMetric: ${metric}`;
+                if (confidence) combinedContent += `\nConfidence: ${confidence}`;
+
+                const agentThoughtMessage = {
+                  id: Date.now(),
+                  group_id: data.group_id,
+                  sender: data.agent_key || 'system',
+                  role: 'agent_thought' as const,
+                  content: combinedContent,
+                  created_at: data.timestamp,
+                  updated_at: data.timestamp,
+                  metadata: {
+                    message_type: 'agent_thought',
+                    ...payload
+                  }
+                };
+                get().addMessage(agentThoughtMessage);
+
+                window.dispatchEvent(new CustomEvent('agentChainLoading', {
+                  detail: { agent: data.agent_key, step: payload.step }
+                }));
+              }
               break;
             case 'error':
               console.log('Processing error event:', data.payload);

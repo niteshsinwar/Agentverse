@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![AgentVerse Logo](logo.svg)
+![AgentVerse Logo](frontend/public/logo.svg)
 
 **Enterprise-Grade AI Agent Orchestration Platform**
 
@@ -40,6 +40,7 @@ AgentVerse is a comprehensive B2B SaaS platform designed for enterprises seeking
 - **Document Processing**: Support for 20+ file formats with AI analysis
 - **Custom Integrations**: Extensible architecture for custom tools and MCP servers
 - **Enterprise Security**: Secure API key management, session control, and audit logging
+- **Reflective Planning Loop**: Agents can pause, self-reflect, and adapt plans before executing tools or replying
 
 ## 🏗️ Architecture & Technology Stack
 
@@ -62,7 +63,7 @@ AgentVerse/ (Enterprise-Grade Platform)
 │   │   └── logs/       # Session & event logging
 │   │
 │   ├── src/core/                           # Business logic & services
-│   │   ├── agents/     # Agent orchestration (LangGraph)
+│   │   ├── agents/     # Agent orchestration with reflective planning
 │   │   ├── llm/        # Multi-provider LLM integration
 │   │   ├── memory/     # Session & knowledge management
 │   │   ├── mcp/        # Model Context Protocol client

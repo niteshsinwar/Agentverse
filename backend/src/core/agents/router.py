@@ -135,23 +135,44 @@ class Router:
                 enhanced_content = f"[Context: You were mentioned by {mentioned_by}]\n\n{content}"
 
             # Get agent response with document context
-            reply = await self.orchestrator_service.orchestrator.process_user_message(group_id, agent_key, enhanced_content)
+            reply_payload = await self.orchestrator_service.orchestrator.process_user_message(group_id, agent_key, enhanced_content)
 
-            # Save agent response only if it's not empty
-            if str(reply).strip():
-                session_store.append_message(group_id, sender=agent_key, role="agent", content=str(reply), metadata={"agent_key": agent_key, "mentioned_by": mentioned_by})
-                await emit_message(group_id, sender=agent_key, role="agent", content=str(reply), agent_key=agent_key)
+            reply_text = str(reply_payload.get("text", "") if isinstance(reply_payload, dict) else reply_payload).strip()
+            if not reply_text:
+                return
 
-                # Check if group chain is still active before U-turn routing
-                if not self.orchestrator_service.is_group_chain_active(group_id):
-                    print(f"🛑 U-turn routing blocked for group {group_id}")
-                    return
+            response_metadata = {
+                "agent_key": agent_key,
+                "mentioned_by": mentioned_by,
+                "message_type": "agent_response"
+            }
 
-                # U-turn routing: Agent response goes back through router for mention processing
-                await self.route_message(group_id, str(reply), agent_key)
+            session_store.append_message(
+                group_id,
+                sender=agent_key,
+                role="agent",
+                content=reply_text,
+                metadata=response_metadata
+            )
+            await emit_message(
+                group_id,
+                sender=agent_key,
+                role="agent",
+                content=reply_text,
+                agent_key=agent_key,
+                metadata=response_metadata
+            )
 
-                # Check for user mentions to trigger sound notification
-                await self._emit_user_notification(group_id, agent_key, str(reply))
+            # Check if group chain is still active before U-turn routing
+            if not self.orchestrator_service.is_group_chain_active(group_id):
+                print(f"🛑 U-turn routing blocked for group {group_id}")
+                return
+
+            # U-turn routing: Agent response goes back through router for mention processing
+            await self.route_message(group_id, reply_text, agent_key)
+
+            # Check for user mentions to trigger sound notification
+            await self._emit_user_notification(group_id, agent_key, reply_text)
 
         except Exception as e:
             print(f"❌ Error processing agent response: {e}")

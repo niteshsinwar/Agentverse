@@ -38,7 +38,7 @@ backend/
 │   │
 │   ├── 🧠 core/                    # Business logic & domain services
 │   │   ├── agents/                # Agent orchestration system
-│   │   │   ├── base_agent.py      # LangChain-based agent with tool calling (71% simplified)
+│   │   │   ├── base_agent.py      # LangChain-based agent with reflective planning loop
 │   │   │   ├── orchestrator.py    # Multi-agent coordination & state management
 │   │   │   ├── router.py          # @mention-based agent routing
 │   │   │   ├── registry.py        # Dynamic agent discovery & tool registration
@@ -137,8 +137,8 @@ backend/
 
 #### **BaseAgent** - Multi-Step Planner Loop
 - **Structured Response Parsing**: Pydantic models ensure reliable JSON handling
-- **Planning Loop**: Up to 8 iterations for complex multi-step tasks
-- **Actions Supported**: `final`, `call_tool`, `call_mcp`
+- **Reflective Planning**: Agents can emit `self_reflect` steps to summarise intent before acting
+- **Actions Supported**: `final`, `call_tool`, `call_mcp`, `self_reflect`
 - **Conversation Memory**: Session store integration for context awareness
 - **Tool Registration**: Decorator-based `@agent_tool` system
 - **MCP Integration**: Dynamic tool discovery from MCP servers

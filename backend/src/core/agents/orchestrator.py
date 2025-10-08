@@ -92,11 +92,18 @@ class AgentOrchestrator:
                 pass  # Don't fail if document search fails
         
         try:
-            return await agent.respond(enhanced_message, group_id=group_id, orchestrator=self)
+            response_payload = await agent.respond(enhanced_message, group_id=group_id, orchestrator=self)
+            if isinstance(response_payload, dict):
+                response_payload.setdefault("text", "")
+            else:
+                response_payload = {"text": str(response_payload)}
+            return response_payload
         except Exception as e:
             error_msg = f"[error] Agent response failed: {e}"
             print(f"❌ Agent {agent_id} error: {e}")
             print(f"📍 Error type: {type(e).__name__}")
             import traceback
             print(f"🔍 Traceback: {traceback.format_exc()}")
-            return error_msg
+            return {
+                "text": error_msg
+            }

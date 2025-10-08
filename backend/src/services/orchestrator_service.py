@@ -111,7 +111,7 @@ class OrchestratorService:
             )
             raise
 
-    async def process_agent_message(self, group_id: str, agent_id: str, message: str) -> str:
+    async def process_agent_message(self, group_id: str, agent_id: str, message: str) -> Dict[str, Any]:
         """Process a message with a specific agent"""
         if not self.is_ready():
             raise RuntimeError("Service not initialized")
