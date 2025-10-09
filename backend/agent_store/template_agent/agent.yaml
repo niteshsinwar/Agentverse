@@ -1,0 +1,6 @@
+name: Template Agent
+description: Starter template for building custom AgentVerse agents
+emoji: "🧩"
+llm:
+  provider: openai
+  model: gpt-4o-mini
