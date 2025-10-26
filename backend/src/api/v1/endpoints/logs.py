@@ -111,44 +111,93 @@ async def get_session_logs(
         raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
 
     if format == "json":
-        # Return structured JSON events
+        # Merge events from both JSONL files AND telemetry_events table
+
+        # 1. Get events from JSONL (legacy session_logger events)
         events_file = session_dir / "events.jsonl"
-        events = parse_jsonl_logs(events_file)
+        jsonl_events = parse_jsonl_logs(events_file)
 
-        # Apply filters
-        if level:
-            events = [e for e in events if e.get("level") == level.upper()]
+        # 2. Get events from telemetry_events table (new comprehensive events)
+        from src.core.memory import session_store
 
-        if event_type:
-            events = [e for e in events if e.get("event_type") == event_type]
-
-        if agent_id:
-            events = [e for e in events if e.get("agent_id") == agent_id]
-
-        # Time filtering
+        # Convert timestamps for filtering
+        start_time = None
+        end_time = None
         if from_timestamp:
             try:
                 from_dt = datetime.fromisoformat(from_timestamp.replace('Z', '+00:00'))
-                events = [e for e in events if datetime.fromisoformat(e.get("timestamp", "").replace('Z', '+00:00')) >= from_dt]
+                start_time = from_dt.timestamp()
             except ValueError:
                 raise HTTPException(status_code=400, detail="Invalid from_timestamp format")
 
         if to_timestamp:
             try:
                 to_dt = datetime.fromisoformat(to_timestamp.replace('Z', '+00:00'))
-                events = [e for e in events if datetime.fromisoformat(e.get("timestamp", "").replace('Z', '+00:00')) <= to_dt]
+                end_time = to_dt.timestamp()
             except ValueError:
                 raise HTTPException(status_code=400, detail="Invalid to_timestamp format")
 
+        # Query telemetry_events table
+        telemetry_events = session_store.get_telemetry_events(
+            group_id=session_id,  # session_id maps to group_id
+            event_type=event_type if event_type else None,
+            agent_key=agent_id if agent_id else None,
+            start_time=start_time,
+            end_time=end_time,
+            limit=limit if limit else 1000
+        )
+
+        # Convert telemetry_events to same format as JSONL events
+        converted_telemetry = []
+        for te in telemetry_events:
+            converted_telemetry.append({
+                "timestamp": datetime.fromtimestamp(te["timestamp"]).isoformat(),
+                "session_id": te["group_id"],
+                "event_type": te["event_type"],
+                "level": "INFO",  # Default level for telemetry events
+                "agent_id": te["agent_key"],
+                "message": f"{te['event_type']} event",
+                "details": te["payload"]
+            })
+
+        # 3. Merge both sources
+        all_events = jsonl_events + converted_telemetry
+
+        # Apply filters to JSONL events only (telemetry already filtered)
+        filtered_jsonl = jsonl_events
+        if level:
+            filtered_jsonl = [e for e in filtered_jsonl if e.get("level") == level.upper()]
+        if event_type:
+            filtered_jsonl = [e for e in filtered_jsonl if e.get("event_type") == event_type]
+        if agent_id:
+            filtered_jsonl = [e for e in filtered_jsonl if e.get("agent_id") == agent_id]
+        if from_timestamp or to_timestamp:
+            if from_timestamp:
+                from_dt = datetime.fromisoformat(from_timestamp.replace('Z', '+00:00'))
+                filtered_jsonl = [e for e in filtered_jsonl if datetime.fromisoformat(e.get("timestamp", "").replace('Z', '+00:00')) >= from_dt]
+            if to_timestamp:
+                to_dt = datetime.fromisoformat(to_timestamp.replace('Z', '+00:00'))
+                filtered_jsonl = [e for e in filtered_jsonl if datetime.fromisoformat(e.get("timestamp", "").replace('Z', '+00:00')) <= to_dt]
+
+        # Merge filtered JSONL with telemetry events
+        events = filtered_jsonl + converted_telemetry
+
+        # Sort by timestamp (most recent first)
+        events.sort(key=lambda e: e.get("timestamp", ""), reverse=True)
+
         # Apply limit
         if limit:
-            events = events[-limit:]  # Get most recent entries
+            events = events[:limit]
 
         return {
             "session_id": session_id,
             "format": "json",
             "total_events": len(events),
-            "events": events
+            "events": events,
+            "sources": {
+                "jsonl_count": len(filtered_jsonl),
+                "telemetry_count": len(converted_telemetry)
+            }
         }
 
     elif format == "human":

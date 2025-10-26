@@ -73,6 +73,14 @@ async def create_group(
     try:
         group_id = service.create_group(request.name)
 
+        # Emit telemetry
+        from src.core.telemetry.events import emit_group_operation
+        await emit_group_operation(
+            group_id=group_id,
+            operation="created",
+            meta={"group_name": request.name}
+        )
+
         # Get the created group
         groups = service.list_groups()
         group = next((g for g in groups if g["id"] == group_id), None)
@@ -102,6 +110,15 @@ async def delete_group(
     """
     try:
         service.delete_group(group_id)
+
+        # Emit telemetry
+        from src.core.telemetry.events import emit_group_operation
+        await emit_group_operation(
+            group_id=group_id,
+            operation="deleted",
+            meta={}
+        )
+
         return {"message": f"Group {group_id} deleted successfully"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to delete group: {str(e)}")
@@ -165,6 +182,15 @@ async def add_agent_to_group(
     """
     try:
         service.add_agent_to_group(group_id, request.agent_key)
+
+        # Emit telemetry
+        from src.core.telemetry.events import emit_group_operation
+        await emit_group_operation(
+            group_id=group_id,
+            operation="agent_added",
+            meta={"agent_key": request.agent_key}
+        )
+
         return {"message": f"Agent {request.agent_key} added to group {group_id}"}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -185,6 +211,15 @@ async def remove_agent_from_group(
     """
     try:
         service.remove_agent_from_group(group_id, agent_key)
+
+        # Emit telemetry
+        from src.core.telemetry.events import emit_group_operation
+        await emit_group_operation(
+            group_id=group_id,
+            operation="agent_removed",
+            meta={"agent_key": agent_key}
+        )
+
         return {"message": f"Agent {agent_key} removed from group {group_id}"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to remove agent from group: {str(e)}")

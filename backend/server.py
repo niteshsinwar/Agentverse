@@ -36,12 +36,13 @@ from src.core.telemetry.session_logger import session_logger, EventType, LogLeve
 
 # Global services (properly managed through dependency injection)
 orchestrator_service: OrchestratorService = None
+config_watcher = None  # File watcher for hot-reload
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan management"""
     # Startup
-    global orchestrator_service
+    global orchestrator_service, config_watcher
 
     print("🚀 Backend Server: Starting up...")
 
@@ -88,6 +89,21 @@ async def lifespan(app: FastAPI):
         }
         print(f"🔑 API Keys: {api_status}")
 
+        # Start configuration file watcher for hot-reload
+        try:
+            from src.core.config.file_watcher import start_config_watcher
+            config_watcher = start_config_watcher(
+                Path(__file__).parent,
+                {
+                    'config/settings.json': orchestrator_service.reload_settings,
+                    'config/tools.json': orchestrator_service.reload_tools,
+                    'config/mcp.json': orchestrator_service.reload_mcp,
+                    'agent_store': orchestrator_service.refresh_agents
+                }
+            )
+        except Exception as e:
+            print(f"⚠️ Failed to start config watcher (hot-reload disabled): {e}")
+
     except Exception as e:
         print(f"❌ Backend Server: Startup failed: {e}")
         import traceback
@@ -98,6 +114,16 @@ async def lifespan(app: FastAPI):
 
     # Shutdown
     print("🛑 Backend Server: Shutting down...")
+
+    # Stop config watcher
+    if config_watcher:
+        try:
+            from src.core.config.file_watcher import stop_config_watcher
+            stop_config_watcher(config_watcher)
+        except Exception as e:
+            print(f"⚠️ Failed to stop config watcher: {e}")
+
+    # Cleanup orchestrator
     if orchestrator_service:
         await orchestrator_service.cleanup()
     orchestrator_service = None
@@ -160,6 +186,24 @@ if __name__ == "__main__":
         "server:app",
         host="0.0.0.0",
         port=8000,
-        reload=True,  # Only for development
+        reload=True,  # Only for development - watches source code
+        reload_excludes=[
+            # Exclude user config files - these use hot-reload via file watcher
+            "*/config/settings.json",
+            "*/config/tools.json",
+            "*/config/mcp.json",
+            "*/agent_store",
+            "*/agent_store/*",
+            "*/agent_store/**/*",
+            # Exclude data and log files
+            "*/data",
+            "*/data/*",
+            "*/logs",
+            "*/logs/*",
+            "*/documents",
+            "*/documents/*",
+            "*.db",
+            "*.db-journal"
+        ],
         access_log=True
     )

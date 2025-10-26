@@ -14,7 +14,7 @@
   "gemini_api_key": "kkj",
   "github_token": "",
   "database_url": "sqlite:///./agentic.db",
-  "max_upload_size_mb": 10,
+  "max_upload_size_mb": 9,
   "supported_file_formats": [
     "txt",
     "csv",
@@ -43,7 +43,7 @@
   "max_agent_iterations": 5,
   "default_temperature": 0.2,
   "default_max_tokens": 4096,
-  "llm_provider": "openai",
+  "llm_provider": "anthropic",
   "llm_model": "gpt-4o",
   "llm_temperature": 0.2,
   "llm_max_tokens": 4096,
@@ -52,5 +52,76 @@
   "session_timeout_hours": 24,
   "log_level": "INFO",
   "enable_file_logging": true,
-  "log_file_max_size_mb": 10
+  "log_file_max_size_mb": 10,
+  "embedding_provider": "gemini",
+  "embedding_model": "gemini-embedding-001",
+  "embedding_dimensions": 768,
+  "vision_model": "gemini-2.5-flash",
+  "rag_similarity_threshold": 0.35,
+  "rag_top_k": 5,
+  "rag_decay_enabled": true,
+  "rag_decay_alpha": 0.7,
+  "rag_decay_half_life_messages": 50,
+  "rag_decay_min_factor": 0.1,
+  "conversation_summary_enabled": true,
+  "conversation_summary_trigger_count": 20,
+  "conversation_summary_window_size": 10,
+  "conversation_summary_model": "gpt-4o-mini",
+  "conversation_summary_max_tokens": 500,
+  "embedding_models": {
+    "openai": {
+      "text_models": [
+        "text-embedding-3-small",
+        "text-embedding-3-large"
+      ],
+      "vision_models": [
+        "gpt-4o",
+        "gpt-4-turbo"
+      ],
+      "dimensions": {
+        "text-embedding-3-small": 1536,
+        "text-embedding-3-large": 3072
+      },
+      "default_text": "text-embedding-3-small",
+      "default_vision": "gpt-4o"
+    },
+    "anthropic": {
+      "text_models": [
+        "voyage-3",
+        "voyage-3-large",
+        "voyage-3-lite",
+        "voyage-code-3"
+      ],
+      "vision_models": [
+        "claude-3-5-sonnet-20241022",
+        "claude-3-opus-20240229",
+        "claude-3-sonnet-20240229"
+      ],
+      "dimensions": {
+        "voyage-3": 1024,
+        "voyage-3-large": 1024,
+        "voyage-3-lite": 1024,
+        "voyage-code-3": 1024
+      },
+      "default_text": "voyage-3",
+      "default_vision": "claude-3-5-sonnet-20241022"
+    },
+    "gemini": {
+      "text_models": [
+        "gemini-embedding-001",
+        "text-embedding-004"
+      ],
+      "vision_models": [
+        "gemini-2.5-pro",
+        "gemini-2.5-flash",
+        "gemini-2.0-flash"
+      ],
+      "dimensions": {
+        "gemini-embedding-001": 768,
+        "text-embedding-004": 768
+      },
+      "default_text": "gemini-embedding-001",
+      "default_vision": "gemini-2.5-flash"
+    }
+  }
 }

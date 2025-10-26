@@ -4,7 +4,7 @@ Handles the complete document lifecycle
 """
 import tempfile
 from typing import Dict, Any, Optional, List, Tuple
-from .processor import DocumentProcessor
+from .extractor import DocumentExtractor
 from .storage import DocumentStorage, document_storage
 import yaml
 from pathlib import Path
@@ -14,7 +14,7 @@ class DocumentManager:
     """Manages complete document workflow: upload -> process -> store -> retrieve"""
     
     def __init__(self):
-        self.processor = DocumentProcessor()
+        self.processor = DocumentExtractor()
         self.storage = document_storage
         self._load_agent_configs()
     

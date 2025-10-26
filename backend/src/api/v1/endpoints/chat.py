@@ -152,7 +152,7 @@ async def get_group_documents(
                 doc.get('created_at', 0)
             ).strftime("%Y-%m-%d %H:%M")
 
-            # Sanitize metadata before returning to UI: do not include extracted content or original prompt
+            # Return only UI-friendly metadata (no content, no technical details)
             result.append({
                 "document_id": md.get('document_id', ''),
                 "filename": filename,
@@ -162,9 +162,8 @@ async def get_group_documents(
                 "size_str": size_str,
                 "date_str": date_str,
                 "created_at": doc.get('created_at', 0),
-                "file_extension": md.get('file_extension', ''),
-                # Keep only a short public summary if present; otherwise omit private fields
-                "content_summary": md.get('content_summary', '') if md.get('content_summary') else None
+                "updated_at": doc.get('created_at', 0),  # For BaseEntity compatibility
+                "file_extension": md.get('file_extension', '')
             })
 
         return result
@@ -187,7 +186,32 @@ async def upload_document(
     The document will be processed by the specified agent and integrated into the conversation.
     """
     try:
-        # Validate file size (10MB limit)
+        # INSTANT NOTIFICATION: Emit BEFORE any processing (stops UI buffering immediately)
+        from src.core.telemetry.events import emit_message
+        from src.core.memory import session_store
+
+        # Get file info without reading content yet
+        file_extension = os.path.splitext(file.filename)[1].lower()
+
+        # Send simple notification immediately (UI sees this right away)
+        simple_notification = f"📄 Document uploading: {file.filename}..."
+
+        session_store.append_message(
+            group_id=group_id,
+            sender="user",
+            role="system",
+            content=simple_notification,
+            metadata={
+                "message_type": "document_upload",
+                "filename": file.filename,
+                "file_extension": file_extension,
+                "target_agent": agent_id
+            }
+        )
+
+        await emit_message(group_id, sender="system", role="system", content=simple_notification)
+
+        # NOW read file content (UI already showed notification, so no perceived buffering)
         MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
         file_content = await file.read()
 
@@ -199,7 +223,6 @@ async def upload_document(
 
         # Validate file extension
         allowed_extensions = {'.txt', '.md', '.pdf', '.docx', '.csv', '.json', '.py', '.js', '.ts', '.html', '.css', '.png'}
-        file_extension = os.path.splitext(file.filename)[1].lower()
 
         if file_extension not in allowed_extensions:
             raise HTTPException(
@@ -210,7 +233,7 @@ async def upload_document(
         # Reset file pointer
         await file.seek(0)
 
-        # Process the document upload through the orchestrator
+        # Process the document upload through the orchestrator (blocks until complete)
         result = await service.process_document_upload(
             group_id=group_id,
             agent_id=agent_id,

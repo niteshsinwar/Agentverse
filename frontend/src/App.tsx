@@ -1,25 +1,34 @@
-import { useEffect, useRef } from 'react';
-import { useAppStore } from '@/shared/store/app.store';
-import { useGroupsStore } from '@/shared/store/groups.store';
-import { useAgentsStore } from '@/shared/store/agents.store';
+import { useEffect, useRef, useState } from 'react';
+import { useAppStore } from '@/lib/stores/app';
+import { useAuthStore } from '@/lib/stores/auth';
+import { useGroupsStore } from '@/lib/stores/groups';
+import { useAgentsStore } from '@/lib/stores/agents';
 import { Toaster, toast } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, Transition } from '@headlessui/react';
-import { ThemeProvider } from './contexts/ThemeContext';
+import {
+  Cog6ToothIcon,
+  CodeBracketIcon,
+  ServerIcon,
+  DocumentTextIcon,
+} from '@heroicons/react/24/outline';
 
 // Modern, enterprise-grade components
-import { Sidebar } from './components/Sidebar';
-import { MainWorkspace } from './components/MainWorkspace';
-import { CommandPalette } from './components/CommandPalette';
-import { EnhancedAgentCreationPanel } from './components/EnhancedAgentCreationPanel';
-import { SettingsPanel } from './components/SettingsPanel';
-import { ToolsManagementPanel } from './components/ToolsManagementPanel';
-import { McpManagementPanel } from './components/McpManagementPanel';
-import { HelpPanel } from './components/HelpPanel';
-import { ComprehensiveLogPanel } from './components/ComprehensiveLogPanel';
-import { AnimatedSplashScreen } from './components/AnimatedSplashScreen';
-
-import './App.css';
+import { Sidebar } from './components/views/Sidebar';
+import { ConversationView } from './components/views/ConversationView';
+import { CommandPalette } from './components/modals/CommandPalette';
+import { AgentStudio } from './components/views/AgentStudio';
+import { AgentManagementPanel } from './components/modals/AgentManagementPanel';
+import { SettingsPanel } from './components/modals/SettingsPanel';
+import { ToolsManagementPanel } from './components/modals/ToolsManagementPanel';
+import { McpManagementPanel } from './components/modals/McpManagementPanel';
+import { HelpPanel } from './components/modals/HelpPanel';
+import { ComprehensiveLogPanel } from './components/modals/ComprehensiveLogPanel';
+import { CommunityCenterPanel } from './components/modals/CommunityCenterPanel';
+import { AuthenticationPortal } from './components/modals/AuthenticationPortal';
+import { AdminView } from './components/views/AdminView';
+import { AnimatedSplashScreen } from './components/shared/AnimatedSplashScreen';
+import { AppHeader, HeaderMenuItem } from './components/core/AppHeader';
+import { AppFooter } from './components/core/AppFooter';
 
 function App() {
   // App Store
@@ -40,6 +49,8 @@ function App() {
     setHelpOpen,
     logsOpen,
     setLogsOpen,
+    communityCenterOpen,
+    setCommunityCenterOpen,
     appLoading,
     setAppLoading,
     showSplash,
@@ -47,7 +58,17 @@ function App() {
     setAppReady,
     initialLoadCompleted: storeInitialLoadCompleted,
     setInitialLoadCompleted,
+    theme,
   } = useAppStore();
+
+  // Auth Store
+  const {
+    currentUser,
+    authPortalOpen,
+    setAuthPortalOpen,
+    isAdmin,
+    logout,
+  } = useAuthStore();
 
   // Groups Store
   const {
@@ -72,7 +93,42 @@ function App() {
     loadAgents,
   } = useAgentsStore();
 
+  // Local state for Agent Management Modal
+  const [agentManagementOpen, setAgentManagementOpen] = useState(false);
+  const [agentToEdit, setAgentToEdit] = useState<any>(null);
+
+  // Admin tab state
+  const [adminTab, setAdminTab] = useState<'overview' | 'users' | 'groups' | 'resources' | 'settings'>('overview');
+
   const initialLoadCompleted = useRef(storeInitialLoadCompleted);
+
+  // Unified header menu items for all views
+  const headerMenuItems: HeaderMenuItem[] = [
+    {
+      key: 'settings',
+      label: 'Application Settings',
+      icon: <Cog6ToothIcon className="w-4 h-4" />,
+      onClick: () => setSettingsOpen(true),
+    },
+    {
+      key: 'tools',
+      label: 'Manage Tools',
+      icon: <CodeBracketIcon className="w-4 h-4" />,
+      onClick: () => setToolsManagementOpen(true),
+    },
+    {
+      key: 'mcp',
+      label: 'Manage MCP Servers',
+      icon: <ServerIcon className="w-4 h-4" />,
+      onClick: () => setMcpManagementOpen(true),
+    },
+    {
+      key: 'logs',
+      label: 'View Logs',
+      icon: <DocumentTextIcon className="w-4 h-4" />,
+      onClick: () => setLogsOpen(true),
+    },
+  ];
 
   // Enhanced loading with better error handling
   const loadData = async (isInitialLoad = false) => {
@@ -110,11 +166,51 @@ function App() {
 
   useEffect(() => {
     loadData(true);
+    
+    // Clear auth seen flag on fresh page load (for demo)
+    sessionStorage.removeItem('agentverse_auth_seen');
   }, []);
 
-  // Handle splash screen completion
+  // Apply theme to document element
+  useEffect(() => {
+    const root = document.documentElement;
+    
+    // Remove existing theme classes
+    root.classList.remove('light', 'dark');
+    
+    if (theme === 'system' || theme === 'auto') {
+      // Use system preference
+      const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      root.classList.add(isDark ? 'dark' : 'light');
+    } else {
+      // Use explicit theme
+      root.classList.add(theme);
+    }
+  }, [theme]);
+
+  // Redirect non-admin users away from admin view
+  useEffect(() => {
+    if (currentView === 'admin' && !isAdmin()) {
+      setCurrentView('chat');
+      if (currentUser) {
+        // Only show error if user is logged in but not admin
+        toast.error('Access denied: Admin privileges required');
+      }
+    }
+  }, [currentView, currentUser, isAdmin, setCurrentView]);
+
+  // Handle splash screen completion and show auth portal
   const handleSplashComplete = () => {
     setShowSplash(false);
+    
+    // Show auth portal after splash if not logged in
+    const hasSeenAuth = sessionStorage.getItem('agentverse_auth_seen');
+    if (!hasSeenAuth && !currentUser) {
+      setTimeout(() => {
+        setAuthPortalOpen(true);
+        sessionStorage.setItem('agentverse_auth_seen', 'true');
+      }, 300);
+    }
   };
 
   // Group data is now handled automatically by the store when selectedGroup changes
@@ -225,7 +321,7 @@ function App() {
   }, []);
 
   return (
-    <ThemeProvider>
+    <>
       {/* Animated Splash Screen */}
       <AnimatedSplashScreen
         isLoading={showSplash || appLoading}
@@ -306,6 +402,8 @@ function App() {
                 groupAgents={groupAgents.data || []}
                 expanded={sidebarExpanded}
                 currentView={currentView}
+                isAdmin={isAdmin()}
+                adminTab={adminTab}
                 onToggleExpanded={() => setSidebarExpanded(!sidebarExpanded)}
                 onSelectGroup={setSelectedGroup}
                 onCreateGroup={handleGroupCreate}
@@ -313,6 +411,7 @@ function App() {
                 onAddAgent={handleAddAgent}
                 onRemoveAgent={handleRemoveAgent}
                 onViewChange={setCurrentView}
+                onAdminTabChange={setAdminTab}
               />
             </div>
           </motion.div>
@@ -326,22 +425,189 @@ function App() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, ease: "easeOut" }}
-                className="relative z-10 flex-1 min-h-0"
+                className="relative z-10 flex flex-col h-full"
               >
-                <MainWorkspace
+                {/* Unified Header for Conversation View */}
+                <AppHeader
+                  title={selectedGroup ? selectedGroup.name : "AgentVerse"}
+                  subtitle={selectedGroup ? `${groupAgents.data?.length || 0} agent${(groupAgents.data?.length || 0) !== 1 ? 's' : ''} active • ${messages.data?.length || 0} messages` : "No workspace selected"}
+                  leading={
+                    <motion.div
+                      className="w-3 h-3 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full"
+                      animate={{
+                        scale: [1, 1.2, 1],
+                        opacity: [0.8, 1, 0.8]
+                      }}
+                      transition={{
+                        duration: 2,
+                        repeat: Infinity,
+                        ease: "easeInOut"
+                      }}
+                    />
+                  }
+                  onCommandPalette={() => setCommandPaletteOpen(true)}
+                  menuItems={headerMenuItems}
+                  rightContent={
+                    currentUser ? (
+                      <div className="flex items-center space-x-3">
+                        {/* Account Type Badge */}
+                        <div className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${
+                          currentUser.accountType === 'enterprise'
+                            ? 'bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/30 dark:to-purple-900/30 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800'
+                            : 'bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/30 dark:to-pink-900/30 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800'
+                        }`}>
+                          {currentUser.accountType === 'enterprise' ? '🏢 Enterprise' : '👤 Individual'}
+                        </div>
+                        
+                        {/* Admin Badge */}
+                        {currentUser.role === 'admin' && (
+                          <div className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/30 dark:to-orange-900/30 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                            👑 Admin
+                          </div>
+                        )}
+                        
+                        {/* User Profile with Logout */}
+                        <div className="flex items-center space-x-3">
+                          <div className="flex items-center space-x-2 px-3 py-2 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-xl border border-gray-300 dark:border-gray-600 shadow-sm">
+                            <div className="w-8 h-8 bg-gradient-to-br from-blue-400 to-indigo-500 rounded-full flex items-center justify-center text-white text-sm font-bold shadow-md">
+                              {currentUser.name.charAt(0).toUpperCase()}
+                            </div>
+                            <span className="text-sm font-semibold text-gray-800 dark:text-gray-200 max-w-[120px] truncate">
+                              {currentUser.name}
+                            </span>
+                          </div>
+                          
+                          {/* Logout Button */}
+                          <button
+                            onClick={() => {
+                              logout();
+                              toast.success('Logged out successfully');
+                            }}
+                            className="px-4 py-2 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-xl text-sm font-bold transition-all shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center space-x-1"
+                          >
+                            <span>🚪</span>
+                            <span>Logout</span>
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setAuthPortalOpen(true)}
+                        className="px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-lg text-sm font-semibold transition-all"
+                      >
+                        Login
+                      </button>
+                    )
+                  }
+                  className="z-20"
+                />
+
+                {/* Conversation Content */}
+                <ConversationView
                   selectedGroup={selectedGroup}
                   agents={groupAgents.data || []}
                   messages={messages.data || []}
                   onSendMessage={handleSendMessage}
                   onStopGroupChain={stopGroupChain}
                   onUploadDocument={handleUploadDocument}
-                  onOpenCommandPalette={() => setCommandPaletteOpen(true)}
-                  onOpenSettings={() => setSettingsOpen(true)}
-                  onOpenToolsManagement={() => setToolsManagementOpen(true)}
-                  onOpenMcpManagement={() => setMcpManagementOpen(true)}
-                  onOpenHelp={() => setHelpOpen(true)}
-                  onOpenLogs={() => setLogsOpen(true)}
                 />
+              </motion.div>
+            ) : currentView === 'agent-management' ? (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, ease: "easeOut" }}
+                className="relative z-10 flex flex-col h-full"
+              >
+                {/* Enhanced Agent Studio Header */}
+                <AppHeader
+                  title="Agent Studio"
+                  subtitle="Design, configure, and deploy AI agents"
+                  leading={
+                    <motion.div
+                      className="w-3 h-3 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full"
+                      animate={{
+                        scale: [1, 1.2, 1],
+                        opacity: [0.8, 1, 0.8]
+                      }}
+                      transition={{
+                        duration: 2,
+                        repeat: Infinity,
+                        ease: "easeInOut"
+                      }}
+                    />
+                  }
+                  onCommandPalette={() => setCommandPaletteOpen(true)}
+                  menuItems={headerMenuItems}
+                  rightContent={
+                    currentUser ? (
+                      <div className="flex items-center space-x-3">
+                        {/* Account Type Badge */}
+                        <div className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${
+                          currentUser.accountType === 'enterprise'
+                            ? 'bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/30 dark:to-purple-900/30 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800'
+                            : 'bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/30 dark:to-pink-900/30 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800'
+                        }`}>
+                          {currentUser.accountType === 'enterprise' ? '🏢 Enterprise' : '👤 Individual'}
+                        </div>
+                        
+                        {/* Admin Badge */}
+                        {currentUser.role === 'admin' && (
+                          <div className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/30 dark:to-orange-900/30 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                            👑 Admin
+                          </div>
+                        )}
+                        
+                        {/* User Profile with Logout */}
+                        <div className="flex items-center space-x-3">
+                          <div className="flex items-center space-x-2 px-3 py-2 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-xl border border-gray-300 dark:border-gray-600 shadow-sm">
+                            <div className="w-8 h-8 bg-gradient-to-br from-blue-400 to-indigo-500 rounded-full flex items-center justify-center text-white text-sm font-bold shadow-md">
+                              {currentUser.name.charAt(0).toUpperCase()}
+                            </div>
+                            <span className="text-sm font-semibold text-gray-800 dark:text-gray-200 max-w-[120px] truncate">
+                              {currentUser.name}
+                            </span>
+                          </div>
+                          
+                          {/* Logout Button - More Prominent */}
+                          <button
+                            onClick={() => {
+                              logout();
+                              toast.success('Logged out successfully');
+                            }}
+                            className="px-4 py-2 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-xl text-sm font-bold transition-all shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center space-x-1"
+                          >
+                            <span>🚪</span>
+                            <span>Logout</span>
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setAuthPortalOpen(true)}
+                        className="px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-lg text-sm font-semibold transition-all"
+                      >
+                        Login
+                      </button>
+                    )
+                  }
+                  className="z-20"
+                />
+
+                {/* Agent Management Workspace */}
+                <div className="flex-1 overflow-hidden bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm relative z-0">
+                  <AgentStudio 
+                    onCreateAgent={() => {
+                      setAgentToEdit(null);
+                      setAgentManagementOpen(true);
+                    }}
+                    onEditAgent={(agent) => {
+                      setAgentToEdit(agent);
+                      setAgentManagementOpen(true);
+                    }}
+                    onAgentDeleted={() => loadData()}
+                  />
+                </div>
               </motion.div>
             ) : (
               <motion.div
@@ -350,179 +616,107 @@ function App() {
                 transition={{ duration: 0.5, ease: "easeOut" }}
                 className="relative z-10 flex flex-col h-full"
               >
-                {/* Enhanced Agent Studio Header */}
-                <div className="relative bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-violet-200/30 dark:border-violet-800/30 z-20">
-                  <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/5 via-purple-500/5 to-pink-500/5" />
-                  <div className="relative px-6 py-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-4">
-                        <div className="flex items-center space-x-3">
-                          <motion.div
-                            className="w-3 h-3 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full"
-                            animate={{
-                              scale: [1, 1.2, 1],
-                              opacity: [0.8, 1, 0.8]
-                            }}
-                            transition={{
-                              duration: 2,
-                              repeat: Infinity,
-                              ease: "easeInOut"
-                            }}
-                          />
-                          <div>
-                            <h1 className="text-2xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 dark:from-slate-100 dark:to-slate-300 bg-clip-text text-transparent">
-                              Agent Studio
-                            </h1>
-                            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">
-                              Design, configure, and deploy AI agents
-                            </p>
+                {/* Admin Dashboard Header */}
+                <AppHeader
+                  title="👑 Admin Dashboard"
+                  subtitle="Manage users, groups, and permissions"
+                  leading={
+                    <motion.div
+                      className="w-3 h-3 bg-gradient-to-r from-amber-500 to-orange-600 rounded-full"
+                      animate={{
+                        scale: [1, 1.2, 1],
+                        opacity: [0.8, 1, 0.8]
+                      }}
+                      transition={{
+                        duration: 2,
+                        repeat: Infinity,
+                        ease: "easeInOut"
+                      }}
+                    />
+                  }
+                  onCommandPalette={() => setCommandPaletteOpen(true)}
+                  menuItems={headerMenuItems}
+                  rightContent={
+                    currentUser ? (
+                      <div className="flex items-center space-x-3">
+                        {/* Account Type Badge */}
+                        <div className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${
+                          currentUser.accountType === 'enterprise'
+                            ? 'bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/30 dark:to-purple-900/30 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800'
+                            : 'bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/30 dark:to-pink-900/30 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800'
+                        }`}>
+                          {currentUser.accountType === 'enterprise' ? '🏢 Enterprise' : '👤 Individual'}
+                        </div>
+                        
+                        {/* Admin Badge */}
+                        {currentUser.role === 'admin' && (
+                          <div className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/30 dark:to-orange-900/30 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                            👑 Admin
                           </div>
+                        )}
+                        
+                        {/* User Profile with Logout */}
+                        <div className="flex items-center space-x-3">
+                          <div className="flex items-center space-x-2 px-3 py-2 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-xl border border-gray-300 dark:border-gray-600 shadow-sm">
+                            <div className="w-8 h-8 bg-gradient-to-br from-blue-400 to-indigo-500 rounded-full flex items-center justify-center text-white text-sm font-bold shadow-md">
+                              {currentUser.name.charAt(0).toUpperCase()}
+                            </div>
+                            <span className="text-sm font-semibold text-gray-800 dark:text-gray-200 max-w-[120px] truncate">
+                              {currentUser.name}
+                            </span>
+                          </div>
+                          
+                          {/* Logout Button */}
+                          <button
+                            onClick={() => {
+                              logout();
+                              toast.success('Logged out successfully');
+                            }}
+                            className="px-4 py-2 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-xl text-sm font-bold transition-all shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center space-x-1"
+                          >
+                            <span>🚪</span>
+                            <span>Logout</span>
+                          </button>
                         </div>
                       </div>
+                    ) : (
+                      <button
+                        onClick={() => setAuthPortalOpen(true)}
+                        className="px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-lg text-sm font-semibold transition-all"
+                      >
+                        Login
+                      </button>
+                    )
+                  }
+                  className="z-20"
+                />
 
-                      <div className="flex items-center space-x-3">
-                        <motion.button
-                          onClick={() => setCommandPaletteOpen(true)}
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                          className="flex items-center space-x-2 px-4 py-2 text-sm text-slate-600 dark:text-slate-300 bg-white/60 dark:bg-slate-700/60 backdrop-blur-sm rounded-xl border border-violet-200/30 dark:border-violet-800/30 hover:bg-violet-50/80 dark:hover:bg-violet-900/20 transition-all duration-200 shadow-sm"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                          </svg>
-                          <span className="font-medium">⌘K</span>
-                        </motion.button>
-
-                        <Menu as="div" className="relative z-[10000]">
-                          <Menu.Button className="p-2.5 text-slate-500 hover:text-violet-600 dark:text-slate-400 dark:hover:text-violet-400 bg-white/60 dark:bg-slate-700/60 backdrop-blur-sm rounded-xl border border-violet-200/30 dark:border-violet-800/30 hover:bg-violet-50/80 dark:hover:bg-violet-900/20 transition-all duration-200 shadow-sm">
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                            </svg>
-                          </Menu.Button>
-                          <Transition
-                            enter="transition duration-100 ease-out"
-                            enterFrom="transform scale-95 opacity-0"
-                            enterTo="transform scale-100 opacity-100"
-                            leave="transition duration-75 ease-in"
-                            leaveFrom="transform scale-100 opacity-100"
-                            leaveTo="transform scale-95 opacity-0"
-                          >
-                            <Menu.Items className="absolute right-0 top-full mt-2 w-56 bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-violet-200/30 dark:border-violet-800/30 z-[9999]">
-                              <div className="py-1">
-                                <Menu.Item>
-                                  {({ active }) => (
-                                    <button
-                                      onClick={() => setSettingsOpen(true)}
-                                      className={`w-full text-left px-4 py-3 text-sm transition-all duration-200 rounded-xl mx-2 my-1 ${
-                                        active
-                                          ? 'bg-gradient-to-r from-violet-50 to-indigo-50 dark:from-violet-900/30 dark:to-indigo-900/30 text-violet-700 dark:text-violet-300 shadow-sm'
-                                          : 'text-slate-700 dark:text-slate-300 hover:bg-violet-50/50 dark:hover:bg-violet-900/20'
-                                      }`}
-                                    >
-                                      <div className="flex items-center space-x-2">
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                        </svg>
-                                        <span>Application Settings</span>
-                                      </div>
-                                    </button>
-                                  )}
-                                </Menu.Item>
-                                <Menu.Item>
-                                  {({ active }) => (
-                                    <button
-                                      onClick={() => setToolsManagementOpen(true)}
-                                      className={`w-full text-left px-4 py-3 text-sm transition-all duration-200 rounded-xl mx-2 my-1 ${
-                                        active
-                                          ? 'bg-gradient-to-r from-violet-50 to-indigo-50 dark:from-violet-900/30 dark:to-indigo-900/30 text-violet-700 dark:text-violet-300 shadow-sm'
-                                          : 'text-slate-700 dark:text-slate-300 hover:bg-violet-50/50 dark:hover:bg-violet-900/20'
-                                      }`}
-                                    >
-                                      <div className="flex items-center space-x-2">
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5" />
-                                        </svg>
-                                        <span>Manage Tools</span>
-                                      </div>
-                                    </button>
-                                  )}
-                                </Menu.Item>
-                                <Menu.Item>
-                                  {({ active }) => (
-                                    <button
-                                      onClick={() => setMcpManagementOpen(true)}
-                                      className={`w-full text-left px-4 py-3 text-sm transition-all duration-200 rounded-xl mx-2 my-1 ${
-                                        active
-                                          ? 'bg-gradient-to-r from-violet-50 to-indigo-50 dark:from-violet-900/30 dark:to-indigo-900/30 text-violet-700 dark:text-violet-300 shadow-sm'
-                                          : 'text-slate-700 dark:text-slate-300 hover:bg-violet-50/50 dark:hover:bg-violet-900/20'
-                                      }`}
-                                    >
-                                      <div className="flex items-center space-x-2">
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21.75 17.25v-.228a4.5 4.5 0 00-.12-1.03l-2.268-9.64a3.375 3.375 0 00-3.285-2.602H7.923a3.375 3.375 0 00-3.285 2.602l-2.268 9.64a4.5 4.5 0 00-.12 1.03v.228m19.5 0a3 3 0 01-3 3H5.25a3 3 0 01-3-3m19.5 0v1.5a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 20.25v-1.5m16.5 0h-16.5" />
-                                        </svg>
-                                        <span>Manage MCP Servers</span>
-                                      </div>
-                                    </button>
-                                  )}
-                                </Menu.Item>
-                                <Menu.Item>
-                                  {({ active }) => (
-                                    <button
-                                      onClick={() => setLogsOpen(true)}
-                                      className={`w-full text-left px-4 py-3 text-sm transition-all duration-200 rounded-xl mx-2 my-1 ${
-                                        active
-                                          ? 'bg-gradient-to-r from-violet-50 to-indigo-50 dark:from-violet-900/30 dark:to-indigo-900/30 text-violet-700 dark:text-violet-300 shadow-sm'
-                                          : 'text-slate-700 dark:text-slate-300 hover:bg-violet-50/50 dark:hover:bg-violet-900/20'
-                                      }`}
-                                    >
-                                      <div className="flex items-center space-x-2">
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0-1.125-.504-1.125-1.125V11.25a9 9 0 00-9-9z" />
-                                        </svg>
-                                        <span>View Logs</span>
-                                      </div>
-                                    </button>
-                                  )}
-                                </Menu.Item>
-                                <Menu.Item>
-                                  {({ active }) => (
-                                    <button
-                                      onClick={() => setHelpOpen(true)}
-                                      className={`w-full text-left px-4 py-3 text-sm transition-all duration-200 rounded-xl mx-2 my-1 ${
-                                        active
-                                          ? 'bg-gradient-to-r from-violet-50 to-indigo-50 dark:from-violet-900/30 dark:to-indigo-900/30 text-violet-700 dark:text-violet-300 shadow-sm'
-                                          : 'text-slate-700 dark:text-slate-300 hover:bg-violet-50/50 dark:hover:bg-violet-900/20'
-                                      }`}
-                                    >
-                                      <div className="flex items-center space-x-2">
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                        </svg>
-                                        <span>Help & Documentation</span>
-                                      </div>
-                                    </button>
-                                  )}
-                                </Menu.Item>
-                              </div>
-                            </Menu.Items>
-                          </Transition>
-                        </Menu>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Enhanced Agent Creation Content */}
+                {/* Admin View Content */}
                 <div className="flex-1 overflow-hidden bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm relative z-0">
-                  <EnhancedAgentCreationPanel onAgentCreated={() => loadData()} />
+                  <AdminView adminTab={adminTab} onTabChange={setAdminTab} />
                 </div>
               </motion.div>
             )}
           </div>
         </div>
+
+        <AppFooter />
+
+      {/* Agent Management Modal */}
+      <AnimatePresence>
+        {agentManagementOpen && (
+          <AgentManagementPanel 
+            isOpen={agentManagementOpen}
+            onClose={() => {
+              setAgentManagementOpen(false);
+              setAgentToEdit(null);
+            }}
+            agentToEdit={agentToEdit}
+            onAgentCreated={() => loadData()}
+            onAgentUpdated={() => loadData()}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Command Palette */}
       <AnimatePresence>
@@ -571,34 +765,10 @@ function App() {
       {/* Help Panel */}
       <AnimatePresence>
         {helpOpen && (
-          <div className="fixed inset-0 z-[70] flex items-center justify-center">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-              onClick={() => setHelpOpen(false)}
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              transition={{ duration: 0.2 }}
-              className="relative bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 w-[90vw] h-[85vh] max-w-7xl overflow-hidden"
-            >
-              <div className="absolute top-4 right-4 z-10">
-                <button
-                  onClick={() => setHelpOpen(false)}
-                  className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-lg border border-gray-200 dark:border-gray-600 transition-colors"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-              <HelpPanel isVisible={helpOpen} />
-            </motion.div>
-          </div>
+          <HelpPanel 
+            isOpen={helpOpen} 
+            onClose={() => setHelpOpen(false)} 
+          />
         )}
       </AnimatePresence>
 
@@ -611,9 +781,35 @@ function App() {
           />
         )}
       </AnimatePresence>
+
+      {/* Community Center Panel */}
+      <AnimatePresence>
+        {communityCenterOpen && (
+          <CommunityCenterPanel
+            isOpen={communityCenterOpen}
+            onClose={() => setCommunityCenterOpen(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Authentication Portal */}
+      <AnimatePresence>
+        {authPortalOpen && (
+          <AuthenticationPortal
+            isOpen={authPortalOpen}
+            onClose={() => setAuthPortalOpen(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Authentication Portal */}
+      <AuthenticationPortal
+        isOpen={authPortalOpen}
+        onClose={() => setAuthPortalOpen(false)}
+      />
       </div>
       )}
-    </ThemeProvider>
+    </>
   );
 }
 

@@ -13,7 +13,7 @@ import time
 class TelemetryEvent:
     ts: float
     group_id: str
-    kind: str  # 'message' | 'tool_call' | 'tool_result' | 'mcp_call' | 'agent_call' | 'agent_thought' | 'error'
+    kind: str  # 'message' | 'tool_call' | 'tool_result' | 'mcp_call' | 'agent_call' | 'agent_thought' | 'error' | 'rag_retrieval' | 'summarization' | 'document_processing' | 'group_operation' | 'settings_change' | 'agent_management'
     agent_key: Optional[str]
     payload: Dict[str, Any]
 
@@ -29,8 +29,23 @@ class EventBus:
         self._subscribers: List[Callable[[TelemetryEvent], Coroutine[Any, Any, None]]] = []
 
     async def publish(self, evt: TelemetryEvent) -> None:
+        # 1. Persist to database for historical queries (Comprehensive Log Panel)
+        try:
+            from src.core.memory import session_store
+            session_store.append_telemetry_event(
+                timestamp=evt.ts,
+                group_id=evt.group_id,
+                event_type=evt.kind,
+                agent_key=evt.agent_key,
+                payload=evt.payload
+            )
+        except Exception as e:
+            print(f"Warning: Failed to persist telemetry event: {e}")
+
+        # 2. Add to queue for polling consumers
         await self._queue.put(evt)
-        # Fire-and-forget to all subscribers
+
+        # 3. Fire-and-forget to all SSE subscribers (real-time UI updates)
         for sub in list(self._subscribers):
             asyncio.create_task(sub(evt))
 
@@ -137,6 +152,115 @@ async def emit_agent_thought(
         agent_key=agent_key,
         payload={
             "thought": thought,
+            **(meta or {})
+        }
+    ))
+
+async def emit_rag_retrieval(
+    group_id: str,
+    agent_key: str,
+    query: str,
+    chunks_found: int,
+    meta: Optional[Dict[str, Any]] = None
+) -> None:
+    """Emit RAG context retrieval event"""
+    await EVENT_BUS.publish(TelemetryEvent(
+        ts=now_ts(),
+        group_id=group_id,
+        kind="rag_retrieval",
+        agent_key=agent_key,
+        payload={
+            "query": query[:100],  # Truncate query for logs
+            "chunks_found": chunks_found,
+            **(meta or {})
+        }
+    ))
+
+async def emit_summarization(
+    group_id: str,
+    status: str,
+    meta: Optional[Dict[str, Any]] = None
+) -> None:
+    """Emit conversation summarization event"""
+    await EVENT_BUS.publish(TelemetryEvent(
+        ts=now_ts(),
+        group_id=group_id,
+        kind="summarization",
+        agent_key=None,
+        payload={
+            "status": status,  # "start", "complete", "error"
+            **(meta or {})
+        }
+    ))
+
+async def emit_document_processing(
+    group_id: str,
+    agent_key: str,
+    filename: str,
+    status: str,
+    meta: Optional[Dict[str, Any]] = None
+) -> None:
+    """Emit document processing pipeline event"""
+    await EVENT_BUS.publish(TelemetryEvent(
+        ts=now_ts(),
+        group_id=group_id,
+        kind="document_processing",
+        agent_key=agent_key,
+        payload={
+            "filename": filename,
+            "status": status,  # "start", "extracting", "chunking", "embedding", "storing", "complete", "error"
+            **(meta or {})
+        }
+    ))
+
+async def emit_group_operation(
+    group_id: str,
+    operation: str,
+    meta: Optional[Dict[str, Any]] = None
+) -> None:
+    """Emit group management operation event"""
+    await EVENT_BUS.publish(TelemetryEvent(
+        ts=now_ts(),
+        group_id=group_id,
+        kind="group_operation",
+        agent_key=None,
+        payload={
+            "operation": operation,  # "created", "deleted", "agent_added", "agent_removed", "renamed"
+            **(meta or {})
+        }
+    ))
+
+async def emit_settings_change(
+    setting_key: str,
+    operation: str,
+    meta: Optional[Dict[str, Any]] = None
+) -> None:
+    """Emit settings change event"""
+    await EVENT_BUS.publish(TelemetryEvent(
+        ts=now_ts(),
+        group_id="system",
+        kind="settings_change",
+        agent_key=None,
+        payload={
+            "setting_key": setting_key,
+            "operation": operation,  # "updated", "deleted", "validated", "backup"
+            **(meta or {})
+        }
+    ))
+
+async def emit_agent_management(
+    agent_key: str,
+    operation: str,
+    meta: Optional[Dict[str, Any]] = None
+) -> None:
+    """Emit agent management operation event"""
+    await EVENT_BUS.publish(TelemetryEvent(
+        ts=now_ts(),
+        group_id="system",
+        kind="agent_management",
+        agent_key=agent_key,
+        payload={
+            "operation": operation,  # "created", "updated", "deleted", "registered"
             **(meta or {})
         }
     ))

@@ -41,11 +41,34 @@ CREATE TABLE IF NOT EXISTS messages (
   FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS group_summaries (
+  group_id TEXT PRIMARY KEY,
+  summary TEXT NOT NULL,           -- Cumulative conversation summary
+  last_summarized_count INTEGER NOT NULL,  -- Message count when last summarized
+  created_at REAL NOT NULL,
+  updated_at REAL NOT NULL,
+  FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS telemetry_events (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  timestamp REAL NOT NULL,
+  group_id TEXT NOT NULL,          -- Group ID or 'system' for system-wide events
+  event_type TEXT NOT NULL,        -- 'rag_retrieval', 'document_processing', 'summarization', 'group_operation', etc.
+  agent_key TEXT,
+  payload TEXT NOT NULL,           -- JSON
+  created_at REAL NOT NULL
+  -- No FK constraint: system events use group_id='system' which doesn't exist in groups table
+);
+
 -- Performance indexes for efficient queries
 CREATE INDEX IF NOT EXISTS idx_messages_group_id ON messages(group_id);
 CREATE INDEX IF NOT EXISTS idx_messages_group_role ON messages(group_id, role);
 CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(created_at);
 CREATE INDEX IF NOT EXISTS idx_group_agents_group_id ON group_agents(group_id);
+CREATE INDEX IF NOT EXISTS idx_telemetry_group_id ON telemetry_events(group_id);
+CREATE INDEX IF NOT EXISTS idx_telemetry_event_type ON telemetry_events(event_type);
+CREATE INDEX IF NOT EXISTS idx_telemetry_timestamp ON telemetry_events(timestamp);
 """
 
 def _create_connection(db_path: str = DEFAULT_DB_PATH) -> sqlite3.Connection:
@@ -123,51 +146,13 @@ def delete_group(group_id: str) -> None:
             print(f"⚠️ Failed to get agent list for memory cleanup: {e}")
             agent_list = []
 
-        # 3. Clean up agent memories related to this group
+        # 3. Clean up vector store documents for this group
         try:
-            from src.core.memory.rag_store import _rag_cxn
-
-            # Delete agent memories with group context
-            for agent_id in agent_list:
-                try:
-                    # Find memories that reference this group_id in context
-                    cur = _rag_cxn.execute(
-                        """SELECT entry_hash FROM agent_memory_metadata
-                           WHERE agent_id = ?""",
-                        (agent_id,)
-                    )
-
-                    entry_hashes = [row[0] for row in cur.fetchall()]
-
-                    # Check each memory's context for group_id reference
-                    for entry_hash in entry_hashes:
-                        # This is a simplified approach - in production you'd want better group context detection
-                        try:
-                            _rag_cxn.execute(
-                                "DELETE FROM agent_memory_metadata WHERE agent_id = ? AND entry_hash = ?",
-                                (agent_id, entry_hash)
-                            )
-                        except Exception:
-                            pass  # Continue with other entries
-
-                    print(f"🧹 Cleaned agent memories for {agent_id} related to group {group_id}")
-
-                except Exception as e:
-                    print(f"⚠️ Failed to clean memories for agent {agent_id}: {e}")
-
-            # 4. Clean up RAG store chunks with group context
-            try:
-                # Note: RAG chunks don't have direct group_id mapping in current schema
-                # This would need enhancement for proper group-specific RAG cleanup
-                # For now, we'll skip this to avoid breaking existing data
-                pass
-            except Exception as e:
-                print(f"⚠️ RAG cleanup not implemented: {e}")
-
-            _rag_cxn.commit()
-
+            from src.core.memory.vector_store import vector_store
+            vector_store.delete_group(group_id)
+            print(f"✅ Cleaned up vector store for group {group_id}")
         except Exception as e:
-            print(f"⚠️ Memory cleanup partially failed: {e}")
+            print(f"⚠️ Vector store cleanup failed: {e}")
 
         # 5. Delete group record (FK cascade handles messages and group_agents)
         _cxn.execute("DELETE FROM groups WHERE id=?", (group_id,))
@@ -349,7 +334,7 @@ def get_document_details(group_id: str, document_id: str) -> Optional[Dict[str, 
         "SELECT sender, content, metadata, created_at FROM messages WHERE group_id=? AND role='system'",
         (group_id,)
     )
-    
+
     for sender, content, metadata, ts in cur.fetchall():
         meta = json.loads(metadata or "{}")
         if meta.get("document_id") == document_id:
@@ -361,3 +346,157 @@ def get_document_details(group_id: str, document_id: str) -> Optional[Dict[str, 
             }
 
     return None
+
+
+# -------- Group Summaries (Conversation Summarization) --------
+
+def get_group_summary(group_id: str) -> Optional[Dict[str, Any]]:
+    """
+    Get conversation summary for a group
+
+    Returns:
+        {
+            "summary": str,
+            "last_summarized_count": int,
+            "updated_at": float
+        } or None if no summary exists
+    """
+    cur = _cxn.execute(
+        "SELECT summary, last_summarized_count, updated_at FROM group_summaries WHERE group_id=?",
+        (group_id,)
+    )
+    row = cur.fetchone()
+    if row:
+        return {
+            "summary": row[0],
+            "last_summarized_count": row[1],
+            "updated_at": row[2]
+        }
+    return None
+
+
+def upsert_group_summary(
+    group_id: str,
+    summary: str,
+    last_summarized_count: int
+) -> None:
+    """
+    Insert or update group conversation summary
+
+    Args:
+        group_id: Group ID
+        summary: Cumulative conversation summary
+        last_summarized_count: Total messages summarized so far
+    """
+    now = time.time()
+
+    # Try update first
+    cur = _cxn.execute(
+        "UPDATE group_summaries SET summary=?, last_summarized_count=?, updated_at=? WHERE group_id=?",
+        (summary, last_summarized_count, now, group_id)
+    )
+
+    # If no rows updated, insert
+    if cur.rowcount == 0:
+        _cxn.execute(
+            "INSERT INTO group_summaries (group_id, summary, last_summarized_count, created_at, updated_at) VALUES (?,?,?,?,?)",
+            (group_id, summary, last_summarized_count, now, now)
+        )
+
+    _cxn.commit()
+
+
+def delete_group_summary(group_id: str) -> None:
+    """Delete conversation summary for a group"""
+    _cxn.execute("DELETE FROM group_summaries WHERE group_id=?", (group_id,))
+    _cxn.commit()
+
+
+# -------- Telemetry Events --------
+
+def append_telemetry_event(
+    timestamp: float,
+    group_id: str,
+    event_type: str,
+    agent_key: Optional[str],
+    payload: Dict[str, Any]
+) -> None:
+    """
+    Persist telemetry event to database for historical queries
+
+    Args:
+        timestamp: Event timestamp
+        group_id: Group ID or 'system' for system-wide events
+        event_type: Event type (rag_retrieval, document_processing, etc.)
+        agent_key: Agent key if relevant
+        payload: Event payload as dict
+    """
+    _cxn.execute(
+        "INSERT INTO telemetry_events (timestamp, group_id, event_type, agent_key, payload, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+        (timestamp, group_id, event_type, agent_key, json.dumps(payload), time.time())
+    )
+    _cxn.commit()
+
+
+def get_telemetry_events(
+    group_id: Optional[str] = None,
+    event_type: Optional[str] = None,
+    agent_key: Optional[str] = None,
+    start_time: Optional[float] = None,
+    end_time: Optional[float] = None,
+    limit: int = 1000
+) -> List[Dict[str, Any]]:
+    """
+    Query telemetry events with filters
+
+    Args:
+        group_id: Filter by group ID (or 'system')
+        event_type: Filter by event type
+        agent_key: Filter by agent key
+        start_time: Filter by start timestamp
+        end_time: Filter by end timestamp
+        limit: Maximum number of events to return
+
+    Returns:
+        List of telemetry event dicts
+    """
+    query = "SELECT id, timestamp, group_id, event_type, agent_key, payload, created_at FROM telemetry_events WHERE 1=1"
+    params = []
+
+    if group_id:
+        query += " AND group_id = ?"
+        params.append(group_id)
+
+    if event_type:
+        query += " AND event_type = ?"
+        params.append(event_type)
+
+    if agent_key:
+        query += " AND agent_key = ?"
+        params.append(agent_key)
+
+    if start_time:
+        query += " AND timestamp >= ?"
+        params.append(start_time)
+
+    if end_time:
+        query += " AND timestamp <= ?"
+        params.append(end_time)
+
+    query += " ORDER BY timestamp DESC LIMIT ?"
+    params.append(limit)
+
+    rows = _cxn.execute(query, params).fetchall()
+
+    return [
+        {
+            "id": row[0],
+            "timestamp": row[1],
+            "group_id": row[2],
+            "event_type": row[3],
+            "agent_key": row[4],
+            "payload": json.loads(row[5]) if row[5] else {},
+            "created_at": row[6]
+        }
+        for row in rows
+    ]

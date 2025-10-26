@@ -185,6 +185,9 @@ async def create_agent(
         agent_key = re.sub(r'[^a-zA-Z0-9_]', '', agent_key)
 
         # Step 1: Validate Agent Configuration (Complete Runtime Test)
+        # Inject build_agent function for end-to-end testing
+        from src.core.agents.registry import build_agent
+
         validation_result = await AgentValidator.validate_agent_config(
             name=request.name,
             description=request.description,
@@ -194,7 +197,8 @@ async def create_agent(
             agent_key=agent_key,
             llm_config=request.llm.dict() if request.llm else None,
             selected_tools=request.selected_tools,
-            selected_mcps=request.selected_mcps
+            selected_mcps=request.selected_mcps,
+            agent_builder=build_agent  # Dependency injection
         )
 
         if not validation_result.valid:
@@ -272,6 +276,21 @@ async def create_agent(
                 "has_mcp_config": bool(request.mcp_config),
                 "selected_tools_count": len(request.selected_tools or []),
                 "selected_mcps_count": len(request.selected_mcps or [])
+            }
+        )
+
+        # Emit telemetry for comprehensive log panel
+        from src.core.telemetry.events import emit_agent_management
+        await emit_agent_management(
+            agent_key=agent_key,
+            operation="created",
+            meta={
+                "agent_name": request.name,
+                "agent_dir": agent_dir,
+                "llm_provider": request.llm.provider,
+                "llm_model": request.llm.model,
+                "has_tools": bool(request.tools_code and request.tools_code.strip()),
+                "has_mcp_config": bool(request.mcp_config)
             }
         )
 
@@ -356,6 +375,9 @@ async def update_agent(
         updated_mcp_config = request.mcp_config if request.mcp_config is not None else None
 
         # Step 1: Validate Updated Agent Configuration (Complete Runtime Test)
+        # Inject build_agent function for end-to-end testing
+        from src.core.agents.registry import build_agent
+
         validation_result = await AgentValidator.validate_agent_config(
             name=updated_name,
             description=updated_description,
@@ -365,10 +387,14 @@ async def update_agent(
             agent_key=agent_key,
             llm_config=updated_llm,
             selected_tools=request.selected_tools,
-            selected_mcps=request.selected_mcps
+            selected_mcps=request.selected_mcps,
+            agent_builder=build_agent  # Dependency injection
         )
 
         if not validation_result.valid:
+            # Log validation errors for debugging
+            print(f"❌ Agent update validation failed for '{agent_key}':")
+            print(f"   Validation errors: {validation_result.to_dict()}")
             raise HTTPException(
                 status_code=400,
                 detail={
@@ -432,6 +458,18 @@ async def update_agent(
         # Step 3: Refresh and Deploy
         service.refresh_agents()
 
+        # Emit telemetry for comprehensive log panel
+        from src.core.telemetry.events import emit_agent_management
+        await emit_agent_management(
+            agent_key=new_agent_key,
+            operation="updated",
+            meta={
+                "original_key": agent_key,
+                "folder_renamed": new_agent_key != agent_key,
+                "updated_fields": [k for k, v in request.dict().items() if v is not None]
+            }
+        )
+
         return {
             "message": f"Agent '{new_agent_key}' updated successfully",
             "agent_key": new_agent_key,
@@ -476,6 +514,17 @@ async def delete_agent(
         # Refresh agents to remove from list
         service.refresh_agents()
 
+        # Emit telemetry for comprehensive log panel
+        from src.core.telemetry.events import emit_agent_management
+        await emit_agent_management(
+            agent_key=agent_key,
+            operation="deleted",
+            meta={
+                "agent_name": agent_spec.name,
+                "agent_dir": agent_dir
+            }
+        )
+
         return {
             "message": f"Agent '{agent_key}' deleted successfully",
             "agent_key": agent_key
@@ -495,6 +544,7 @@ async def test_register_agent(request: dict):
     """
     try:
         from src.core.validation.agent_validator import AgentValidator
+        from src.core.agents.registry import build_agent
 
         result = await AgentValidator.validate_agent_config(
             name=request.get("name", ""),
@@ -505,7 +555,8 @@ async def test_register_agent(request: dict):
             agent_key=request.get("agent_key"),
             llm_config=request.get("llm_config"),
             selected_tools=request.get("selected_tools"),
-            selected_mcps=request.get("selected_mcps")
+            selected_mcps=request.get("selected_mcps"),
+            agent_builder=build_agent  # Dependency injection
         )
 
         return {

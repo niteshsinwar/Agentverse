@@ -14,11 +14,11 @@ dist/
 downloads/
 workspace/
 data/
+chroma_db/
 logs/
 .venv/
 eggs/
 .eggs/
-lib/
 lib64/
 parts/
 sdist/

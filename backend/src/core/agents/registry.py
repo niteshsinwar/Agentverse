@@ -38,8 +38,16 @@ def _import_tools_py(path: str) -> Any:
     if not os.path.exists(path):
         return None
     # Use unique module name with timestamp to avoid caching issues
+    # This ensures hot-reload works when agent tools are modified
     agent_dir = os.path.basename(os.path.dirname(path))
-    module_name = f"agent_tools_{agent_dir}_{int(time.time() * 1000)}"
+    module_name = f"agent_tools_{agent_dir}_{int(time.time() * 1000000)}"  # Use microseconds for uniqueness
+
+    # Clean up any old modules from sys.modules to prevent memory leaks during hot-reload
+    import sys
+    old_modules = [k for k in sys.modules.keys() if k.startswith(f"agent_tools_{agent_dir}_")]
+    for old_mod in old_modules:
+        del sys.modules[old_mod]
+
     spec = importlib.util.spec_from_file_location(module_name, path)
     if spec is None or spec.loader is None:
         return None

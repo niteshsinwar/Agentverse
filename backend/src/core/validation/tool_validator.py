@@ -301,18 +301,24 @@ class ToolValidator:
     @staticmethod
     def _test_code_execution(result: ValidationResult, code: str):
         """
-        Test ACTUAL tool registration using the EXACT same process as agent building
-        This matches exactly what registry.py does: importlib -> register_tools_from_module
+        Test tool code execution independently without depending on BaseAgent.
+
+        Tools are independent resources that can exist without agents, so validation
+        should not require agent infrastructure.
+
+        This validates:
+        1. Code compiles and executes without errors
+        2. Functions with @agent_tool decorator can be found and inspected
+        3. No import errors or runtime errors
         """
         try:
-            # Test the EXACT same process as agent building
             import tempfile as tf
             import importlib.util as imp_util
             import time
             import os as file_os
-            from src.core.agents.base_agent import BaseAgent
+            import inspect
 
-            # Create temporary file with tool code (same as agent discovery)
+            # Create temporary file with tool code
             with tf.NamedTemporaryFile(
                 mode='w', suffix='.py', delete=False
             ) as f:
@@ -320,23 +326,23 @@ class ToolValidator:
                 temp_path = f.name
 
             try:
-                # Test actual module loading (EXACT same as registry.py:39-42)
-                module_name = f"test_tool_{int(time.time() * 1000)}"
+                # Test actual module loading
+                module_name = f"test_tool_{int(time.time() * 1000000)}"
                 spec = imp_util.spec_from_file_location(
                     module_name, temp_path
                 )
                 module = imp_util.module_from_spec(spec)
                 spec.loader.exec_module(module)
 
-                # Test actual tool registration (EXACT same as registry.py:106-108)
-                test_agent = BaseAgent(agent_id="test_agent")
-                test_agent.register_tools_from_module(module)
+                # Find functions with @agent_tool decorator (independent validation)
+                registered_tools = []
+                for name, obj in inspect.getmembers(module):
+                    if inspect.isfunction(obj) and hasattr(obj, "__agent_tool__"):
+                        registered_tools.append(name)
 
-                # Verify tools were registered
-                registered_tools = list(test_agent.tools.keys())
                 tool_count = len(registered_tools)
 
-                # ✅ FIX: At least one tool must be registered with @agent_tool
+                # ✅ At least one tool must have @agent_tool decorator
                 if tool_count == 0:
                     result.add_error(
                         "code",
@@ -347,8 +353,8 @@ class ToolValidator:
                     tools_str = ', '.join(registered_tools)
                     result.add_warning(
                         "code",
-                        f"✅ Successfully registered {tool_count} tool(s): {tools_str}",
-                        "REGISTRATION_SUCCESS"
+                        f"✅ Successfully validated {tool_count} tool(s): {tools_str}",
+                        "VALIDATION_SUCCESS"
                     )
 
             finally:
@@ -361,7 +367,7 @@ class ToolValidator:
         except ImportError as e:
             result.add_error("code", f"Import error during tool loading: {str(e)}", "IMPORT_ERROR")
         except Exception as e:
-            result.add_error("code", f"Tool registration failed: {str(e)}", "REGISTRATION_ERROR")
+            result.add_error("code", f"Tool validation failed: {str(e)}", "VALIDATION_ERROR")
 
     @staticmethod
     def get_tool_code_template() -> str:

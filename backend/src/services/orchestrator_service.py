@@ -8,7 +8,7 @@ import asyncio
 import os
 import time
 
-from src.core.agents.orchestrator import AgentOrchestrator
+from src.core.agents.agent_coordinator import AgentOrchestrator
 from src.core.agents.router import Router
 from src.core.agents.registry import AgentSpec
 from src.core.memory import session_store
@@ -86,6 +86,47 @@ class OrchestratorService:
             raise RuntimeError("Service not initialized")
         self.orchestrator.refresh_agents()
 
+    # Hot-reload methods for configuration changes
+    def reload_settings(self) -> None:
+        """Reload settings.json without server restart"""
+        print("🔄 Reloading settings.json...")
+        try:
+            # Force reload of settings singleton
+            from src.core.config.settings import reload_settings
+            reload_settings()
+            self.settings = get_settings()
+
+            # Reload singleton services that cache settings
+            # Note: RAG service now uses @property for settings (supports hot-reload)
+            # Some services (like summarizer, vector_store) cache config in __init__
+            # These will pick up changes gradually or need full server restart for complete reload
+            print("  ⚙️ Settings cache cleared")
+            print("  ✅ Most settings will take effect immediately")
+            print("  ⚠️ Some changes (embedding model, vector store config) may require server restart")
+            print("✅ Settings reloaded successfully")
+        except Exception as e:
+            print(f"❌ Failed to reload settings: {e}")
+
+    def reload_tools(self) -> None:
+        """Reload tools.json without server restart"""
+        print("🔄 Reloading tools.json...")
+        try:
+            # Tools are loaded on-demand from filesystem, no caching
+            # Just notify that tools have changed
+            print("✅ Tools configuration updated (loaded on-demand)")
+        except Exception as e:
+            print(f"❌ Failed to reload tools: {e}")
+
+    def reload_mcp(self) -> None:
+        """Reload mcp.json without server restart"""
+        print("🔄 Reloading mcp.json...")
+        try:
+            # MCP servers are loaded on-demand from filesystem
+            # Just notify that MCP configuration has changed
+            print("✅ MCP configuration updated (loaded on-demand)")
+        except Exception as e:
+            print(f"❌ Failed to reload MCP: {e}")
+
     # Message Processing Methods
     async def process_message(self, group_id: str, message: str, sender: str = "user") -> None:
         """Process a message through the unified router (user or agent)"""
@@ -159,81 +200,48 @@ class OrchestratorService:
 
     async def process_document_upload(self, group_id: str, agent_id: str, file, message: str) -> Dict[str, Any]:
         """
-        Process document upload using existing DocumentManager.
+        Process document upload through MM-RAG pipeline
 
-        This leverages the enterprise-grade document processing system.
+        Flow:
+        1. Read file content
+        2. Process through document_service (Extract → Chunk → Embed → Store)
+        3. Store metadata in SQLite
+        4. Route user message to agent (with RAG retrieval)
         """
         if not self.is_ready():
             raise RuntimeError("Orchestrator service not initialized")
 
         try:
-            # Use existing DocumentManager but need to handle FastAPI UploadFile properly
-            from src.core.document_processing.manager import document_manager
-            import tempfile
+            from src.services.document_service import document_service
+            from src.core.telemetry.events import emit_message
 
-            # Save FastAPI UploadFile to temporary file path for DocumentManager
+            # Read file content
             file_content = await file.read()
-            file_extension = os.path.splitext(file.filename)[1].lower()
-
-            with tempfile.NamedTemporaryFile(suffix=file_extension, delete=False) as temp_file:
-                temp_file.write(file_content)
-                temp_file_path = temp_file.name
-
-            # Process using the temporary file path
-            result = await document_manager.process_and_store_document(
-                uploaded_file=temp_file_path,  # Pass file path instead of UploadFile
-                group_id=group_id,
-                agent_id=agent_id,
-                sender_type="user"
-            )
-
-            # Clean up temporary file
-            os.unlink(temp_file_path)
-
-            if not result['success']:
-                raise RuntimeError(result['error'])
-
-            # File size is already available from the content we read
             file_size = len(file_content)
 
-            # Step 1: Add document upload notification (minimal, visible to UI)
-            doc_msg_id = session_store.append_document_message(
-                group_id=group_id,
-                sender="user",
+            print(f"📄 Processing document: {file.filename} ({file_size} bytes)")
+            print(f"   Target: @{agent_id} in group {group_id}")
+
+            # Process through MM-RAG pipeline (notification sent inside pipeline at start)
+            print(f"🔄 Starting MM-RAG pipeline...")
+            result = await document_service.process_upload(
+                file_content=file_content,
                 filename=file.filename,
-                document_id=result['document_id'],
-                target_agent=agent_id,
-                file_size=file_size,
-                file_extension=os.path.splitext(file.filename)[1].lower(),
-                original_prompt=message,
-                extracted_content="",
-                content_summary=""  # Keep UI message clean
+                group_id=group_id,
+                agent_id=agent_id
             )
 
-            # Emit document upload notification as SSE event for real-time display
-            from src.core.telemetry.events import emit_message
-            size_kb = file_size / 1024 if file_size > 0 else 0
-            doc_content = f"📄 **Document uploaded**: {file.filename}\n**Target Agent**: @{agent_id}\n**Size**: {size_kb:.1f} KB • **ID**: {result['document_id']}"
-            await emit_message(group_id, sender="system", role="system", content=doc_content)
+            if not result['success']:
+                print(f"❌ MM-RAG pipeline failed: {result['error']}")
+                raise RuntimeError(result['error'])
 
-            # Step 2: Add document analysis to conversation history (hidden from UI, available to agents)
-            # Use extracted_content (which contains AI analysis) rather than content_summary (which is just a basic summary)
-            document_analysis = result.get('extracted_content', result.get('content_summary', 'No analysis available'))
-            if document_analysis and document_analysis.strip() and document_analysis != 'No analysis available':
-                session_store.append_message(
-                    group_id=group_id,
-                    sender="system",
-                    role="system",
-                    content=f"📄 Document Analysis for {file.filename}:\n\n{document_analysis}",
-                    metadata={
-                        "message_type": "document_analysis",
-                        "document_id": result['document_id'],
-                        "filename": file.filename,
-                        "hidden_from_ui": True  # Hide from UI but keep in agent context
-                    }
-                )
+            print(f"✅ MM-RAG pipeline complete:")
+            print(f"   • Document ID: {result['document_id']}")
+            print(f"   • Modality: {result['modality']}")
+            print(f"   • Total chunks: {result['total_chunks']}")
+            print(f"   • Chunks stored in ChromaDB vector store")
 
-            # Step 3: Route user's message to agent (router will emit SSE event)
+            # Step 2: Route user's message to agent (router will retrieve RAG context and emit SSE)
             user_message_content = f"@{agent_id} {message}" if message else f"@{agent_id}"
             await self.router.route_message(
                 group_id=group_id,

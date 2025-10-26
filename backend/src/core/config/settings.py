@@ -94,8 +94,30 @@ class Settings(BaseSettings):
     enable_file_logging: bool = True
     log_file_max_size_mb: int = 10
 
+    # Embedding Configuration
+    embedding_provider: str = "openai"  # openai, anthropic, gemini
+    embedding_model: str = "text-embedding-3-small"
+    embedding_dimensions: int = 1536
+    clip_model: str = "openai/clip-vit-base-patch32"
+    vision_model: str = "gpt-4o"
+
     # Document Extraction Configuration
     document_extraction: DocumentExtractionSettings = DocumentExtractionSettings()
+
+    # RAG Configuration
+    rag_similarity_threshold: float = 0.35
+    rag_top_k: int = 5
+    rag_decay_enabled: bool = True
+    rag_decay_alpha: float = 0.7
+    rag_decay_half_life_messages: int = 50
+    rag_decay_min_factor: float = 0.1
+
+    # Conversation Summarization Configuration
+    conversation_summary_enabled: bool = True
+    conversation_summary_trigger_count: int = 20
+    conversation_summary_window_size: int = 10
+    conversation_summary_model: str = "gpt-4o-mini"
+    conversation_summary_max_tokens: int = 500
 
     # Legacy support for old settings format
     @property
@@ -232,12 +254,16 @@ def get_settings() -> Settings:
     return base_settings
 
 
-def refresh_settings():
+def reload_settings():
     """
-    Refresh the settings cache.
+    Reload settings from disk (hot-reload support).
 
     This function clears the LRU cache for get_settings(),
     forcing it to reload settings from files on next access.
-    Useful when settings.json has been updated via API.
+    Useful when settings.json has been updated via file watcher or API.
     """
     get_settings.cache_clear()
+
+
+# Alias for backward compatibility
+refresh_settings = reload_settings

@@ -1,4 +1,4 @@
-"""
+f"""
 Document Storage and Retrieval System
 Manages document uploads, storage, and agent access tracking
 """
@@ -42,13 +42,13 @@ class DocumentStorage:
                 extension TEXT,
                 group_id TEXT NOT NULL,
                 agent_id TEXT NOT NULL,
-                sender_type TEXT NOT NULL,  -- 'user' or 'agent'
+                sender_type TEXT NOT NULL,
                 sender_id TEXT,
                 upload_timestamp TEXT NOT NULL,
                 extracted_content TEXT,
                 content_summary TEXT,
                 is_processed BOOLEAN DEFAULT 0,
-                metadata TEXT  -- JSON string for additional metadata
+                metadata TEXT
             )
         """)
         
@@ -67,71 +67,73 @@ class DocumentStorage:
         conn.commit()
         conn.close()
     
-    def store_document(self, 
-                      file_path: str, 
-                      original_filename: str,
-                      group_id: str, 
-                      agent_id: str,
-                      sender_type: str = "user",
-                      sender_id: Optional[str] = None,
-                      extracted_content: Optional[str] = None,
-                      content_summary: Optional[str] = None,
-                      metadata: Optional[Dict] = None) -> str:
-        """Store document and return document ID"""
-        
-        # Generate unique filename
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        file_ext = Path(original_filename).suffix
-        unique_filename = f"{timestamp}_{agent_id}_{group_id}_{original_filename}"
-        
-        # Create agent-specific directory
-        agent_dir = self.uploads_dir / group_id / agent_id
-        agent_dir.mkdir(parents=True, exist_ok=True)
-        
-        # Copy file to permanent storage
-        stored_path = agent_dir / unique_filename
-        shutil.copy2(file_path, stored_path)
-        
-        # Store metadata in database
+    def store_document_metadata(
+        self,
+        document_id: str,
+        filename: str,
+        file_type: str,
+        file_size: int,
+        group_id: str,
+        agent_id: str,
+        modality: str,
+        total_chunks: int,
+        sender_type: str = "user",
+        metadata: Optional[Dict] = None
+    ) -> str:
+        """
+        Store lightweight document metadata in SQLite (for UI)
+
+        Args:
+            document_id: Unique document identifier (used as file_path for now)
+            filename: Original filename
+            file_type: File extension
+            file_size: File size in bytes
+            group_id: Group ID
+            agent_id: Target agent ID
+            modality: "text", "structured", or "image"
+            total_chunks: Number of chunks stored in vector DB
+            sender_type: "user" or "agent"
+            metadata: Additional metadata (JSON)
+
+        Returns:
+            document_id
+        """
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        
+
+        upload_timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        metadata_json = json.dumps(metadata) if metadata else None
+
+        # Map to existing schema
         cursor.execute("""
             INSERT INTO documents (
-                filename, original_filename, file_path, file_size, file_type, extension,
-                group_id, agent_id, sender_type, sender_id, upload_timestamp,
+                filename, original_filename, file_path, file_size,
+                file_type, extension, group_id, agent_id, 
+                sender_type, sender_id, upload_timestamp, 
                 extracted_content, content_summary, is_processed, metadata
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
-            unique_filename,
-            original_filename,
-            str(stored_path),
-            stored_path.stat().st_size,
-            self._get_file_type(file_ext),
-            file_ext.lstrip('.'),
-            group_id,
-            agent_id,
-            sender_type,
-            sender_id,
-            datetime.now().isoformat(),
-            extracted_content,
-            content_summary,
-            1 if extracted_content else 0,
-            json.dumps(metadata) if metadata else None
+            filename,           # filename
+            filename,           # original_filename
+            document_id,        # file_path (using document_id as path)
+            file_size,          # file_size
+            file_type,          # file_type
+            file_type,          # extension
+            group_id,           # group_id
+            agent_id,           # agent_id
+            sender_type,        # sender_type
+            None,               # sender_id
+            upload_timestamp,   # upload_timestamp
+            f"Modality: {modality}, Chunks: {total_chunks}",  # extracted_content
+            None,               # content_summary
+            1,                  # is_processed (set to 1 since we processed it)
+            metadata_json       # metadata
         ))
-        
-        document_id = cursor.lastrowid
-        
-        # Log access
-        cursor.execute("""
-            INSERT INTO document_access (document_id, agent_id, group_id, access_timestamp, access_type)
-            VALUES (?, ?, ?, ?, ?)
-        """, (document_id, agent_id, group_id, datetime.now().isoformat(), 'upload'))
-        
+
         conn.commit()
         conn.close()
-        
-        return str(document_id)
+
+        return document_id
     
     def get_agent_documents(self, agent_id: str, group_id: str) -> List[Dict[str, Any]]:
         """Get all documents accessible to an agent in a specific group"""
@@ -185,19 +187,20 @@ class DocumentStorage:
             SELECT * FROM documents 
             WHERE agent_id = ? AND group_id = ? 
             AND (
+                filename LIKE ? OR 
                 original_filename LIKE ? OR 
                 extracted_content LIKE ? OR 
                 content_summary LIKE ?
             )
             ORDER BY upload_timestamp DESC
-        """, (agent_id, group_id, f"%{query}%", f"%{query}%", f"%{query}%"))
-        
+        """, (agent_id, group_id, f"%{query}%", f"%{query}%", f"%{query}%", f"%{query}%"))
+
         columns = [description[0] for description in cursor.description]
         documents = []
         
         for row in cursor.fetchall():
             doc = dict(zip(columns, row))
-            if doc['metadata']:
+            if doc.get('metadata'):
                 doc['metadata'] = json.loads(doc['metadata'])
             documents.append(doc)
         

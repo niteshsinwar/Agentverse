@@ -108,6 +108,20 @@ async def add_tool(tool_id: str, tool_data: ToolRequest):
         with open(tools_path, 'w') as f:
             json.dump(tools, f, indent=2)
 
+        # Emit telemetry for comprehensive log panel
+        from src.core.telemetry.events import emit_agent_management
+        await emit_agent_management(
+            agent_key=f"tool_{tool_id}",
+            operation="tool_created",
+            meta={
+                "tool_id": tool_id,
+                "tool_name": tool_data.name,
+                "category": tool_data.category,
+                "functions_count": len(tool_data.functions),
+                "total_tools": len(tools)
+            }
+        )
+
         return {
             "message": f"Tool '{tool_id}' added successfully",
             "tool_id": tool_id,
@@ -187,6 +201,19 @@ async def update_tool(tool_id: str, tool_data: ToolRequest):
         with open(tools_path, 'w') as f:
             json.dump(tools, f, indent=2)
 
+        # Emit telemetry for comprehensive log panel
+        from src.core.telemetry.events import emit_agent_management
+        await emit_agent_management(
+            agent_key=f"tool_{tool_id}",
+            operation="tool_updated",
+            meta={
+                "tool_id": tool_id,
+                "tool_name": tool_data.name,
+                "category": tool_data.category,
+                "functions_count": len(tool_data.functions)
+            }
+        )
+
         return {
             "message": f"Tool '{tool_id}' updated successfully",
             "tool_id": tool_id,
@@ -228,6 +255,17 @@ async def delete_tool(tool_id: str):
         # Save back to file
         with open(tools_path, 'w') as f:
             json.dump(tools, f, indent=2)
+
+        # Emit telemetry for comprehensive log panel
+        from src.core.telemetry.events import emit_agent_management
+        await emit_agent_management(
+            agent_key=f"tool_{tool_id}",
+            operation="tool_deleted",
+            meta={
+                "tool_id": tool_id,
+                "remaining_tools": len(tools)
+            }
+        )
 
         return {
             "message": f"Tool '{tool_id}' deleted successfully",

@@ -1,16 +1,43 @@
 """
 Agent Configuration Validator
-Validates agent configurations using the exact same logic as registry.py
+Validates agent configurations independently through dependency injection.
 
-REFACTORED: Delegates to ToolValidator and McpValidator to eliminate code duplication (DRY principle)
+INDEPENDENCE GUARANTEE:
+- NO imports from src.core.agents or src.core.mcp
+- Only depends on ToolValidator and McpValidator
+- Agent building is injected as a callable from outside
+- Can be used standalone for validation without the rest of the system
+
+DEPENDENCIES:
+- ToolValidator (for tools.py validation)
+- McpValidator (for mcp.json validation)
+- Python stdlib (yaml, json, os, tempfile)
 """
 
 import os
 import yaml
 import json
-from typing import Dict, Any, Optional, List
+import tempfile
+from typing import Dict, Any, Optional, List, Callable, Awaitable, NamedTuple
+from pathlib import Path
 
 from .validation_result import ValidationResult
+
+
+# AgentSpec for dependency injection (avoids importing from registry)
+class AgentSpec(NamedTuple):
+    """
+    Agent specification for building.
+    This is a lightweight copy to avoid importing from src.core.agents.registry
+    """
+    key: str
+    name: str
+    description: str
+    emoji: str
+    llm: Dict[str, str]
+    folder: str
+    mcp_config: Dict[str, Any]
+    tools_module: Optional[str] = None
 
 
 class AgentValidator:
@@ -26,15 +53,32 @@ class AgentValidator:
         agent_key: Optional[str] = None,
         llm_config: Optional[Dict[str, str]] = None,
         selected_tools: Optional[List[str]] = None,
-        selected_mcps: Optional[List[str]] = None
+        selected_mcps: Optional[List[str]] = None,
+        agent_builder: Optional[Callable[[Any], Awaitable[Any]]] = None
     ) -> ValidationResult:
         """
-        Validate agent configuration by testing COMPLETE agent building process
-        This uses the EXACT same logic as registry.py: discover_agents() -> build_agent()
+        Validate agent configuration with optional end-to-end agent building test.
+
+        Args:
+            name: Agent name
+            description: Agent description
+            emoji: Agent emoji
+            tools_code: Optional custom tools Python code
+            mcp_config: Optional MCP server configuration
+            agent_key: Optional agent unique key
+            llm_config: Optional LLM configuration
+            selected_tools: Optional list of global tool IDs to include
+            selected_mcps: Optional list of global MCP server IDs to include
+            agent_builder: Optional callable that builds an agent from AgentSpec
+                          If provided, performs end-to-end build testing
+                          If None, only validates structure (faster, no dependencies)
+
+        Returns:
+            ValidationResult with errors/warnings
         """
         result = ValidationResult(valid=True, errors=[], warnings=[])
 
-        # Validate basic fields (same as registry.py AgentSpec validation)
+        # Validate basic fields
         AgentValidator._validate_basic_fields(result, name, description, emoji, agent_key)
 
         # DELEGATE to specialized validators (DRY principle)
@@ -50,13 +94,48 @@ class AgentValidator:
         if not result.valid:
             return result
 
-        # Test COMPLETE agent building process (same as build_agent())
+        # Optional: Test COMPLETE agent building process (requires agent_builder injection)
+        if agent_builder:
+            await AgentValidator._test_agent_build(
+                result=result,
+                name=name,
+                description=description,
+                emoji=emoji,
+                llm_config=llm_config,
+                tools_code=tools_code,
+                mcp_config=mcp_config,
+                selected_tools=selected_tools,
+                selected_mcps=selected_mcps,
+                agent_key=agent_key,
+                agent_builder=agent_builder
+            )
+        else:
+            result.add_warning("build", "⚠️ Skipped agent build test (no builder provided)", "BUILD_SKIPPED")
+
+        return result
+
+    @staticmethod
+    async def _test_agent_build(
+        result: ValidationResult,
+        name: str,
+        description: str,
+        emoji: str,
+        llm_config: Optional[Dict[str, str]],
+        tools_code: Optional[str],
+        mcp_config: Optional[Dict[str, Any]],
+        selected_tools: Optional[List[str]],
+        selected_mcps: Optional[List[str]],
+        agent_key: Optional[str],
+        agent_builder: Callable[[Any], Awaitable[Any]]
+    ) -> None:
+        """
+        Test agent building using injected builder function.
+
+        This method is separated to make the dependency injection clear.
+        The agent_builder is expected to be a function like:
+            async def builder(spec: AgentSpec) -> EnhancedBaseAgent
+        """
         try:
-            import tempfile
-            import os
-            import yaml
-            import json
-            from src.core.agents.registry import build_agent, AgentSpec
 
             # Create temporary agent directory
             with tempfile.TemporaryDirectory() as temp_dir:
@@ -126,7 +205,7 @@ class AgentValidator:
                     with open(os.path.join(temp_dir, "tools.py"), 'w') as f:
                         f.write("# Agent tools will be defined here\n")
 
-                # Test ACTUAL agent building (EXACT same as registry.py)
+                # Create AgentSpec for builder
                 spec = AgentSpec(
                     key=agent_key or "test_agent",
                     name=name,
@@ -138,24 +217,29 @@ class AgentValidator:
                     tools_module=os.path.join(temp_dir, "tools.py") if final_tools_code.strip() else None
                 )
 
-                # This is the CRITICAL test - actual agent building
-                agent = await build_agent(spec)
+                # CRITICAL: Use injected builder function (no direct import from registry)
+                agent = await agent_builder(spec)
 
                 # Verify agent was built successfully
                 result.add_warning("build", f"✅ Agent built successfully: {agent.agent_id}", "BUILD_SUCCESS")
                 result.add_warning("build", f"   LLM: {agent.llm_config}", "BUILD_LLM")
-                result.add_warning("build", f"   Tools: {len(agent.tools)} registered", "BUILD_TOOLS")
 
-                if agent.mcp and hasattr(agent.mcp, 'servers') and agent.mcp.servers:
-                    mcp_count = len(agent.mcp.servers)
+                # Count custom tools (from tools.py with @agent_tool decorator)
+                custom_tools_count = len(agent._custom_tools) if hasattr(agent, '_custom_tools') else 0
+                # Count pre-registered tools (from global tools list)
+                global_tools_count = len(agent.tools) if isinstance(agent.tools, list) else 0
+                total_tools = custom_tools_count + global_tools_count
+
+                result.add_warning("build", f"   Tools: {total_tools} total ({custom_tools_count} custom, {global_tools_count} global)", "BUILD_TOOLS")
+
+                if agent.mcp_manager and hasattr(agent.mcp_manager, 'servers') and agent.mcp_manager.servers:
+                    mcp_count = len(agent.mcp_manager.servers)
                     result.add_warning("build", f"   MCP: {mcp_count} servers connected", "BUILD_MCP")
                 else:
                     result.add_warning("build", "   MCP: No servers", "BUILD_NO_MCP")
 
         except Exception as e:
             result.add_error("build", f"Agent building failed: {str(e)}", "BUILD_FAILED")
-
-        return result
 
     @staticmethod
     def validate_agent_folder(agent_folder: str) -> ValidationResult:

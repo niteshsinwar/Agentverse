@@ -45,6 +45,8 @@ async def validate_agent_config(request: dict):
     functionality.
     """
     try:
+        from src.core.agents.registry import build_agent
+
         result = await AgentValidator.validate_agent_config(
             name=request.get("name", ""),
             description=request.get("description", ""),
@@ -54,7 +56,8 @@ async def validate_agent_config(request: dict):
             agent_key=request.get("key"),
             llm_config=request.get("llm_config"),
             selected_tools=request.get("selected_tools"),
-            selected_mcps=request.get("selected_mcps")
+            selected_mcps=request.get("selected_mcps"),
+            agent_builder=build_agent  # Dependency injection
         )
 
         return result.to_dict()

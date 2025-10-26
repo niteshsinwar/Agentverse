@@ -86,9 +86,10 @@ class Router:
                 else:
                     return "Please start your message with @AgentKey (e.g., @agent_1 How many records?)."
             else:
-                # Agent message without @mention - just store it, no further routing
+                # Agent message without @mention (U-turn routing found no mentions)
+                # Message was already emitted in _process_agent_response, don't emit again!
+                # Just store it in session without duplicate emission
                 session_store.append_message(group_id, sender=mentioner, role="agent", content=message, metadata={"agent_key": mentioner})
-                await emit_message(group_id, sender=mentioner, role="agent", content=message, agent_key=mentioner)
                 return ""
 
         # 3. Route to mentioned agent
@@ -129,13 +130,27 @@ class Router:
             if not self.orchestrator_service.is_group_chain_active(group_id):
                 print(f"🛑 Agent {agent_key} processing stopped for group {group_id}")
                 return
+
             # Add context about who mentioned this agent
             enhanced_content = content
             if mentioned_by != "user":
                 enhanced_content = f"[Context: You were mentioned by {mentioned_by}]\n\n{content}"
 
-            # Get agent response with document context
-            reply_payload = await self.orchestrator_service.orchestrator.process_user_message(group_id, agent_key, enhanced_content)
+            # Retrieve RAG context BEFORE routing to agent
+            # Uses rag_top_k and rag_similarity_threshold from settings
+            from src.services.rag_service import rag_service
+            rag_context = await rag_service.retrieve_context(
+                query=content,
+                group_id=group_id
+            )
+
+            # Get agent response with RAG context
+            reply_payload = await self.orchestrator_service.orchestrator.process_user_message(
+                group_id,
+                agent_key,
+                enhanced_content,
+                rag_context=rag_context  # Pass RAG context
+            )
 
             reply_text = str(reply_payload.get("text", "") if isinstance(reply_payload, dict) else reply_payload).strip()
             if not reply_text:

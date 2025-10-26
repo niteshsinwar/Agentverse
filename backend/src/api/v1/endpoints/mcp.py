@@ -117,6 +117,20 @@ async def add_mcp_server(mcp_id: str, mcp_data: MCPRequest):
         with open(mcp_path, 'w') as f:
             json.dump(mcps, f, indent=2)
 
+        # Emit telemetry for comprehensive log panel
+        from src.core.telemetry.events import emit_agent_management
+        await emit_agent_management(
+            agent_key=f"mcp_{mcp_id}",
+            operation="mcp_created",
+            meta={
+                "mcp_id": mcp_id,
+                "command": server_config["command"],
+                "args_count": len(server_config.get("args", [])),
+                "env_vars_count": len(server_config.get("env", {})),
+                "total_servers": len(mcps["mcpServers"])
+            }
+        )
+
         return {
             "message": f"MCP server '{mcp_id}' added successfully",
             "mcp_id": mcp_id,
@@ -201,6 +215,19 @@ async def update_mcp_server(mcp_id: str, mcp_data: MCPRequest):
         with open(mcp_path, 'w') as f:
             json.dump(mcps, f, indent=2)
 
+        # Emit telemetry for comprehensive log panel
+        from src.core.telemetry.events import emit_agent_management
+        await emit_agent_management(
+            agent_key=f"mcp_{mcp_id}",
+            operation="mcp_updated",
+            meta={
+                "mcp_id": mcp_id,
+                "command": server_config["command"],
+                "args_count": len(server_config.get("args", [])),
+                "env_vars_count": len(server_config.get("env", {}))
+            }
+        )
+
         return {
             "message": f"MCP server '{mcp_id}' updated successfully",
             "mcp_id": mcp_id,
@@ -245,6 +272,17 @@ async def delete_mcp_server(mcp_id: str):
         # Save back to file
         with open(mcp_path, 'w') as f:
             json.dump(mcps, f, indent=2)
+
+        # Emit telemetry for comprehensive log panel
+        from src.core.telemetry.events import emit_agent_management
+        await emit_agent_management(
+            agent_key=f"mcp_{mcp_id}",
+            operation="mcp_deleted",
+            meta={
+                "mcp_id": mcp_id,
+                "remaining_servers": len(servers)
+            }
+        )
 
         return {
             "message": f"MCP server '{mcp_id}' deleted successfully",

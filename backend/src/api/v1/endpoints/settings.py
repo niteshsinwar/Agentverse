@@ -80,6 +80,15 @@ async def update_settings(settings_request: SettingsRequest):
         from src.core.config.settings import refresh_settings
         refresh_settings()
 
+        # Emit telemetry
+        from src.core.telemetry.events import emit_settings_change
+        for key in settings_request.settings.keys():
+            await emit_settings_change(
+                setting_key=key,
+                operation="updated",
+                meta={"new_value": str(settings_request.settings[key])[:100]}
+            )
+
         return {
             "message": "Settings updated successfully",
             "overrides_count": len(updated_overrides),
@@ -100,6 +109,15 @@ async def reset_settings():
             # Refresh settings cache to pick up changes
             from src.core.config.settings import refresh_settings
             refresh_settings()
+
+            # Emit telemetry
+            from src.core.telemetry.events import emit_settings_change
+            await emit_settings_change(
+                setting_key="all",
+                operation="reset",
+                meta={"message": "All settings reset to defaults"}
+            )
+
             return {"message": "Settings reset to defaults successfully"}
         else:
             return {"message": "No settings overrides found, already using defaults"}
@@ -175,6 +193,14 @@ async def create_backup():
             shutil.copy2(settings_path, backup_dir / "settings.json")
             files_backed_up.append("settings.json")
 
+        # Emit telemetry
+        from src.core.telemetry.events import emit_settings_change
+        await emit_settings_change(
+            setting_key="backup",
+            operation="created",
+            meta={"backup_path": str(backup_dir), "files_count": len(files_backed_up)}
+        )
+
         return {
             "message": "Backup created successfully",
             "backup_path": str(backup_dir),
@@ -228,3 +254,32 @@ async def get_config_status():
         return status
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get config status: {str(e)}")
+
+
+@router.get("/embeddings/compatibility/")
+async def check_embedding_compatibility():
+    """
+    Check if current embedding provider is compatible with existing vector database
+
+    CRITICAL: Detects the "lock-key problem" where changing embedding providers
+    (e.g., OpenAI → Gemini) makes old documents unsearchable due to incompatible
+    vector spaces (different dimensions: 1536d vs 768d)
+    """
+    try:
+        from src.core.memory.vector_store import vector_store
+
+        compatibility = vector_store.check_provider_compatibility()
+
+        return {
+            **compatibility,
+            "recommendation": (
+                f"Continue using {compatibility['stored_provider']} for best results"
+                if not compatibility['compatible'] and compatibility['has_documents']
+                else "No issues detected"
+            )
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to check embedding compatibility: {str(e)}"
+        )
