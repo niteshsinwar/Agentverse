@@ -66,7 +66,12 @@ class FrontendErrorLogger {
       this.logError(new Error(args.join(' ')), { type: 'console_error' });
       originalConsoleError.apply(console, args);
     };
+
+    // Store original console.error for use in logError to prevent recursion
+    this.originalConsoleError = originalConsoleError;
   }
+
+  private originalConsoleError: typeof console.error = console.error;
 
   logError(error: Error, context?: Record<string, any>, errorInfo?: React.ErrorInfo): string {
     const errorId = this.generateErrorId();
@@ -87,21 +92,21 @@ class FrontendErrorLogger {
       this.errors = this.errors.slice(0, 100);
     }
 
-    // Log to console in development
+    // Log to console in development - use originalConsoleError to avoid recursion
     if (import.meta.env.DEV) {
-      console.group(`🚨 Frontend Error [${errorId}]`);
-      console.error('Error:', error);
+      this.originalConsoleError(`🚨 Frontend Error [${errorId}]`);
+      this.originalConsoleError('Error:', error);
       if (errorInfo) {
-        console.error('Component Stack:', errorInfo.componentStack);
+        this.originalConsoleError('Component Stack:', errorInfo.componentStack);
       }
       if (context) {
-        console.error('Context:', context);
+        this.originalConsoleError('Context:', context);
       }
-      console.groupEnd();
     }
 
-    // Send to backend logging service
-    this.sendToBackend(errorEntry).catch(console.error);
+    // Send to backend logging service (disabled for now to prevent infinite loops)
+    // TODO: Re-enable once backend endpoint /api/v1/logs/frontend-error is implemented
+    // this.sendToBackend(errorEntry).catch(this.originalConsoleError);
 
     // Show user notification for critical errors
     if (this.isCriticalError(error)) {
@@ -114,6 +119,9 @@ class FrontendErrorLogger {
     return errorId;
   }
 
+  // Commented out to prevent infinite loop when backend endpoint doesn't exist
+  // TODO: Re-enable once backend endpoint /api/v1/logs/frontend-error is implemented
+  /*
   private async sendToBackend(errorEntry: any) {
     try {
       // Use centralized API service instead of direct fetch
@@ -130,9 +138,11 @@ class FrontendErrorLogger {
           }
         });
     } catch (sendError) {
-      console.error('Failed to send error to backend:', sendError);
+      // Use originalConsoleError to prevent infinite loop if backend logging fails
+      this.originalConsoleError('Failed to send error to backend:', sendError);
     }
   }
+  */
 
   private isCriticalError(error: Error): boolean {
     const criticalPatterns = [

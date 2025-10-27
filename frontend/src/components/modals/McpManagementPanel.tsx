@@ -168,21 +168,18 @@ export const McpManagementPanel: React.FC<McpManagementPanelProps> = ({
       await loadMcpServers();
       resetForm();
     } catch (error: any) {
-      console.error('Failed to save MCP server:', error);
       progressSteps.hideProgress();
 
-      // Handle validation errors from backend
+      // Show specific error message
       if (error?.validation_errors) {
-        toast.error(`Validation failed: ${JSON.stringify(error.validation_errors)}`);
-      } else if (error?.message?.includes('validation failed') || error?.response?.data?.validation_errors) {
-        const validationData = error.response?.data?.validation_errors || error.validation_errors;
+        const validationData = error.validation_errors;
         if (validationData?.errors?.length > 0) {
           const errorMessage = validationData.errors.map((err: any) => `${err.field}: ${err.message}`).join(', ');
           toast.error(`Validation failed: ${errorMessage}`);
         } else {
-          toast.error('Configuration validation failed. Please check your inputs.');
+          toast.error('MCP configuration validation failed');
         }
-      } else if (error.message) {
+      } else if (error?.message) {
         toast.error(`Failed to save MCP server: ${error.message}`);
       } else {
         toast.error('Failed to save MCP server');

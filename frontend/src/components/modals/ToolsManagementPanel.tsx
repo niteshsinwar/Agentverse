@@ -173,13 +173,18 @@ export const ToolsManagementPanel: React.FC<ToolsManagementPanelProps> = ({
       await loadTools();
       resetForm();
     } catch (error: any) {
-      console.error('Failed to save tool:', error);
       progressSteps.hideProgress();
 
-      // Show detailed error message if available
-      if (error.validation_errors) {
-        toast.error(`Validation failed: ${JSON.stringify(error.validation_errors)}`);
-      } else if (error.message) {
+      // Show specific error message
+      if (error?.validation_errors) {
+        const validationData = error.validation_errors;
+        if (validationData?.errors?.length > 0) {
+          const errorMessage = validationData.errors.map((err: any) => `${err.field}: ${err.message}`).join(', ');
+          toast.error(`Validation failed: ${errorMessage}`);
+        } else {
+          toast.error('Tool configuration validation failed');
+        }
+      } else if (error?.message) {
         toast.error(`Failed to save tool: ${error.message}`);
       } else {
         toast.error('Failed to save tool');

@@ -308,10 +308,23 @@ export const AgentManagementPanel: React.FC<AgentManagementPanelProps> = ({
       onClose();
       onAgentCreated?.();
 
-    } catch (error) {
-      console.error('Failed to create agent:', error);
+    } catch (error: any) {
       progressSteps.hideProgress();
-      toast.error('Failed to create agent');
+
+      // Show specific error message
+      if (error?.validation_errors) {
+        const validationData = error.validation_errors;
+        if (validationData?.errors?.length > 0) {
+          const errorMessage = validationData.errors.map((err: any) => `${err.field}: ${err.message}`).join(', ');
+          toast.error(`Validation failed: ${errorMessage}`);
+        } else {
+          toast.error('Agent configuration validation failed');
+        }
+      } else if (error?.message) {
+        toast.error(`Failed to create agent: ${error.message}`);
+      } else {
+        toast.error('Failed to create agent');
+      }
     } finally {
       setLoading(false);
     }
@@ -351,13 +364,18 @@ export const AgentManagementPanel: React.FC<AgentManagementPanelProps> = ({
       onAgentUpdated?.();
 
     } catch (error: any) {
-      console.error('Failed to update agent:', error);
       progressSteps.hideProgress();
 
       // Show specific error message
-      if (error.validation_errors) {
-        toast.error(`Validation failed: ${JSON.stringify(error.validation_errors)}`);
-      } else if (error.message) {
+      if (error?.validation_errors) {
+        const validationData = error.validation_errors;
+        if (validationData?.errors?.length > 0) {
+          const errorMessage = validationData.errors.map((err: any) => `${err.field}: ${err.message}`).join(', ');
+          toast.error(`Validation failed: ${errorMessage}`);
+        } else {
+          toast.error('Agent configuration validation failed');
+        }
+      } else if (error?.message) {
         toast.error(`Failed to update agent: ${error.message}`);
       } else {
         toast.error('Failed to update agent');

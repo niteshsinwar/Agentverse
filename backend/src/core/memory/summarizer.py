@@ -26,7 +26,8 @@ class ConversationSummarizer:
         self.enabled = getattr(self.settings, 'conversation_summary_enabled', True)
         self.trigger_count = getattr(self.settings, 'conversation_summary_trigger_count', 20)
         self.window_size = getattr(self.settings, 'conversation_summary_window_size', 10)
-        self.model = getattr(self.settings, 'conversation_summary_model', 'gpt-4o-mini')
+        # Use default LLM model for summarization
+        self.model = getattr(self.settings, 'llm_model', 'gpt-4o-mini')
         self.max_tokens = getattr(self.settings, 'conversation_summary_max_tokens', 500)
 
         # Initialize LLM client

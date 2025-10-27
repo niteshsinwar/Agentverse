@@ -116,8 +116,8 @@ class Settings(BaseSettings):
     conversation_summary_enabled: bool = True
     conversation_summary_trigger_count: int = 20
     conversation_summary_window_size: int = 10
-    conversation_summary_model: str = "gpt-4o-mini"
     conversation_summary_max_tokens: int = 500
+    # Note: Summarizer uses llm_model from default LLM settings
 
     # Legacy support for old settings format
     @property

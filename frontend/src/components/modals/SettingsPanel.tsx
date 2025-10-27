@@ -101,8 +101,8 @@ interface SettingsConfig {
   conversation_summary_enabled?: boolean;
   conversation_summary_trigger_count?: number;
   conversation_summary_window_size?: number;
-  conversation_summary_model?: string;
   conversation_summary_max_tokens?: number;
+  // Note: Summarizer uses llm_model from default LLM settings
 
   // UI Settings (frontend only)
   theme: 'light' | 'dark' | 'system';
@@ -151,7 +151,6 @@ const defaultSettings: SettingsConfig = {
   conversation_summary_enabled: true,
   conversation_summary_trigger_count: 20,
   conversation_summary_window_size: 10,
-  conversation_summary_model: "gpt-4o-mini",
   conversation_summary_max_tokens: 500,
   theme: "system",
   notifications_enabled: true,
@@ -358,7 +357,6 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
         conversation_summary_enabled: settings.conversation_summary_enabled,
         conversation_summary_trigger_count: settings.conversation_summary_trigger_count,
         conversation_summary_window_size: settings.conversation_summary_window_size,
-        conversation_summary_model: settings.conversation_summary_model,
         conversation_summary_max_tokens: settings.conversation_summary_max_tokens
       };
 
@@ -668,15 +666,43 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                     </div>
                     <div className="mt-4">
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Model Name (Optional)
+                        Model Name
                       </label>
-                      <input
-                        type="text"
+                      <select
                         value={settings.llm_model || ''}
                         onChange={(e) => updateSetting('llm_model', e.target.value || undefined)}
-                        placeholder="e.g., gpt-4, claude-3-sonnet, gemini-pro"
                         className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                      />
+                      >
+                        {settings.llm_provider === 'openai' && (
+                          <>
+                            <option value="gpt-4o">GPT-4o (Latest)</option>
+                            <option value="gpt-4o-mini">GPT-4o Mini (Fast & Cheap)</option>
+                            <option value="gpt-4-turbo">GPT-4 Turbo</option>
+                            <option value="gpt-4">GPT-4</option>
+                            <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                          </>
+                        )}
+                        {settings.llm_provider === 'anthropic' && (
+                          <>
+                            <option value="claude-3-5-sonnet-20241022">Claude 3.5 Sonnet (Latest)</option>
+                            <option value="claude-3-5-haiku-20241022">Claude 3.5 Haiku (Fast)</option>
+                            <option value="claude-3-opus-20240229">Claude 3 Opus</option>
+                            <option value="claude-3-sonnet-20240229">Claude 3 Sonnet</option>
+                            <option value="claude-3-haiku-20240307">Claude 3 Haiku</option>
+                          </>
+                        )}
+                        {settings.llm_provider === 'gemini' && (
+                          <>
+                            <option value="gemini-2.5-flash">Gemini 2.5 Flash (Latest)</option>
+                            <option value="gemini-2.0-flash">Gemini 2.0 Flash (Stable)</option>
+                            <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+                            <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
+                          </>
+                        )}
+                        {!['openai', 'anthropic', 'gemini'].includes(settings.llm_provider) && (
+                          <option value="">Select a provider first</option>
+                        )}
+                      </select>
                     </div>
 
                     <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
@@ -1107,18 +1133,15 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                         <div>
                           <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
                             Summary Model
+                            <span className="ml-2 text-xs text-gray-500">(Uses default LLM)</span>
                           </label>
-                          <select
-                            value={settings.conversation_summary_model || 'gpt-4o-mini'}
-                            onChange={(e) => updateSetting('conversation_summary_model', e.target.value)}
-                            className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                            disabled={!settings.conversation_summary_enabled}
-                          >
-                            <option value="gpt-4o-mini">gpt-4o-mini (Fast, cheap)</option>
-                            <option value="gpt-4o">gpt-4o (High quality)</option>
-                            <option value="claude-3-haiku-20240307">claude-3-haiku</option>
-                            <option value="gemini-2.0-flash">gemini-2.0-flash</option>
-                          </select>
+                          <div className="px-3 py-2 text-sm bg-gray-100 dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300">
+                            {settings.llm_provider === 'openai' && (settings.llm_model || 'gpt-4o-mini')}
+                            {settings.llm_provider === 'anthropic' && (settings.llm_model || 'claude-3-5-sonnet-20241022')}
+                            {settings.llm_provider === 'gemini' && (settings.llm_model || 'gemini-2.5-flash')}
+                            {!['openai', 'anthropic', 'gemini'].includes(settings.llm_provider) && (settings.llm_model || 'default')}
+                          </div>
+                          <p className="text-xs text-gray-500 mt-1">Configure in LLM Settings tab</p>
                         </div>
                         <div>
                           <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">

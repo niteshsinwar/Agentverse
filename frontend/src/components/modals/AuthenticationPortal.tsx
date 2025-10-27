@@ -16,6 +16,7 @@ import {
   ShieldCheckIcon,
 } from '@heroicons/react/24/outline';
 import { useAuthStore, type AccountType } from '@/lib/stores/auth';
+import { BrandLogo } from '@/components/shared/BrandLogo';
 
 interface AuthenticationPortalProps {
   isOpen: boolean;
@@ -79,8 +80,19 @@ export const AuthenticationPortal: React.FC<AuthenticationPortalProps> = ({ isOp
           >
             <div className="bg-white dark:bg-gray-900 rounded-3xl shadow-2xl w-full max-w-5xl my-8 overflow-hidden flex flex-col md:flex-row max-h-[90vh]">
               {/* Left Side - Branding */}
-              <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-purple-600 via-pink-600 to-indigo-600 p-12 flex-col justify-between text-white">
-                <div>
+              <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-purple-600 via-pink-600 to-indigo-600 p-12 flex-col justify-between text-white relative overflow-hidden">
+                {/* Decorative background patterns */}
+                <div className="absolute inset-0 opacity-10">
+                  <div className="absolute top-0 right-0 w-96 h-96 bg-white rounded-full blur-3xl -mr-48 -mt-48"></div>
+                  <div className="absolute bottom-0 left-0 w-96 h-96 bg-white rounded-full blur-3xl -ml-48 -mb-48"></div>
+                </div>
+
+                <div className="relative z-10">
+                  {/* Logo */}
+                  <div className="mb-8 flex items-center justify-center lg:justify-start">
+                    <BrandLogo variant="horizontal" size="xl" className="filter drop-shadow-2xl" />
+                  </div>
+
                   <h1 className="text-4xl font-bold mb-4">Welcome to AgentVerse</h1>
                   <p className="text-white/90 text-lg mb-8">
                     Build unlimited AI agents without code. Join 10K+ developers and enterprises.
@@ -111,16 +123,21 @@ export const AuthenticationPortal: React.FC<AuthenticationPortalProps> = ({ isOp
                   </div>
                 </div>
 
-                <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6">
-                  <p className="text-sm text-white/90 italic">
+                <div className="relative z-10 bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20 shadow-xl">
+                  <div className="flex items-start space-x-3 mb-4">
+                    <svg className="w-8 h-8 text-white/80 flex-shrink-0" fill="currentColor" viewBox="0 0 32 32">
+                      <path d="M9.352 4C4.456 7.456 1 13.12 1 19.36c0 5.088 3.072 8.064 6.624 8.064 3.36 0 5.856-2.688 5.856-5.856 0-3.168-2.208-5.472-5.088-5.472-.576 0-1.344.096-1.536.192.48-3.264 3.552-7.104 6.624-9.024L9.352 4zm16.512 0c-4.8 3.456-8.256 9.12-8.256 15.36 0 5.088 3.072 8.064 6.624 8.064 3.264 0 5.856-2.688 5.856-5.856 0-3.168-2.304-5.472-5.184-5.472-.576 0-1.248.096-1.44.192.48-3.264 3.456-7.104 6.528-9.024L25.864 4z" />
+                    </svg>
+                  </div>
+                  <p className="text-base text-white/95 italic leading-relaxed mb-4">
                     "AgentVerse transformed how our team builds AI solutions. The enterprise admin controls are game-changing!"
                   </p>
-                  <div className="flex items-center mt-4 space-x-3">
-                    <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center font-bold">
+                  <div className="flex items-center space-x-3 pt-4 border-t border-white/20">
+                    <div className="w-12 h-12 bg-gradient-to-br from-white/30 to-white/10 rounded-full flex items-center justify-center font-bold text-lg backdrop-blur-sm border border-white/30">
                       JS
                     </div>
                     <div>
-                      <div className="font-semibold">John Smith</div>
+                      <div className="font-semibold text-white">John Smith</div>
                       <div className="text-white/70 text-sm">CTO, TechCorp</div>
                     </div>
                   </div>

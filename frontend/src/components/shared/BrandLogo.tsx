@@ -37,7 +37,7 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
   const AgentVerseIcon = ({ className: iconClassName = '' }: { className?: string }) => (
     <svg
       viewBox="0 0 200 200"
-      className={`${iconClassName}`}
+      className={`${iconClassName} animate-spin-slow`}
       xmlns="http://www.w3.org/2000/svg"
     >
       <defs>
