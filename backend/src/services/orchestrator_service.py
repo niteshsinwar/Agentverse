@@ -97,6 +97,13 @@ class OrchestratorService:
             self.settings = get_settings()
 
             # Reload singleton services that cache settings
+            try:
+                from src.core.document_processing.embedder import reload_embedder_settings
+                reload_embedder_settings()
+                print("  ✅ Embedding and vision clients reloaded")
+            except Exception as embedder_error:
+                print(f"  ⚠️ Failed to reload embedder clients: {embedder_error}")
+
             # Note: RAG service now uses @property for settings (supports hot-reload)
             # Some services (like summarizer, vector_store) cache config in __init__
             # These will pick up changes gradually or need full server restart for complete reload
@@ -260,7 +267,7 @@ class OrchestratorService:
         self._stopped_groups.add(group_id)
 
         # Add system message to inform user
-        stop_message = "🛑 Agent chain stopped by user. New agent responses will be ignored."
+        stop_message = "🛑 Agent chain paused by user. Send another message to resume agent responses."
         session_store.append_message(
             group_id=group_id,
             sender="system",
@@ -276,7 +283,7 @@ class OrchestratorService:
         from src.core.telemetry.events import emit_message
         await emit_message(group_id, sender="system", role="system", content=stop_message)
 
-        print(f"🛑 Group {group_id} chain stopped")
+        print(f"🛑 Group {group_id} chain paused")
 
     def is_group_chain_active(self, group_id: str) -> bool:
         """Check if group chain is active (not stopped)"""

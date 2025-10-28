@@ -2,14 +2,15 @@
 Document Service
 Handles document upload and processing workflow
 """
-from typing import Dict, Any
+from typing import Dict, Any, Optional, List
 import os
 
 from src.core.document_processing.extractor import document_extractor
 from src.core.document_processing.chunker import document_chunker
-from src.core.document_processing.embedder import hybrid_embedder, text_embedder
+from src.core.document_processing.embedder import hybrid_embedder
 from src.core.memory.vector_store import vector_store
 from src.core.document_processing.storage import document_storage
+from src.core.config.settings import get_settings
 
 
 class DocumentService:
@@ -78,6 +79,18 @@ class DocumentService:
 
             # Notification already sent by endpoint - just process the document
             file_extension = os.path.splitext(filename)[1].lower()
+            settings = get_settings()
+            supported_formats = getattr(settings, "supported_file_formats", []) or []
+            allowed_extensions = {
+                f".{ext.lower().lstrip('.')}"
+                for ext in supported_formats
+            }
+
+            if allowed_extensions and file_extension not in allowed_extensions:
+                raise RuntimeError(
+                    f"File extension '{file_extension}' is not allowed. "
+                    f"Supported types: {', '.join(sorted(allowed_extensions))}"
+                )
             import tempfile
 
             # Step 1: Save to temporary file for processing
@@ -87,39 +100,74 @@ class DocumentService:
 
             print(f"   [1/6] Smart routing - determining extraction method...")
 
-            # SMART ROUTING: Pure text files → direct extraction, Everything else → Vision LLM
-            PURE_TEXT_EXTENSIONS = {'.txt', '.md', '.py', '.js', '.ts', '.java', '.cpp', '.c',
-                                   '.rb', '.go', '.rs', '.php', '.html', '.css', '.json', '.xml', '.yaml', '.yml'}
+            extracted_content, detected_modality, extraction_metadata = await self.extractor.process_file(
+                temp_file_path,
+                file_extension=file_extension
+            )
 
-            if file_extension in PURE_TEXT_EXTENSIONS:
-                print(f"         → Pure text file detected - using direct extraction")
-                content, modality = await self.extractor.process_file(temp_file_path)
+            source_metadata = dict(extraction_metadata or {})
+            raw_content = extracted_content if isinstance(extracted_content, str) else str(extracted_content)
+            modality = detected_modality or "text"
+
+            should_use_vision = False
+            vision_reason: Optional[str] = None
+
+            if file_extension in self.extractor.image_formats:
+                should_use_vision = True
+                vision_reason = "image_file"
+                print("         → Image file detected - routing to Vision LLM")
+            elif self._extraction_requires_vision(raw_content, modality, file_extension):
+                should_use_vision = True
+                vision_reason = "native_insufficient"
+                print("         → Native parser suggested vision analysis (insufficient textual content)")
             else:
-                print(f"         → Document/Image file detected - using Vision LLM")
-                # Use Vision LLM for everything else (PDFs, DOCX, XLSX, images, etc.)
-                modality = "vision"
-                # Vision LLM will extract content in next step
-                content = None
+                print(f"         → Processed with native parser ({modality})")
 
-            print(f"         ✓ Routing: {'Direct extraction' if modality != 'vision' else 'Vision LLM'}")
+            if should_use_vision:
+                self.embedder._ensure_image_embedder()
+                vision_content = await self.embedder.image_embedder.get_image_description(temp_file_path)
+                content = vision_content
+                modality = "vision"
+                source_metadata.update({
+                    "extraction_strategy": "vision_fallback",
+                    "used_vision": True,
+                    "vision_reason": vision_reason
+                })
+                print(f"         ✓ Vision LLM extracted {len(content)} chars")
+            else:
+                content = raw_content
+                source_metadata.setdefault("extraction_strategy", source_metadata.get("summary_strategy", "native"))
+                source_metadata["used_vision"] = False
+                print(f"         ✓ Native parser extracted {len(content)} chars")
+
+            source_metadata["content_length"] = len(content) if content else 0
+
+            # Guardrails before chunking
+            self._enforce_guardrails(
+                content=content,
+                metadata=source_metadata,
+                settings=settings,
+                filename=filename
+            )
+
+            print(f"         ✓ Routing: {'Vision LLM' if should_use_vision else 'Native extraction'}")
 
             print(f"   [2/6] Extracting content (Vision LLM for documents/images)...")
-            # Emit telemetry - extraction stage
             await emit_document_processing(
                 group_id=group_id,
                 agent_key=agent_id,
                 filename=filename,
                 status="extracting",
-                meta={"modality": modality}
+                meta={
+                    "modality": modality,
+                    "used_vision": source_metadata.get("used_vision"),
+                    "truncated": source_metadata.get("truncated"),
+                    "row_count": source_metadata.get("row_count"),
+                    "page_count": source_metadata.get("page_count")
+                }
             )
 
-            # Step 2: Get comprehensive content
-            if modality == "vision":
-                # Use Vision LLM for comprehensive extraction
-                self.embedder._ensure_image_embedder()
-                content = await self.embedder.image_embedder.get_image_description(temp_file_path)
-                print(f"         ✓ Vision LLM extracted {len(content)} chars")
-            elif not content:
+            if not content or not str(content).strip():
                 await emit_document_processing(
                     group_id=group_id,
                     agent_key=agent_id,
@@ -134,6 +182,8 @@ class DocumentService:
                     "total_chunks": 0,
                     "modality": modality
                 }
+            else:
+                print(f"         ✓ Native parser extracted {len(content)} chars")
 
             print(f"   [3/6] Chunking content...")
             # Emit telemetry - chunking stage
@@ -182,6 +232,20 @@ class DocumentService:
             upload_message_number = len(session_store.get_history(group_id))
 
             # Prepare metadata for vector store (includes upload position for decay)
+            def _serialize_value(value: Any) -> Any:
+                if isinstance(value, (str, int, float, bool)) or value is None:
+                    return value
+                try:
+                    import json
+                    return json.dumps(value)
+                except Exception:
+                    return str(value)
+
+            safe_processing_metadata = {
+                key: _serialize_value(val)
+                for key, val in (source_metadata or {}).items()
+            }
+
             chunk_metadata = {
                 "group_id": group_id,
                 "target_agent": agent_id,
@@ -189,7 +253,8 @@ class DocumentService:
                 "file_type": file_extension[1:],
                 "modality": modality,
                 "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
-                "upload_message_number": upload_message_number  # For position-based decay
+                "upload_message_number": upload_message_number,  # For position-based decay
+                **{f"proc_{k}": v for k, v in safe_processing_metadata.items()}
             }
 
             # Universal storage - all documents go to text collection
@@ -215,7 +280,13 @@ class DocumentService:
                 agent_id=agent_id,
                 modality=modality,
                 total_chunks=total_chunks,
-                sender_type="user"
+                sender_type="user",
+                metadata={
+                    "document_id": document_id,
+                    "file_extension": file_extension[1:],
+                    "file_size": file_size,
+                    "processing": source_metadata
+                }
             )
             print(f"         ✓ Metadata stored in SQLite")
 
@@ -229,8 +300,19 @@ class DocumentService:
                     "document_id": document_id,
                     "total_chunks": total_chunks,
                     "modality": modality,
-                    "file_size": file_size
+                    "file_size": file_size,
+                    "truncated": source_metadata.get("truncated"),
+                    "row_count": source_metadata.get("row_count"),
+                    "page_count": source_metadata.get("page_count")
                 }
+            )
+
+            await self._emit_processing_summary(
+                group_id=group_id,
+                agent_id=agent_id,
+                filename=filename,
+                document_id=document_id,
+                metadata=source_metadata
             )
 
             return {
@@ -238,6 +320,7 @@ class DocumentService:
                 "document_id": document_id,
                 "total_chunks": total_chunks,
                 "modality": modality,
+                "metadata": source_metadata,
                 "error": None
             }
 
@@ -256,18 +339,192 @@ class DocumentService:
             except:
                 pass
 
+            metadata_snapshot = locals().get("source_metadata")
+            failure_message = f"❌ Document processing failed for {filename}: {str(e)}"
+            try:
+                from src.core.memory import session_store
+                from src.core.telemetry.events import emit_message
+
+                session_store.append_message(
+                    group_id=group_id,
+                    sender="system",
+                    role="system",
+                    content=failure_message,
+                    metadata={
+                        "message_type": "document_upload_failed",
+                        "filename": filename,
+                        "target_agent": agent_id,
+                        "error": str(e)
+                    }
+                )
+                await emit_message(
+                    group_id,
+                    sender="system",
+                    role="system",
+                    content=failure_message,
+                    metadata={
+                        "message_type": "document_upload_failed",
+                        "filename": filename,
+                        "target_agent": agent_id,
+                        "error": str(e)
+                    }
+                )
+            except Exception:
+                pass
+
             return {
                 "success": False,
                 "error": str(e),
                 "document_id": None,
                 "total_chunks": 0,
-                "modality": "unknown"
+                "modality": "unknown",
+                "metadata": metadata_snapshot if isinstance(metadata_snapshot, dict) else None
             }
 
         finally:
             # Cleanup temporary file
             if temp_file_path and os.path.exists(temp_file_path):
                 os.unlink(temp_file_path)
+
+    async def _emit_processing_summary(
+        self,
+        group_id: str,
+        agent_id: str,
+        filename: str,
+        document_id: str,
+        metadata: Dict[str, Any]
+    ) -> None:
+        if not metadata:
+            return
+
+        summary_lines: List[str] = []
+
+        if metadata.get("page_count"):
+            summary_lines.append(f"• Detected {metadata['page_count']} pages.")
+
+        if metadata.get("row_count") is not None:
+            row_count = metadata.get("row_count")
+            sampled = metadata.get("sampled_rows")
+            if metadata.get("truncated"):
+                summary_lines.append(
+                    f"• Processed first {sampled} of approximately {row_count} rows for embeddings."
+                )
+            else:
+                summary_lines.append(f"• Processed all {row_count} rows for embeddings.")
+
+        if metadata.get("columns"):
+            columns = metadata["columns"]
+            if columns:
+                display_cols = ", ".join(columns[:8])
+                if len(columns) > 8:
+                    display_cols += ", …"
+                summary_lines.append(f"• Columns sampled: {display_cols}")
+
+        if metadata.get("numeric_columns_profiled"):
+            summary_lines.append(
+                f"• Numeric stats generated for: {', '.join(metadata['numeric_columns_profiled'])}"
+            )
+
+        if metadata.get("notes"):
+            summary_lines.append(f"• {metadata['notes']}")
+
+        if not summary_lines:
+            return
+
+        summary_message = "📊 Document processed: {}\n{}".format(
+            filename,
+            "\n".join(summary_lines)
+        )
+
+        from src.core.memory import session_store
+        from src.core.telemetry.events import emit_message
+
+        message_metadata = {
+            "message_type": "document_processing_summary",
+            "document_id": document_id,
+            "target_agent": agent_id,
+            "processing_metadata": metadata
+        }
+
+        session_store.append_message(
+            group_id=group_id,
+            sender="system",
+            role="system",
+            content=summary_message,
+            metadata=message_metadata
+        )
+
+        await emit_message(
+            group_id,
+            sender="system",
+            role="system",
+            content=summary_message,
+            metadata=message_metadata
+        )
+
+    def _extraction_requires_vision(self, content: str, modality: str, file_extension: str) -> bool:
+        """
+        Determine if native extraction failed or produced low-value output,
+        in which case we should fall back to the vision model.
+        """
+        if file_extension in self.extractor.image_formats:
+            return True
+
+        if not content or not content.strip():
+            return True
+
+        lowered = content.lower()
+        failure_markers = [
+            "error extracting",
+            "unsupported file format",
+            "unable to extract",
+            "no readable content",
+            "[image content detected",
+            "[image detected"
+        ]
+
+        if any(marker in lowered for marker in failure_markers):
+            return True
+
+        if modality == "image":
+            return True
+
+        return False
+
+    def _enforce_guardrails(
+        self,
+        content: str,
+        metadata: Dict[str, Any],
+        settings,
+        filename: str
+    ) -> None:
+        """
+        Refuse documents that exceed configured guardrails to prevent downstream crashes.
+        """
+        max_chars = getattr(settings, "max_document_characters", 200_000)
+        max_rows = getattr(settings, "max_tabular_rows", 50_000)
+        max_pages = getattr(settings, "max_pdf_pages", 200)
+
+        content_length = metadata.get("content_length") or (len(content) if content else 0)
+        if content_length and content_length > max_chars:
+            raise ValueError(
+                f"Document '{filename}' is too large to process safely "
+                f"({content_length} characters > limit of {max_chars})."
+            )
+
+        row_count = metadata.get("row_count")
+        if isinstance(row_count, int) and row_count > max_rows:
+            raise ValueError(
+                f"Tabular document '{filename}' has {row_count} rows which exceeds the limit of {max_rows}. "
+                "Please trim the dataset before uploading."
+            )
+
+        page_count = metadata.get("page_count")
+        if isinstance(page_count, int) and page_count > max_pages:
+            raise ValueError(
+                f"Document '{filename}' has {page_count} pages which exceeds the limit of {max_pages}. "
+                "Please upload a smaller excerpt."
+            )
 
 
 # Global instance

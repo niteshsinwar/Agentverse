@@ -112,6 +112,12 @@ export const MESSAGE_CONSTANTS = {
 // FILE UPLOAD CONSTANTS
 // ============================================================================
 
+export const DEFAULT_SUPPORTED_FILE_FORMATS = Object.freeze([
+  'txt', 'csv', 'json', 'pdf', 'docx', 'pptx', 'xlsx', 'xls', 'md', 'png',
+  'jpg', 'jpeg', 'gif', 'bmp', 'tiff', 'webp', 'rtf', 'odt', 'xml', 'html',
+  'htm', 'py', 'js', 'ts', 'ods'
+]);
+
 export const FILE_CONSTANTS = {
   SUPPORTED_TYPES: [
     'text/plain',

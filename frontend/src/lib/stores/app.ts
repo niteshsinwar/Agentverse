@@ -6,6 +6,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { Theme } from '../types';
+import { DEFAULT_SUPPORTED_FILE_FORMATS } from '../config';
 
 export interface AppState {
   // UI State
@@ -31,6 +32,9 @@ export interface AppState {
 
   // Initialization
   initialLoadCompleted: boolean;
+
+  // Backend-configured document formats
+  supportedFileFormats: string[];
 }
 
 export interface AppActions {
@@ -61,6 +65,9 @@ export interface AppActions {
 
   // Reset
   reset: () => void;
+
+  // Settings sync
+  setSupportedFileFormats: (formats: string[]) => void;
 }
 
 export type AppStore = AppState & AppActions;
@@ -89,6 +96,9 @@ const initialState: AppState = {
 
   // Initialization
   initialLoadCompleted: false,
+
+  // Backend-configured document formats
+  supportedFileFormats: Array.from(DEFAULT_SUPPORTED_FILE_FORMATS),
 };
 
 export const useAppStore = create<AppStore>()(
@@ -128,6 +138,16 @@ export const useAppStore = create<AppStore>()(
 
       // Initialization Actions
       setInitialLoadCompleted: (completed) => set({ initialLoadCompleted: completed }),
+
+      setSupportedFileFormats: (formats) => set({
+        supportedFileFormats: Array.from(
+          new Set(
+            (formats || [])
+              .map((ext) => ext?.toString().trim().toLowerCase())
+              .filter((ext): ext is string => Boolean(ext))
+          )
+        ),
+      }),
 
       // Reset
       reset: () => set(initialState),

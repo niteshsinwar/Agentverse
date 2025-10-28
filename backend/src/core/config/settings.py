@@ -70,8 +70,13 @@ class Settings(BaseSettings):
     # Document Processing
     max_upload_size_mb: int = 10
     supported_file_formats: List[str] = [
-        "txt", "csv", "json", "pdf", "docx", "md","png"
+        "txt", "csv", "json", "pdf", "docx", "pptx", "xlsx", "xls",
+        "md", "png", "jpg", "jpeg", "gif", "bmp", "tiff", "webp",
+        "rtf", "odt", "xml", "html", "htm", "py", "js", "ts", "ods"
     ]
+    max_document_characters: int = 200_000
+    max_tabular_rows: int = 50_000
+    max_pdf_pages: int = 200
 
     # Agent Configuration
     max_agent_iterations: int = 5
@@ -111,6 +116,7 @@ class Settings(BaseSettings):
     rag_decay_alpha: float = 0.7
     rag_decay_half_life_messages: int = 50
     rag_decay_min_factor: float = 0.1
+    rag_max_context_chars: int = 4000
 
     # Conversation Summarization Configuration
     conversation_summary_enabled: bool = True

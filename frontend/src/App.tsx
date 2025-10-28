@@ -29,6 +29,7 @@ import { AdminView } from './components/views/AdminView';
 import { AnimatedSplashScreen } from './components/shared/AnimatedSplashScreen';
 import { AppHeader, HeaderMenuItem } from './components/core/AppHeader';
 import { AppFooter } from './components/core/AppFooter';
+import { settingsApi } from '@/lib/api';
 
 function App() {
   // App Store
@@ -59,6 +60,7 @@ function App() {
     initialLoadCompleted: storeInitialLoadCompleted,
     setInitialLoadCompleted,
     theme,
+    setSupportedFileFormats,
   } = useAppStore();
 
   // Auth Store
@@ -135,9 +137,21 @@ function App() {
     try {
       setAppLoading(true);
 
+      const settingsPromise = settingsApi.getSettings()
+        .then((response) => {
+          const formats = response?.settings?.supported_file_formats;
+          if (Array.isArray(formats) && formats.length > 0) {
+            setSupportedFileFormats(formats);
+          }
+        })
+        .catch((error) => {
+          console.error('Failed to load settings:', error);
+        });
+
       await Promise.all([
         loadGroups(),
         loadAgents(),
+        settingsPromise,
       ]);
 
       // Auto-select first group if available

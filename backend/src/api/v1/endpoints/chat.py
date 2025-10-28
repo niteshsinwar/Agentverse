@@ -14,6 +14,7 @@ import asyncio
 from src.services.orchestrator_service import OrchestratorService
 from src.api.v1.dependencies import get_orchestrator_service
 from src.core.telemetry.events import EVENT_BUS
+from src.core.config.settings import get_settings
 
 
 # Request models
@@ -211,8 +212,11 @@ async def upload_document(
 
         await emit_message(group_id, sender="system", role="system", content=simple_notification)
 
+        settings = get_settings()
+
         # NOW read file content (UI already showed notification, so no perceived buffering)
-        MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+        max_upload_size_mb = getattr(settings, "max_upload_size_mb", 10) or 10
+        MAX_FILE_SIZE = int(max_upload_size_mb) * 1024 * 1024
         file_content = await file.read()
 
         if len(file_content) > MAX_FILE_SIZE:
@@ -221,13 +225,20 @@ async def upload_document(
                 detail=f"File size ({len(file_content)} bytes) exceeds maximum allowed size ({MAX_FILE_SIZE} bytes)"
             )
 
-        # Validate file extension
-        allowed_extensions = {'.txt', '.md', '.pdf', '.docx', '.csv', '.json', '.py', '.js', '.ts', '.html', '.css', '.png'}
+        # Validate file extension using centralized settings
+        configured_extensions = getattr(settings, "supported_file_formats", []) or []
+        allowed_extensions = {
+            f".{ext.lower().lstrip('.')}"
+            for ext in configured_extensions
+        }
 
-        if file_extension not in allowed_extensions:
+        if allowed_extensions and file_extension not in allowed_extensions:
             raise HTTPException(
                 status_code=400,
-                detail=f"File extension '{file_extension}' is not allowed. Supported: {', '.join(allowed_extensions)}"
+                detail=(
+                    f"File extension '{file_extension}' is not allowed. "
+                    f"Supported: {', '.join(sorted(allowed_extensions))}"
+                )
             )
 
         # Reset file pointer
@@ -240,6 +251,12 @@ async def upload_document(
             file=file,
             message=message or f"Please analyze this uploaded document: {file.filename}"
         )
+
+        if not result.get("success", True):
+            raise HTTPException(
+                status_code=400,
+                detail=result.get("error") or "Document processing failed guardrails"
+            )
 
         # Return minimal info to caller - do not expose extracted content or summaries
         return {

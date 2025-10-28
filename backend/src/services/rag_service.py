@@ -192,11 +192,14 @@ class RAGService:
             upload_msg_num = meta.get('upload_message_number', current_message_count)  # Default to recent if missing
             messages_since = current_message_count - upload_msg_num
 
-            # Half-life decay: 0.5^(messages_since / half_life)
-            decay_factor = max(
-                0.5 ** (messages_since / half_life),
-                min_factor
-            )
+            # Half-life decay applies only to older conversations
+            if messages_since <= 5:
+                decay_factor = 1.0
+            else:
+                decay_factor = max(
+                    0.5 ** (messages_since / half_life),
+                    min_factor
+                )
 
             # Fused score: α * semantic + (1-α) * recency
             adjusted_similarity = alpha * sim + (1 - alpha) * decay_factor
@@ -225,6 +228,14 @@ class RAGService:
         ranked_metas = [r[1] for r in adjusted_results]
         ranked_sims = [r[2] for r in adjusted_results]
 
+        if ranked_metas:
+            primary_filename = ranked_metas[0].get('filename')
+            same_doc_results = [idx for idx, meta in enumerate(ranked_metas) if meta.get('filename') == primary_filename]
+            if same_doc_results:
+                ranked_chunks = [ranked_chunks[i] for i in same_doc_results]
+                ranked_metas = [ranked_metas[i] for i in same_doc_results]
+                ranked_sims = [ranked_sims[i] for i in same_doc_results]
+
         return ranked_chunks, ranked_metas, ranked_sims
 
     def _format_context(
@@ -245,20 +256,35 @@ class RAGService:
         if not chunks:
             return ""
 
-        context_parts = ["**RETRIEVED CONTEXT FROM GROUP DOCUMENTS:**\n"]
+        context_parts = ["Document context:\n"]
 
-        for i, (chunk, meta) in enumerate(zip(chunks, metadatas), 1):
+        for index, (chunk, meta) in enumerate(zip(chunks, metadatas), 1):
             filename = meta.get('filename', 'Unknown')
-            file_type = meta.get('file_type', 'unknown')
+            display_name = f"{filename} (chunk #{meta.get('chunk_index', 0)})"
+            metadata_line = self._format_metadata(meta)
 
-            # Format chunk with minimal metadata (no technical details)
-            context_parts.append(f"\n--- Document {i}: {filename} ---")
-            context_parts.append(f"{chunk}\n")
+            context_parts.append(f"\n--- {display_name} ---")
+            if metadata_line:
+                context_parts.append(f"\n{metadata_line}")
+            context_parts.append(f"\n{chunk.strip()}\n")
 
-        context_parts.append("\n**END OF RETRIEVED CONTEXT**\n")
-        context_parts.append("Use the above context to answer the user's query naturally without exposing technical details.")
+        context_parts.append("\nUse this information to answer the user clearly.")
+        return "".join(context_parts)
 
-        return "\n".join(context_parts)
+    def _format_metadata(self, meta: Dict[str, Any]) -> str:
+        pieces = []
+        if meta.get('file_type'):
+            pieces.append(meta['file_type'])
+        if meta.get('proc_row_count'):
+            pieces.append(f"{meta['proc_row_count']} rows")
+        if meta.get('proc_page_count'):
+            pieces.append(f"{meta['proc_page_count']} pages")
+        if meta.get('proc_word_count'):
+            pieces.append(f"{meta['proc_word_count']} words")
+        summary_hint = meta.get('proc_summary_strategy')
+        if summary_hint:
+            pieces.append(summary_hint.replace('_', ' '))
+        return ", ".join(pieces) if pieces else "Document excerpt"
 
 
 # Global instance

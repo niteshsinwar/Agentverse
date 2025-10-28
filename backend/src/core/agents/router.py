@@ -56,6 +56,10 @@ class Router:
         Returns:
             Error message if routing failed, empty string if successful
         """
+        if mentioner == "user":
+            # Resume any previously paused chains when the user re-engages
+            self.orchestrator_service.restart_group_chain(group_id)
+
         members = session_store.list_group_agents(group_id)
 
         # 1. Handle single-agent groups (auto-route to the only agent)

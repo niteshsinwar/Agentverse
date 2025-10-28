@@ -17,8 +17,6 @@ from langchain_core.runnables import RunnableWithFallbacks
 
 from src.core.config.settings import get_settings
 
-settings = get_settings()
-
 
 class LLM:
     """
@@ -247,6 +245,8 @@ def get_llm(provider: Optional[str] = None, model: Optional[str] = None, **kwarg
         )
         ```
     """
+    settings = get_settings()
+
     # Defaults
     provider_name = provider or settings.llm_provider or "openai"
     provider_name = provider_name.lower()
@@ -328,6 +328,7 @@ def get_llm(provider: Optional[str] = None, model: Optional[str] = None, **kwarg
 
     except Exception as e:
         # Try fallback if configured
+        settings = get_settings()
         fallback_provider = kwargs.get("fallback_provider") or getattr(settings.llm, 'fallback_provider', None)
 
         if fallback_provider and fallback_provider != provider_name:

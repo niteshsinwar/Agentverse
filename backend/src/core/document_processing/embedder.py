@@ -21,15 +21,22 @@ class TextEmbedder:
     """
 
     def __init__(self):
-        from src.core.config.settings import get_settings
-        self.settings = get_settings()
+        self._reload_settings()
 
+    def _reload_settings(self, settings_override=None):
+        from src.core.config.settings import get_settings
+        self.settings = settings_override or get_settings()
+        self._settings_signature = id(self.settings)
         self.provider = self.settings.embedding_provider
         self.model = self.settings.embedding_model
         self.dimensions = self.settings.embedding_dimensions
-
-        # Initialize provider client
         self._init_client()
+
+    def _ensure_settings_current(self):
+        from src.core.config.settings import get_settings
+        current_settings = get_settings()
+        if id(current_settings) != getattr(self, '_settings_signature', None):
+            self._reload_settings(current_settings)
 
     def _init_client(self):
         """Initialize the appropriate embedding client based on provider"""
@@ -57,6 +64,7 @@ class TextEmbedder:
 
     def embed_texts(self, texts: List[str]) -> List[List[float]]:
         """Generate embeddings for multiple texts"""
+        self._ensure_settings_current()
         if self.provider == "openai":
             # OpenAI embeddings API
             response = self.client.embeddings.create(
@@ -95,6 +103,9 @@ class TextEmbedder:
         """Generate single text embedding"""
         return self.embed_texts([text])[0]
 
+    def reload(self):
+        self._reload_settings()
+
 
 class ImageEmbedder:
     """
@@ -107,21 +118,18 @@ class ImageEmbedder:
     """
 
     def __init__(self):
-        """
-        Initialize image embedder with vision LLM (no CLIP)
-        """
+        """Initialize image embedder with vision LLM (no CLIP)"""
+        self._reload_settings()
+
+    def _reload_settings(self, settings_override=None):
         from src.core.config.settings import get_settings
-        self.settings = get_settings()
+        self.settings = settings_override or get_settings()
+        self._settings_signature = id(self.settings)
 
-        # Vision model for image descriptions (settings-driven)
-        # Use same provider as embeddings for consistency
         embedding_provider = self.settings.embedding_provider
-
-        # Auto-select vision model based on embedding provider
         vision_model = self.settings.vision_model
 
-        # If vision_model doesn't match embedding_provider, override with provider-specific default
-        if embedding_provider == "openai" and not (vision_model.startswith("gpt-4")):
+        if embedding_provider == "openai" and not vision_model.startswith("gpt-4"):
             vision_model = "gpt-4o"
             print(f"ℹ️ Using OpenAI vision model: {vision_model}")
         elif embedding_provider == "anthropic" and not vision_model.startswith("claude"):
@@ -132,12 +140,15 @@ class ImageEmbedder:
             print(f"ℹ️ Using Gemini vision model: {vision_model}")
 
         self.vision_model = vision_model
-        self.vision_provider = embedding_provider  # ALWAYS use same provider
-
-        # Initialize vision client based on provider
+        self.vision_provider = embedding_provider
         self._init_vision_client()
-
         print(f"✅ Vision LLM ready: {self.vision_model} (no CLIP)")
+
+    def _ensure_settings_current(self):
+        from src.core.config.settings import get_settings
+        current_settings = get_settings()
+        if id(current_settings) != getattr(self, '_settings_signature', None):
+            self._reload_settings(current_settings)
 
     def _init_vision_client(self):
         """Initialize vision client based on provider"""
@@ -168,6 +179,7 @@ class ImageEmbedder:
         Returns:
             Text description (for human-readable context)
         """
+        self._ensure_settings_current()
         with open(image_path, "rb") as img_file:
             image_bytes = img_file.read()
             base64_image = base64.b64encode(image_bytes).decode('utf-8')
@@ -255,7 +267,11 @@ class ImageEmbedder:
         Returns:
             Detailed text description for semantic search
         """
+        self._ensure_settings_current()
         return await self.get_vision_description(image_path)
+
+    def reload(self):
+        self._reload_settings()
 
 
 class HybridEmbedder:
@@ -275,6 +291,12 @@ class HybridEmbedder:
         """Lazy load image embedder"""
         if self.image_embedder is None:
             self.image_embedder = ImageEmbedder()
+
+    def reload(self):
+        """Reload embedder configuration (hot reload support)."""
+        self.text_embedder.reload()
+        if self.image_embedder is not None:
+            self.image_embedder.reload()
 
     async def embed_document(
         self,
@@ -344,3 +366,12 @@ class LazyHybridEmbedder:
 # Global instances
 text_embedder = LazyTextEmbedder()
 hybrid_embedder = LazyHybridEmbedder()
+
+
+def reload_embedder_settings() -> None:
+    """Reload cached embedder instances to pick up new configuration."""
+    global _text_embedder_instance, _hybrid_embedder_instance
+    if _text_embedder_instance is not None:
+        _text_embedder_instance.reload()
+    if _hybrid_embedder_instance is not None:
+        _hybrid_embedder_instance.reload()

@@ -19,6 +19,7 @@ import { useAppStore } from '@/lib/stores/app';
 import { useAuthStore } from '@/lib/stores/auth';
 import { notificationService } from '@/lib/services/notification.service';
 import { debugLogger } from '@/lib/utils/debugLogger';
+import { DEFAULT_SUPPORTED_FILE_FORMATS } from '@/lib/config';
 import { BrandedBadge } from '../shared/BrandedComponents';
 import { BrandLogo } from '../shared/BrandLogo';
 import { SlidingPanel } from '../core/SlidingPanel';
@@ -65,6 +66,9 @@ interface SettingsConfig {
   // Document Processing
   max_upload_size_mb: number;
   supported_file_formats: string[];
+  max_document_characters: number;
+  max_tabular_rows: number;
+  max_pdf_pages: number;
 
   // Agent Configuration
   max_agent_iterations: number;
@@ -126,7 +130,10 @@ const defaultSettings: SettingsConfig = {
   allowed_origins: ["http://localhost:1420", "https://tauri.localhost"],
   database_url: "sqlite:///./data/app.db",
   max_upload_size_mb: 10,
-  supported_file_formats: ["txt", "csv", "json", "pdf", "docx", "md","png"],
+  supported_file_formats: Array.from(DEFAULT_SUPPORTED_FILE_FORMATS),
+  max_document_characters: 200000,
+  max_tabular_rows: 50000,
+  max_pdf_pages: 200,
   max_agent_iterations: 5,
   default_temperature: 0.2,
   default_max_tokens: 4096,
@@ -159,7 +166,7 @@ const defaultSettings: SettingsConfig = {
 };
 
 export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose }) => {
-  const { theme, setTheme, setSidebarExpanded } = useAppStore();
+  const { theme, setTheme, setSidebarExpanded, setSupportedFileFormats } = useAppStore();
   const { canManageUsers, setAdminDashboardOpen } = useAuthStore();
   const [settings, setSettings] = useState<SettingsConfig>(defaultSettings);
   const [isDirty, setIsDirty] = useState(false);
@@ -331,6 +338,9 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
         database_url: settings.database_url,
         max_upload_size_mb: settings.max_upload_size_mb,
         supported_file_formats: settings.supported_file_formats,
+        max_document_characters: settings.max_document_characters,
+        max_tabular_rows: settings.max_tabular_rows,
+        max_pdf_pages: settings.max_pdf_pages,
         max_agent_iterations: settings.max_agent_iterations,
         default_temperature: settings.default_temperature,
         default_max_tokens: settings.default_max_tokens,
@@ -362,6 +372,10 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
 
       // Step 4: Save backend settings via API
       await settingsApi.updateSettings({ settings: backendSettings });
+
+      if (Array.isArray(settings.supported_file_formats)) {
+        setSupportedFileFormats(settings.supported_file_formats);
+      }
 
       setIsDirty(false);
       toast.success('Settings validated and saved successfully');
@@ -1216,6 +1230,47 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                           className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                         />
                         <p className="text-xs text-gray-500 mt-1">Maximum file size for document uploads</p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Max Document Characters
+                        </label>
+                        <input
+                          type="number"
+                          min="1000"
+                          step="1000"
+                          value={settings.max_document_characters}
+                          onChange={(e) => updateSetting('max_document_characters', Math.max(1000, parseInt(e.target.value) || 200000))}
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">Guardrail to prevent extremely large unstructured uploads</p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Max Tabular Rows
+                        </label>
+                        <input
+                          type="number"
+                          min="1000"
+                          step="1000"
+                          value={settings.max_tabular_rows}
+                          onChange={(e) => updateSetting('max_tabular_rows', Math.max(1000, parseInt(e.target.value) || 50000))}
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">Rejects spreadsheets that exceed safe sampling limits</p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Max PDF Pages
+                        </label>
+                        <input
+                          type="number"
+                          min="1"
+                          value={settings.max_pdf_pages}
+                          onChange={(e) => updateSetting('max_pdf_pages', Math.max(1, parseInt(e.target.value) || 200))}
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">Prevents oversized multi-hundred page PDFs from being ingested</p>
                       </div>
                     </div>
                     <div className="mt-4">

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Group, Agent, Message } from '@/lib/types';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -17,6 +17,8 @@ import {
 import { DocumentsListPanel } from '../shared/DocumentsListPanel';
 import { BrandLogo } from '../shared/BrandLogo';
 import { BrandedCard, BrandedBadge, BrandedStatus } from '../shared/BrandedComponents';
+import { useAppStore } from '@/lib/stores/app';
+import { DEFAULT_SUPPORTED_FILE_FORMATS } from '@/lib/config';
 
 interface ConversationViewProps {
   selectedGroup: Group | null;
@@ -35,6 +37,7 @@ export const ConversationView: React.FC<ConversationViewProps> = ({
   onStopGroupChain,
   onUploadDocument,
 }) => {
+  const supportedFileFormats = useAppStore((state) => state.supportedFileFormats);
   const [message, setMessage] = useState('');
   const [selectedAgent, setSelectedAgent] = useState<string>('');
   const [isTyping, setIsTyping] = useState(false);
@@ -43,6 +46,18 @@ export const ConversationView: React.FC<ConversationViewProps> = ({
   const [activeTab, setActiveTab] = useState<'chat' | 'documents'>('chat');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const acceptedFileTypes = useMemo(() => {
+    const formats = supportedFileFormats && supportedFileFormats.length > 0
+      ? supportedFileFormats
+      : Array.from(DEFAULT_SUPPORTED_FILE_FORMATS);
+
+    return formats
+      .map((ext) => {
+        const normalized = ext.startsWith('.') ? ext : `.${ext}`;
+        return normalized.toLowerCase();
+      })
+      .join(',');
+  }, [supportedFileFormats]);
 
   // Listen for agent chain loading events from SSE
   useEffect(() => {
@@ -274,6 +289,22 @@ export const ConversationView: React.FC<ConversationViewProps> = ({
                         const isUser = msg.role === 'user';
                         const isAgentThought = msg.role === 'agent_thought';
                         const agentInfo = !isUser ? getAgentInfo(msg.sender) : null;
+                        const isProcessingSummary = msg.metadata?.message_type === 'document_processing_summary';
+                        const processingSummary = msg.metadata?.processing_metadata;
+                        const processingHighlight = processingSummary
+                          ? (() => {
+                              if (processingSummary.truncated && processingSummary.sampled_rows && processingSummary.row_count) {
+                                return `Processed first ${processingSummary.sampled_rows} of approximately ${processingSummary.row_count} rows for embeddings.`;
+                              }
+                              if (!processingSummary.truncated && processingSummary.row_count) {
+                                return `Processed ${processingSummary.row_count} rows for embeddings.`;
+                              }
+                              if (processingSummary.page_count) {
+                                return `Detected ${processingSummary.page_count} pages.`;
+                              }
+                              return null;
+                            })()
+                          : null;
 
                         return (
                           <motion.div
@@ -323,6 +354,21 @@ export const ConversationView: React.FC<ConversationViewProps> = ({
                                       }`}>
                                         {isAgentThought ? 'Internal Reflection' : 'Agent Response'}
                                       </span>
+                                    </div>
+                                  )}
+
+                                  {isProcessingSummary && (
+                                    <div className="mb-3 rounded-lg bg-amber-50 dark:bg-amber-900/30 border border-amber-200/60 dark:border-amber-800/40 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
+                                      <div className="font-semibold mb-1 flex items-center space-x-2">
+                                        <DocumentTextIcon className="w-4 h-4" />
+                                        <span>Document processing summary</span>
+                                      </div>
+                                      {processingHighlight && (
+                                        <p className="leading-snug">{processingHighlight}</p>
+                                      )}
+                                      {!processingHighlight && processingSummary?.notes && (
+                                        <p className="leading-snug">{processingSummary.notes}</p>
+                                      )}
                                     </div>
                                   )}
 
@@ -471,7 +517,7 @@ export const ConversationView: React.FC<ConversationViewProps> = ({
                         ref={fileInputRef}
                         type="file"
                         onChange={handleFileSelect}
-                        accept=".pdf,.doc,.docx,.txt,.md,.csv,.xlsx,.xls,.png"
+                        accept={acceptedFileTypes}
                         className="hidden"
                       />
 
