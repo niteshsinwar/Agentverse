@@ -59,7 +59,7 @@ jira>=3.0.0,<4.0.0
 watchdog>=3.0.0,<5.0.0  # File system event monitoring for config hot-reload
 
 # Multi-Modal RAG (Simplified: Text-Only, No CLIP)
-chromadb>=0.4.24,<1.0.0
+chromadb>=1.2.1,<2.0.0
 langchain-text-splitters>=0.3.0,<0.4.0
 tiktoken>=0.5.0,<1.0.0
 voyageai>=0.2.0,<1.0.0  # Anthropic's embedding partner
