@@ -80,6 +80,40 @@ class EnhancedBaseAgent:
         # Tool wrapper (converts to LangChain format) - built lazily
         self._tool_wrapper = None
 
+    def _normalize_message_content(self, content: Any) -> str:
+        """
+        Convert structured LLM message content into a plain string.
+
+        Some providers (Gemini, Anthropic) return `content` as a list of rich
+        blocks. We extract the human-readable text so downstream validation
+        always receives a string.
+        """
+        if isinstance(content, str):
+            return content
+
+        if isinstance(content, list):
+            parts: List[str] = []
+            for item in content:
+                if isinstance(item, str):
+                    parts.append(item)
+                elif isinstance(item, dict):
+                    text_value = item.get("text")
+                    if isinstance(text_value, str):
+                        parts.append(text_value)
+                    elif isinstance(text_value, list):
+                        parts.append(self._normalize_message_content(text_value))
+                    # Ignore non-text blocks (e.g. tool_use) but keep a readable fallback
+                    elif "type" in item and item["type"] == "tool_use":
+                        continue
+                    else:
+                        parts.append(str(item))
+                else:
+                    parts.append(str(item))
+            return "".join(parts)
+
+        # Fallback for other structured types
+        return str(content)
+
     def load_metadata(self, name: str, description: str, folder_path: str) -> None:
         """Load agent metadata (registry.py compatibility)"""
         self.metadata = {
@@ -212,7 +246,10 @@ class EnhancedBaseAgent:
             messages = result.get("messages", [])
             if messages:
                 last_message = messages[-1]
-                final_text = last_message.content if hasattr(last_message, 'content') else str(last_message)
+                if hasattr(last_message, "content"):
+                    final_text = self._normalize_message_content(last_message.content)
+                else:
+                    final_text = self._normalize_message_content(last_message)
             else:
                 final_text = "@user Error: No response from agent"
 
@@ -231,6 +268,8 @@ class EnhancedBaseAgent:
                 pass
 
         # 4. Validation wall - ensure @mention present with multi-attempt correction
+        if not isinstance(final_text, str):
+            final_text = self._normalize_message_content(final_text)
         final_text = await self._validate_mention(final_text, roster, agent, prompt, group_id)
 
         # Return format (router expects "text" key)
@@ -344,6 +383,10 @@ class EnhancedBaseAgent:
             roster: List of (agent_id, name, description) tuples
         """
         MENTION_PATTERN = re.compile(r"@([A-Za-z0-9_\-]+)", re.DOTALL)
+
+        if not isinstance(response, str):
+            response = self._normalize_message_content(response)
+
         mentions = MENTION_PATTERN.findall(response)
 
         # Build list of valid mentions
@@ -391,9 +434,15 @@ class EnhancedBaseAgent:
                 messages = correction_result.get("messages", [])
                 if messages:
                     last_message = messages[-1]
-                    corrected_response = last_message.content if hasattr(last_message, 'content') else str(last_message)
+                    if hasattr(last_message, "content"):
+                        corrected_response = self._normalize_message_content(last_message.content)
+                    else:
+                        corrected_response = self._normalize_message_content(last_message)
                 else:
                     corrected_response = current_response
+
+                if not isinstance(corrected_response, str):
+                    corrected_response = self._normalize_message_content(corrected_response)
                 corrected_mentions = MENTION_PATTERN.findall(corrected_response)
 
                 # Check if corrected
