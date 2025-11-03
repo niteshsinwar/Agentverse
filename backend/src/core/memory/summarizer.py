@@ -161,14 +161,37 @@ class ConversationSummarizer:
                 summary = response.content[0].text.strip()
 
             elif self.provider == "gemini":
+                # Configure safety settings to be more lenient for summarization
+                # We're just summarizing conversation history, not generating harmful content
+                safety_settings = {
+                    "HARM_CATEGORY_HARASSMENT": "BLOCK_NONE",
+                    "HARM_CATEGORY_HATE_SPEECH": "BLOCK_NONE",
+                    "HARM_CATEGORY_SEXUALLY_EXPLICIT": "BLOCK_NONE",
+                    "HARM_CATEGORY_DANGEROUS_CONTENT": "BLOCK_NONE"
+                }
+
                 model = self.llm_client.GenerativeModel(
                     self.model,
-                    system_instruction=system_prompt
+                    system_instruction=system_prompt,
+                    safety_settings=safety_settings
                 )
                 response = model.generate_content(
                     user_prompt,
                     generation_config={"max_output_tokens": self.max_tokens, "temperature": 0.3}
                 )
+
+                # Handle Gemini safety filters (finish_reason: 2 = SAFETY)
+                # Check if response has valid parts before accessing .text
+                if not response.parts:
+                    finish_reason = getattr(response.candidates[0], 'finish_reason', None) if response.candidates else None
+                    if finish_reason == 2:  # SAFETY filter
+                        print(f"⚠️ Gemini safety filter triggered during summarization (finish_reason: SAFETY)")
+                        # Use fallback summary
+                        raise ValueError("Gemini safety filter blocked response")
+                    else:
+                        print(f"⚠️ Gemini returned no content (finish_reason: {finish_reason})")
+                        raise ValueError(f"No content in Gemini response (finish_reason: {finish_reason})")
+
                 summary = response.text.strip()
 
             else:
