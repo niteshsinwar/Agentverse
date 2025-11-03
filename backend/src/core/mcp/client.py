@@ -18,6 +18,7 @@ from mcp.client import stdio
 
 from src.core.utils.platform_commands import CrossPlatformCommands
 from src.core.utils.cross_platform_env import CrossPlatformEnv
+from src.core.utils.mcp_auth import ensure_remote_auth_args, prepare_remote_bridge_env
 from src.core.telemetry.session_logger import session_logger
 
 logger = logging.getLogger(__name__)
@@ -53,8 +54,15 @@ class MCPServerConnection:
             self.spec.get("args", [])
         )
 
+        args = ensure_remote_auth_args(self.name, self.spec, cmd, args)
+
         # Expand environment variables
         env = CrossPlatformEnv.expand_env_in_dict(self.spec.get("env", {}))
+
+        auth_store_path = self.spec.get('_resolved_auth_store')
+        if auth_store_path:
+            from pathlib import Path as _Path  # local import to avoid top-level cycle
+            env = prepare_remote_bridge_env(_Path(auth_store_path), env)
 
         # Create server parameters
         server_params = StdioServerParameters(
@@ -112,18 +120,37 @@ class MCPServerConnection:
         if not self.session:
             raise RuntimeError(f"Server {self.name} not connected")
 
-        # SDK call with timeout for slow servers (NPX downloads, etc.)
+        try:
+            return await self._fetch_tools()
+        except Exception as exc:
+            if self._is_session_error(exc):
+                logger.warning(
+                    "Remote MCP %s reported missing session. Retrying handshake once...",
+                    self.name
+                )
+                await self.disconnect()
+                await self.ensure_connected()
+                try:
+                    return await self._fetch_tools()
+                except Exception:
+                    # Re-raise the original exception context if retry fails
+                    raise
+            raise
+
+    async def _fetch_tools(self) -> List[MCPTool]:
+        """Internal helper to request tools with timeout and caching."""
         logger.debug(f"Requesting tools list from {self.name}...")
         try:
             result = await asyncio.wait_for(
                 self.session.list_tools(),
-                timeout=30.0  # 30s timeout for slow NPX servers
+                timeout=30.0
             )
-        except asyncio.TimeoutError:
+        except asyncio.TimeoutError as timeout_error:
             logger.error(f"❌ Timeout waiting for tools list from {self.name}")
-            raise RuntimeError(f"Server {self.name} did not respond to list_tools within 30s")
+            raise RuntimeError(
+                f"Server {self.name} did not respond to list_tools within 30s"
+            ) from timeout_error
 
-        # Convert to MCPTool format
         self._tools_cache = []
         for tool in result.tools:
             self._tools_cache.append(MCPTool(
@@ -135,6 +162,11 @@ class MCPServerConnection:
 
         logger.debug(f"✅ Retrieved {len(self._tools_cache)} tools from {self.name}")
         return self._tools_cache
+
+    @staticmethod
+    def _is_session_error(exc: Exception) -> bool:
+        message = str(exc)
+        return 'Missing sessionId' in message or 'missing sessionid' in message.lower()
 
     async def call_tool(self, tool_name: str, params: Dict[str, Any]) -> Any:
         """

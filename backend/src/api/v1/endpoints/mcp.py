@@ -1,6 +1,7 @@
 """
 MCP Management API Endpoints - Modern Architecture
 Uses Official Anthropic MCP SDK for validation and testing
+Includes OAuth flow for remote MCP servers
 """
 
 from fastapi import APIRouter, HTTPException
@@ -12,6 +13,8 @@ from pathlib import Path
 
 from src.core.validation.mcp_validator import McpValidator
 from src.core.mcp.client import MCPManager
+from src.core.mcp.oauth_manager import oauth_manager, OAuthFlowTimeout, OAuthFlowError
+from src.core.utils.mcp_auth import requires_oauth, has_valid_oauth_token
 
 router = APIRouter()
 
@@ -51,9 +54,108 @@ async def get_mcp_servers():
         raise HTTPException(status_code=500, detail=f"Failed to load MCP servers: {str(e)}")
 
 
+@router.post("/{mcp_id}/check-oauth")
+async def check_oauth_requirement(mcp_id: str, mcp_data: MCPRequest):
+    """
+    Check if MCP server requires OAuth and if token exists.
+    Returns oauth status without initiating flow.
+    """
+    try:
+        # Check if OAuth required
+        needs_oauth = requires_oauth(mcp_data.command, mcp_data.args)
+
+        if not needs_oauth:
+            return {
+                "requires_oauth": False,
+                "has_token": False,
+                "message": "This MCP server does not require OAuth"
+            }
+
+        # Check if token exists
+        from src.core.utils.mcp_auth import BASE_AUTH_DIR
+        safe_name = ''.join(c if c.isalnum() or c in '-_.' else '_' for c in mcp_id)
+        auth_store_dir = BASE_AUTH_DIR / safe_name
+
+        has_token = has_valid_oauth_token(auth_store_dir)
+
+        return {
+            "requires_oauth": True,
+            "has_token": has_token,
+            "auth_store": str(auth_store_dir),
+            "message": "OAuth token found" if has_token else "OAuth authentication required"
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to check OAuth: {str(e)}")
+
+
+@router.post("/{mcp_id}/oauth/initiate")
+async def initiate_oauth(mcp_id: str, mcp_data: MCPRequest):
+    """
+    Initiate OAuth flow for mcp-remote server.
+    This will start the process that opens browser for user authentication.
+    """
+    try:
+        # Verify it's an OAuth server
+        if not requires_oauth(mcp_data.command, mcp_data.args):
+            raise HTTPException(
+                status_code=400,
+                detail="This MCP server does not require OAuth (not using mcp-remote)"
+            )
+
+        print(f"🔐 Initiating OAuth flow for MCP '{mcp_id}'...")
+
+        # Start OAuth flow (this will open browser automatically)
+        result = await oauth_manager.initiate_oauth_flow(
+            server_name=mcp_id,
+            command=mcp_data.command,
+            args=mcp_data.args,
+            env=mcp_data.env,
+            timeout=120.0  # 2 minutes for user to complete auth
+        )
+
+        return {
+            "success": True,
+            "mcp_id": mcp_id,
+            **result
+        }
+
+    except OAuthFlowTimeout as e:
+        raise HTTPException(
+            status_code=408,
+            detail={
+                "message": "OAuth authentication timed out",
+                "error": str(e),
+                "hint": "Please ensure you completed the browser authentication"
+            }
+        )
+    except OAuthFlowError as e:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "message": "OAuth authentication failed",
+                "error": str(e)
+            }
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to initiate OAuth: {str(e)}"
+        )
+
+
 @router.post("/")
 async def add_mcp_server(mcp_id: str, mcp_data: MCPRequest):
-    """Add a new MCP server with Official SDK validation"""
+    """
+    Add a new MCP server with OAuth-aware validation.
+
+    Flow:
+    1. Check if OAuth required
+    2. If OAuth needed and no token -> return error (client should call /oauth/initiate first)
+    3. Validate config
+    4. Test connectivity
+    5. Save
+    """
     try:
         # Step 1: Create server config (modern format)
         server_config = {
@@ -62,7 +164,16 @@ async def add_mcp_server(mcp_id: str, mcp_data: MCPRequest):
             "env": mcp_data.env
         }
 
-        # Step 2: Validate using McpValidator
+        # Step 2: Check OAuth requirement
+        # Note: For remote MCP servers, OAuth is handled on first tool use
+        # We allow saving without OAuth validation since the server may not
+        # require authentication until actual API calls are made
+        is_remote = requires_oauth(mcp_data.command, mcp_data.args)
+
+        if is_remote:
+            print(f"ℹ️  Remote MCP server '{mcp_id}' - OAuth will be handled on first use")
+
+        # Step 3: Validate using McpValidator
         validation_result = McpValidator.validate_mcp_servers_config(
             {mcp_id: server_config}
         )
@@ -76,22 +187,26 @@ async def add_mcp_server(mcp_id: str, mcp_data: MCPRequest):
                 }
             )
 
-        # Step 3: Test MCP connectivity using validator
-        print(f"🔍 Validating MCP '{mcp_id}' connectivity...")
-        connectivity_result = await McpValidator.validate_mcp_server_connectivity(
-            name=mcp_id,
-            config=server_config,
-            timeout=15.0
-        )
-
-        if not connectivity_result.valid:
-            raise HTTPException(
-                status_code=400,
-                detail={
-                    "message": f"MCP server '{mcp_id}' validation failed",
-                    "validation_errors": connectivity_result.to_dict()
-                }
+        # Step 4: Test MCP connectivity using validator
+        # For remote OAuth servers, skip validation as it requires user interaction
+        if is_remote:
+            print(f"ℹ️  Skipping connectivity validation for remote MCP '{mcp_id}' - will validate on first use")
+        else:
+            print(f"🔍 Validating MCP '{mcp_id}' connectivity...")
+            connectivity_result = await McpValidator.validate_mcp_server_connectivity(
+                name=mcp_id,
+                config=server_config,
+                timeout=15.0
             )
+
+            if not connectivity_result.valid:
+                raise HTTPException(
+                    status_code=400,
+                    detail={
+                        "message": f"MCP server '{mcp_id}' validation failed",
+                        "validation_errors": connectivity_result.to_dict()
+                    }
+                )
 
         # Step 4: Save MCP Server
         mcp_path = BACKEND_CONFIG_PATH / "mcp.json"

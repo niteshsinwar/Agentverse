@@ -10,6 +10,7 @@ from .event_loop import CrossPlatformEventLoop, platform_loop
 from .platform_commands import CrossPlatformCommands
 from .cross_platform_paths import CrossPlatformPaths
 from .cross_platform_env import CrossPlatformEnv
+from .mcp_auth import ensure_remote_auth_args, prepare_remote_bridge_env, BASE_AUTH_DIR
 
 __all__ = [
     'CrossPlatformEventLoop',
@@ -17,4 +18,7 @@ __all__ = [
     'CrossPlatformCommands',
     'CrossPlatformPaths',
     'CrossPlatformEnv',
+    'ensure_remote_auth_args',
+    'prepare_remote_bridge_env',
+    'BASE_AUTH_DIR',
 ]
