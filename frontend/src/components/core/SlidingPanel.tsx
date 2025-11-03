@@ -27,19 +27,19 @@ interface SlidingPanelProps {
 }
 
 const overlayBase =
-  'fixed inset-0 bg-gradient-to-br from-slate-900/80 via-violet-900/50 to-cyan-900/30 backdrop-blur-sm flex items-center justify-center p-4 z-[60]';
+  'fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-4 sm:p-6';
 
 const containerBase =
-  'relative bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl rounded-3xl border border-violet-200/30 dark:border-violet-800/30 flex flex-col shadow-2xl';
+  'relative brand-surface-strong rounded-3xl border border-transparent flex flex-col shadow-[0_40px_160px_rgba(15,23,42,0.45)]';
 
 const headerBase =
-  'relative flex items-center justify-between px-6 py-4 border-b border-violet-200/30 dark:border-violet-800/30';
+  'relative flex items-center justify-between px-6 py-4 border-b border-transparent';
 
 const defaultHeaderBackground =
-  'absolute inset-0 bg-gradient-to-r from-indigo-500/5 via-purple-500/5 to-pink-500/5 rounded-t-3xl';
+  'absolute inset-0 brand-gradient-soft opacity-40 rounded-t-3xl';
 
 const closeButtonBase =
-  'p-2 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 transition-colors';
+  'brand-glass p-2 rounded-xl text-slate-500 hover:text-slate-800 dark:text-slate-300 dark:hover:text-white transition-all duration-200 hover:-translate-y-0.5';
 
 export const SlidingPanel = ({
   isOpen,
@@ -102,11 +102,11 @@ export const SlidingPanel = ({
               <div className="relative flex items-center space-x-4">
                 {icon ? <div className="flex-shrink-0">{icon}</div> : null}
                 <div>
-                  <h2 className="text-2xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 dark:from-slate-100 dark:to-slate-300 bg-clip-text text-transparent">
+                  <h2 className="text-2xl font-semibold text-slate-900 dark:text-white">
                     {title}
                   </h2>
                   {subtitle ? (
-                    <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">{subtitle}</p>
+                    <p className="text-sm text-slate-500 dark:text-slate-300 font-medium">{subtitle}</p>
                   ) : null}
                 </div>
                 {meta ? <div className="ml-3">{meta}</div> : null}

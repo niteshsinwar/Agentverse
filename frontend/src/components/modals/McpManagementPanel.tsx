@@ -52,6 +52,8 @@ export const McpManagementPanel: React.FC<McpManagementPanelProps> = ({
   const mcpSteps = ['Verifying Configuration', 'Validating Connectivity', 'Deploying MCP Server'];
   const progressSteps = useProgressSteps(mcpSteps);
 
+  const labelClass = 'block text-sm font-semibold text-slate-600 dark:text-slate-300 mb-2';
+  const inputClass = 'brand-field w-full rounded-xl px-3 py-2 text-sm';
 
   useEffect(() => {
     if (isOpen) {
@@ -146,8 +148,27 @@ export const McpManagementPanel: React.FC<McpManagementPanelProps> = ({
 
       // Use the new simplified format - send the config directly
       const mcpData = configData;
+      const mcpId = formData.mcpId || formData.name.toLowerCase().replace(/[^a-z0-9]/g, '_');
 
-      // Step 2: Validating Connectivity
+      // Check if OAuth might be required (informational only)
+      try {
+        const oauthCheck = await mcpApi.checkOAuthRequirement(mcpId, mcpData);
+
+        if (oauthCheck.requires_oauth && !oauthCheck.has_token) {
+          // Show info that OAuth will be handled later
+          toast('Remote MCP server - OAuth will be requested when tools are used', {
+            duration: 3000,
+            icon: 'ℹ️'
+          });
+        }
+
+        progressSteps.nextStep();
+      } catch (error) {
+        // OAuth check is non-critical, continue anyway
+        progressSteps.nextStep();
+      }
+
+      // Step 2/3: Validating Connectivity
       await new Promise(resolve => setTimeout(resolve, 800));
       progressSteps.nextStep();
 
@@ -155,7 +176,6 @@ export const McpManagementPanel: React.FC<McpManagementPanelProps> = ({
       await new Promise(resolve => setTimeout(resolve, 500));
 
       if (isCreating) {
-        const mcpId = formData.mcpId || formData.name.toLowerCase().replace(/[^a-z0-9]/g, '_');
         await mcpApi.createMcpServer(mcpId, mcpData);
         progressSteps.completeProgress();
         toast.success(`MCP server "${mcpId}" created successfully`);
@@ -209,7 +229,7 @@ export const McpManagementPanel: React.FC<McpManagementPanelProps> = ({
       <button
         onClick={loadMcpServers}
         disabled={loading}
-        className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 disabled:opacity-50 transition-colors"
+        className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 disabled:opacity-50 transition-colors"
         title="Refresh MCP servers"
       >
         <ArrowPathIcon className={`h-5 w-5 ${loading ? 'animate-spin' : ''}`} />
@@ -232,21 +252,21 @@ export const McpManagementPanel: React.FC<McpManagementPanelProps> = ({
       onClose={onClose}
       title="MCP Servers Management"
       subtitle="Configure and monitor Model Context Protocol servers"
-      icon={<ServerIcon className="h-6 w-6 text-purple-600" />}
+      icon={<ServerIcon className="h-6 w-6 text-sky-500" />}
       actions={headerActions}
       size="xlarge"
-      headerClassName="border-b border-gray-200 dark:border-gray-700"
+      headerClassName="border-b border-transparent"
       headerBackgroundClassName={null}
-      containerClassName="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-2xl"
+      containerClassName="brand-surface-strong rounded-3xl border border-transparent shadow-2xl"
       contentClassName="flex flex-1 min-h-0"
     >
       <div className="flex-1 flex min-h-0">
         <Tab.Group vertical>
           <div className="flex w-full h-full">
             {/* MCP Servers List */}
-            <div className="w-1/3 border-r border-gray-200 dark:border-gray-700 flex flex-col">
-              <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+            <div className="w-1/3 border-r border-transparent flex flex-col brand-shell">
+              <div className="p-4 border-b border-transparent">
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
                   MCP Servers ({Object.keys(mcpServers).length})
                 </h3>
               </div>
@@ -254,8 +274,8 @@ export const McpManagementPanel: React.FC<McpManagementPanelProps> = ({
               <div className="flex-1 overflow-y-auto">
                 {loading ? (
                   <div className="p-6 text-center">
-                    <ArrowPathIcon className="h-8 w-8 animate-spin mx-auto text-purple-600 mb-2" />
-                    <p className="text-gray-600 dark:text-gray-400">Loading MCP servers...</p>
+                    <ArrowPathIcon className="h-8 w-8 animate-spin mx-auto text-sky-500 mb-2" />
+                    <p className="text-slate-600 dark:text-slate-400">Loading MCP servers...</p>
                   </div>
                 ) : Object.keys(mcpServers).length === 0 ? (
                   <BrandedCard variant="glass" className="p-6 text-center m-4">
@@ -276,23 +296,23 @@ export const McpManagementPanel: React.FC<McpManagementPanelProps> = ({
                     {Object.entries(mcpServers).filter(([mcpId, mcp]) => mcpId && mcp).map(([mcpId, mcp]) => (
                       <div
                         key={`mcp-${mcpId}`}
-                        className={`p-3 rounded-lg border cursor-pointer transition-all ${
+                        className={`p-3 rounded-2xl border cursor-pointer transition-all ${
                           selectedMcp === mcpId
-                            ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20'
-                            : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                            ? 'border-transparent brand-gradient text-white shadow-lg shadow-sky-500/25'
+                            : 'border-transparent hover:bg-white/60 dark:hover:bg-slate-800/60'
                         }`}
                         onClick={() => setSelectedMcp(mcpId)}
                       >
-                        <div className="flex items-start justify-between">
+                      <div className="flex items-start justify-between">
                           <div className="flex-1 min-w-0">
-                            <h4 className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                            <h4 className={`text-sm font-medium truncate ${selectedMcp === mcpId ? 'text-white' : 'text-slate-900 dark:text-white'}`}>
                               {mcpId}
                             </h4>
-                            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">
+                            <p className={`text-xs mt-1 line-clamp-2 ${selectedMcp === mcpId ? 'text-white/80' : 'text-slate-600 dark:text-slate-400'}`}>
                               {mcp.command} {mcp.args?.join(' ')}
                             </p>
                             <div className="flex items-center space-x-2 mt-2">
-                              <span className="text-xs text-gray-500 dark:text-gray-400">
+                              <span className={`text-xs ${selectedMcp === mcpId ? 'text-white/75' : 'text-slate-500 dark:text-slate-400'}`}>
                                 {mcp.args?.length || 0} args • {mcp.command}
                               </span>
                             </div>
@@ -303,7 +323,7 @@ export const McpManagementPanel: React.FC<McpManagementPanelProps> = ({
                                 e.stopPropagation();
                                 handleEditMcp(mcpId);
                               }}
-                              className="p-1 text-gray-400 hover:text-purple-600"
+                              className="p-1 text-slate-400 hover:text-sky-500"
                               title="Edit MCP server"
                             >
                               <PencilIcon className="h-4 w-4" />
@@ -313,7 +333,7 @@ export const McpManagementPanel: React.FC<McpManagementPanelProps> = ({
                                 e.stopPropagation();
                                 handleDeleteMcp(mcpId);
                               }}
-                              className="p-1 text-gray-400 hover:text-red-600"
+                              className="p-1 text-slate-400 hover:text-red-600"
                               title="Delete MCP server"
                             >
                               <TrashIcon className="h-4 w-4" />
@@ -332,24 +352,23 @@ export const McpManagementPanel: React.FC<McpManagementPanelProps> = ({
               {(isEditing || isCreating) ? (
                 <div className="flex-1 flex flex-col">
                   {/* Editor Header */}
-                  <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+                  <div className="p-4 border-b border-transparent">
                     <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                      <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
                         {isCreating ? 'Create New MCP Server' : 'Edit MCP Server'}
                       </h3>
                       <div className="flex items-center space-x-2">
-                        <button
-                          onClick={resetForm}
-                          className="px-3 py-1 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
-                        >
+                        <BrandedButton variant="ghost" size="sm" onClick={resetForm}>
                           Cancel
-                        </button>
-                        <button
+                        </BrandedButton>
+                        <BrandedButton
                           onClick={handleSaveMcp}
-                          className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg"
+                          variant="primary"
+                          size="sm"
+                          loading={loading}
                         >
                           {isCreating ? 'Create Server' : 'Save Changes'}
-                        </button>
+                        </BrandedButton>
                       </div>
                     </div>
                   </div>
@@ -359,29 +378,29 @@ export const McpManagementPanel: React.FC<McpManagementPanelProps> = ({
                     <div className="flex-1 overflow-y-auto p-4 space-y-6">
                       {/* Basic Information */}
                       <div>
-                        <h4 className="font-medium text-gray-900 dark:text-white mb-4">Basic Information</h4>
+                        <h4 className="font-medium text-slate-900 dark:text-white mb-4">Basic Information</h4>
                         <div className="space-y-4">
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            <label className={labelClass}>
                               Server Name *
                             </label>
                             <input
                               type="text"
                               value={formData.name}
                               onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                              className={`${inputClass} focus:ring-2 focus:ring-sky-500 focus:border-transparent`}
                               placeholder="Enter server name"
                             />
                           </div>
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            <label className={labelClass}>
                               Description *
                             </label>
                             <textarea
                               value={formData.description}
                               onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
                               rows={3}
-                              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                              className={`${inputClass} focus:ring-2 focus:ring-sky-500 focus:border-transparent resize-none`}
                               placeholder="Describe what this MCP server provides"
                             />
                           </div>
@@ -390,22 +409,22 @@ export const McpManagementPanel: React.FC<McpManagementPanelProps> = ({
 
                       {/* MCP Configuration - Free JSON */}
                       <div>
-                        <h4 className="font-medium text-gray-900 dark:text-white mb-4">MCP Configuration (JSON)</h4>
-                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                        <h4 className="font-medium text-slate-900 dark:text-white mb-4">MCP Configuration (JSON)</h4>
+                        <p className="text-sm text-slate-600 dark:text-slate-400 mb-3">
                           Write any valid JSON configuration for your MCP server. You have complete flexibility to define the structure.
                         </p>
                         <textarea
                           value={rawJsonConfig}
                           onChange={(e) => setRawJsonConfig(e.target.value)}
                           rows={12}
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-sm resize-none overflow-y-auto"
+                          className={`${inputClass} font-mono text-sm min-h-[260px] resize-none overflow-y-auto focus:ring-2 focus:ring-sky-500 focus:border-transparent`}
                           placeholder="Write any JSON configuration here..."
                         />
                       </div>
                     </div>
 
                     {/* JSON Validation Indicator - Fixed at bottom */}
-                    <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+                    <div className="p-4 border-t border-transparent">
                       {(() => {
                         try {
                           if (rawJsonConfig && rawJsonConfig.trim()) {
@@ -417,14 +436,14 @@ export const McpManagementPanel: React.FC<McpManagementPanelProps> = ({
                               </div>
                             );
                           }
-                          return <div className="text-sm text-gray-400">Enter JSON configuration above</div>;
+                          return <div className="text-sm text-slate-400">Enter JSON configuration above</div>;
                         } catch (error) {
                           return rawJsonConfig && rawJsonConfig.trim() ? (
                             <div className="flex items-center text-red-600 dark:text-red-400">
                               <XCircleIcon className="h-4 w-4 mr-1" />
                               <span className="text-sm">Invalid JSON syntax</span>
                             </div>
-                          ) : <div className="text-sm text-gray-400">Enter JSON configuration above</div>;
+                          ) : <div className="text-sm text-slate-400">Enter JSON configuration above</div>;
                         }
                       })()}
                     </div>
@@ -433,19 +452,19 @@ export const McpManagementPanel: React.FC<McpManagementPanelProps> = ({
               ) : selectedMcp && mcpServers[selectedMcp] ? (
                 <div className="flex-1 flex flex-col">
                   {/* MCP Details Header */}
-                  <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+                  <div className="p-4 border-b border-transparent">
                     <div className="flex items-center justify-between">
                       <div>
-                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                        <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
                           {selectedMcp}
                         </h3>
-                        <p className="text-gray-600 dark:text-gray-400 mt-1">
+                        <p className="text-slate-600 dark:text-slate-400 mt-1">
                           MCP Server Configuration
                         </p>
                       </div>
                       <button
                         onClick={() => handleEditMcp(selectedMcp)}
-                        className="flex items-center space-x-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg"
+                        className="flex items-center space-x-2 brand-cta px-4 py-2 rounded-xl"
                       >
                         <PencilIcon className="h-4 w-4" />
                         <span>Edit Server</span>
@@ -457,11 +476,11 @@ export const McpManagementPanel: React.FC<McpManagementPanelProps> = ({
                   <div className="flex-1 overflow-y-auto p-4 space-y-6">
                     {/* Basic Info */}
                     <div>
-                      <h4 className="font-medium text-gray-900 dark:text-white mb-3">Server Information</h4>
+                      <h4 className="font-medium text-slate-900 dark:text-white mb-3">Server Information</h4>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <span className="text-sm text-gray-600 dark:text-gray-400">Command</span>
-                          <p className="mt-1 font-mono text-sm bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">
+                          <span className="text-sm text-slate-600 dark:text-slate-400">Command</span>
+                          <p className="mt-1 font-mono text-sm brand-field px-2 py-1 rounded">
                             {mcpServers[selectedMcp].command}
                           </p>
                         </div>
@@ -471,12 +490,12 @@ export const McpManagementPanel: React.FC<McpManagementPanelProps> = ({
                     {/* Arguments */}
                     {mcpServers[selectedMcp].args && mcpServers[selectedMcp].args.length > 0 && (
                       <div>
-                        <h4 className="font-medium text-gray-900 dark:text-white mb-3">Arguments</h4>
+                        <h4 className="font-medium text-slate-900 dark:text-white mb-3">Arguments</h4>
                         <div className="flex flex-wrap gap-2">
                           {mcpServers[selectedMcp].args.filter(arg => arg && arg.trim()).map((arg, index) => (
                             <span
                               key={`arg-${arg}-${index}`}
-                              className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400"
+                              className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-sky-100 dark:bg-sky-900/20 text-sky-700 dark:text-sky-400"
                             >
                               {arg}
                             </span>
@@ -488,16 +507,16 @@ export const McpManagementPanel: React.FC<McpManagementPanelProps> = ({
                     {/* Environment Variables */}
                     {mcpServers[selectedMcp].env && Object.keys(mcpServers[selectedMcp].env!).length > 0 && (
                       <div>
-                        <h4 className="font-medium text-gray-900 dark:text-white mb-3">Environment Variables</h4>
+                        <h4 className="font-medium text-slate-900 dark:text-white mb-3">Environment Variables</h4>
                         <div className="space-y-2">
                           {Object.entries(mcpServers[selectedMcp].env!).map(([key, value], index) => (
                             <div
                               key={`${key}-${index}`}
-                              className="flex items-center p-2 bg-gray-50 dark:bg-gray-700/50 rounded-lg"
+                              className="flex items-center p-2 brand-field rounded-lg"
                             >
-                              <span className="font-mono text-sm text-gray-900 dark:text-white">{key}</span>
-                              <span className="mx-2 text-gray-400">=</span>
-                              <span className="font-mono text-sm text-gray-600 dark:text-gray-400">{value}</span>
+                              <span className="font-mono text-sm text-slate-900 dark:text-white">{key}</span>
+                              <span className="mx-2 text-slate-400">=</span>
+                              <span className="font-mono text-sm text-slate-600 dark:text-slate-400">{value}</span>
                             </div>
                           ))}
                         </div>
@@ -510,16 +529,16 @@ export const McpManagementPanel: React.FC<McpManagementPanelProps> = ({
               ) : (
                 <div className="flex-1 flex items-center justify-center">
                   <div className="text-center">
-                    <ServerIcon className="h-16 w-16 mx-auto text-gray-400 mb-4" />
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                    <ServerIcon className="h-16 w-16 mx-auto text-slate-400 mb-4" />
+                    <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
                       Select an MCP server to view details
                     </h3>
-                    <p className="text-gray-600 dark:text-gray-400 mb-4">
+                    <p className="text-slate-600 dark:text-slate-400 mb-4">
                       Choose an MCP server from the list or create a new one
                     </p>
                     <button
                       onClick={handleCreateNew}
-                      className="flex items-center space-x-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg mx-auto"
+                      className="flex items-center space-x-2 brand-cta px-4 py-2 rounded-xl mx-auto"
                     >
                       <PlusIcon className="h-4 w-4" />
                       <span>Create New MCP Server</span>

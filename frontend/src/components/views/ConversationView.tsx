@@ -177,7 +177,7 @@ export const ConversationView: React.FC<ConversationViewProps> = ({
 
   if (!selectedGroup) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
+      <div className="flex-1 flex items-center justify-center bg-gradient-to-br from-slate-50 via-sky-50/30 to-cyan-50/20 dark:from-slate-900 dark:via-sky-950/30 dark:to-cyan-950/20">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -187,14 +187,14 @@ export const ConversationView: React.FC<ConversationViewProps> = ({
             <BrandLogo variant="icon" size="lg" />
           </div>
 
-          <h2 className="text-2xl font-bold bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 bg-clip-text text-transparent mb-4">
+          <h2 className="text-2xl font-bold brand-gradient bg-clip-text text-transparent mb-4">
             Welcome to AgentVerse
           </h2>
           <p className="text-slate-600 dark:text-slate-400 mb-6">
             Create or select a workspace to start orchestrating your AI agents and unlock the power of multi-agent collaboration.
           </p>
 
-          <div className="grid grid-cols-2 gap-4 text-sm text-gray-500 dark:text-gray-400">
+          <div className="grid grid-cols-2 gap-4 text-sm text-slate-500 dark:text-slate-400">
             <div className="flex items-center space-x-2">
               <CpuChipIcon className="w-4 h-4" />
               <span>Multi-Agent Teams</span>
@@ -220,13 +220,13 @@ export const ConversationView: React.FC<ConversationViewProps> = ({
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* Tab Navigation */}
-      <div className="flex space-x-1 border-b border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-800/50 px-6">
+      <div className="flex space-x-1 border-b border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-800/50 px-6">
         <button
           onClick={() => setActiveTab('chat')}
           className={`flex items-center space-x-2 px-4 py-3 text-sm font-medium rounded-t-lg transition-colors ${
             activeTab === 'chat'
-              ? 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 border-t-2 border-x border-blue-600 dark:border-blue-400 -mb-px'
-              : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+              ? 'bg-white dark:bg-slate-800 text-sky-600 dark:text-sky-400 border-t-2 border-x border-sky-500 dark:border-sky-400 -mb-px'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
           }`}
         >
           <ChatBubbleLeftRightIcon className="h-4 w-4" />
@@ -239,8 +239,8 @@ export const ConversationView: React.FC<ConversationViewProps> = ({
           }}
           className={`flex items-center space-x-2 px-4 py-3 text-sm font-medium rounded-t-lg transition-colors ${
             activeTab === 'documents'
-              ? 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 border-t-2 border-x border-blue-600 dark:border-blue-400 -mb-px'
-              : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+              ? 'bg-white dark:bg-slate-800 text-sky-600 dark:text-sky-400 border-t-2 border-x border-sky-500 dark:border-sky-400 -mb-px'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
           }`}
         >
           <DocumentTextIcon className="h-4 w-4" />
@@ -253,7 +253,7 @@ export const ConversationView: React.FC<ConversationViewProps> = ({
         {activeTab === 'chat' ? (
           <div className="flex flex-col h-full">
             {/* Messages Area */}
-            <div className="flex-1 overflow-y-auto bg-gradient-to-br from-slate-50 via-violet-50/30 to-cyan-50/20 dark:from-slate-900 dark:via-violet-950/30 dark:to-cyan-950/20 min-h-0">
+            <div className="flex-1 overflow-y-auto bg-gradient-to-br from-slate-50 via-sky-50/30 to-cyan-50/20 dark:from-slate-900 dark:via-sky-950/30 dark:to-cyan-950/20 min-h-0">
               <div className="max-w-4xl mx-auto">
                 {messages.length === 0 ? (
                   <motion.div
@@ -265,7 +265,7 @@ export const ConversationView: React.FC<ConversationViewProps> = ({
                       <div className="flex justify-center mb-6">
                         <BrandLogo variant="icon" size="lg" />
                       </div>
-                      <h3 className="text-xl font-bold bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 bg-clip-text text-transparent mb-3">
+                      <h3 className="text-xl font-bold brand-gradient bg-clip-text text-transparent mb-3">
                         Ready to Collaborate
                       </h3>
                       <p className="text-slate-500 dark:text-slate-400 font-medium">
@@ -320,8 +320,8 @@ export const ConversationView: React.FC<ConversationViewProps> = ({
                               <div className={`flex-shrink-0 ${isUser ? 'ml-3' : 'mr-3'}`}>
                                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-lg ${
                                   isUser
-                                    ? 'bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 text-white'
-                                    : 'bg-gradient-to-br from-violet-100 to-indigo-100 dark:from-violet-900/50 dark:to-indigo-900/50 border border-violet-200/50 dark:border-violet-700/50'
+                                    ? 'brand-gradient text-white'
+                                    : 'bg-gradient-to-br from-sky-50 to-slate-100 dark:from-sky-900/40 dark:to-slate-900/40 border border-sky-200/50 dark:border-sky-800/40'
                                 }`}>
                                   {isUser ? (
                                     <UserIcon className="w-5 h-5" />
@@ -335,16 +335,16 @@ export const ConversationView: React.FC<ConversationViewProps> = ({
                               <div className={`flex-1 ${isUser ? 'text-right' : ''}`}>
                                 <div className={`inline-block max-w-full ${
                                   isUser
-                                    ? 'bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white rounded-t-2xl rounded-bl-2xl rounded-br-md shadow-lg shadow-violet-500/25'
+                                    ? 'brand-gradient text-white rounded-t-2xl rounded-bl-2xl rounded-br-md shadow-lg'
                                     : isAgentThought
-                                      ? 'bg-gradient-to-br from-violet-50/90 to-indigo-50/90 dark:from-violet-900/40 dark:to-indigo-900/40 text-slate-700 dark:text-slate-300 border border-violet-200/40 dark:border-violet-700/40 rounded-2xl shadow-lg shadow-violet-500/5'
-                                      : 'bg-white/80 dark:bg-slate-800/80 backdrop-blur-xl text-slate-900 dark:text-slate-100 border border-violet-200/30 dark:border-violet-800/30 rounded-t-2xl rounded-br-2xl rounded-bl-md shadow-lg shadow-violet-500/10'
+                                      ? 'bg-gradient-to-br from-slate-50/90 to-sky-50/90 dark:from-slate-900/35 dark:to-sky-900/35 text-slate-700 dark:text-slate-300 border border-slate-200/40 dark:border-sky-800/30 rounded-2xl shadow-lg shadow-sky-500/5'
+                                      : 'bg-white/80 dark:bg-slate-800/85 backdrop-blur-xl text-slate-900 dark:text-slate-100 border border-slate-200/40 dark:border-sky-800/35 rounded-t-2xl rounded-br-2xl rounded-bl-md shadow-lg shadow-sky-500/10'
                                 } px-4 py-3`}>
                                   {!isUser && agentInfo && (
                                     <div className={`flex items-center space-x-2 mb-2 pb-2 border-b ${
                                       isAgentThought
-                                        ? 'border-violet-200/20 dark:border-violet-700/30'
-                                        : 'border-violet-200/30 dark:border-violet-800/30'
+                                        ? 'border-slate-200/25 dark:border-sky-800/35'
+                                        : 'border-slate-200/35 dark:border-sky-800/40'
                                     }`}>
                                       <BrandedBadge variant={isAgentThought ? 'secondary' : 'primary'} size="sm">
                                         {agentInfo.name}
@@ -406,15 +406,15 @@ export const ConversationView: React.FC<ConversationViewProps> = ({
                           className="flex justify-start px-6"
                         >
                           <div className="flex space-x-3 max-w-3xl">
-                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-100 to-indigo-100 dark:from-violet-900/50 dark:to-indigo-900/50 border border-violet-200/50 dark:border-violet-700/50 flex items-center justify-center shadow-lg">
+                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-sky-50 to-slate-100 dark:from-sky-900/40 dark:to-slate-900/40 border border-sky-200/50 dark:border-sky-800/40 flex items-center justify-center shadow-lg">
                               <BrandedStatus status="thinking" size="sm" />
                             </div>
 
-                            <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-xl border border-violet-200/30 dark:border-violet-800/30 rounded-t-2xl rounded-br-2xl rounded-bl-md px-4 py-3 shadow-lg shadow-violet-500/10">
+                            <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-xl border border-slate-200/35 dark:border-sky-800/35 rounded-t-2xl rounded-br-2xl rounded-bl-md px-4 py-3 shadow-lg shadow-sky-500/10">
                               <div className="flex items-center space-x-1">
-                                <div className="w-2 h-2 bg-gradient-to-r from-violet-500 to-indigo-600 rounded-full animate-bounce" />
-                                <div className="w-2 h-2 bg-gradient-to-r from-violet-500 to-indigo-600 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
-                                <div className="w-2 h-2 bg-gradient-to-r from-violet-500 to-indigo-600 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
+                                <div className="w-2 h-2 bg-gradient-to-r from-sky-500 to-cyan-500 rounded-full animate-bounce" />
+                                <div className="w-2 h-2 bg-gradient-to-r from-sky-500 to-cyan-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
+                                <div className="w-2 h-2 bg-gradient-to-r from-sky-500 to-cyan-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
                                 <span className="ml-2 text-sm text-slate-600 dark:text-slate-400 font-medium">Agent is thinking...</span>
                               </div>
                             </div>
@@ -430,8 +430,8 @@ export const ConversationView: React.FC<ConversationViewProps> = ({
             </div>
 
             {/* Input Area - only show in chat tab */}
-            <div className="relative border-t border-violet-200/30 dark:border-violet-800/30 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl shadow-lg shadow-violet-500/5">
-              <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/5 via-purple-500/5 to-pink-500/5" />
+            <div className="relative border-t border-slate-200/35 dark:border-sky-900/35 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl shadow-lg shadow-sky-500/5">
+              <div className="absolute inset-0 brand-gradient-soft opacity-70" />
               <div className="relative max-w-4xl mx-auto p-6">
                 {agents.length === 0 ? (
                   <BrandedCard variant="glass" className="text-center py-6">
@@ -449,14 +449,14 @@ export const ConversationView: React.FC<ConversationViewProps> = ({
                   <form onSubmit={handleSubmit} className="space-y-4">
                     {/* Agent Selector */}
                     <div className="flex items-center space-x-3">
-                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
                         Send to:
                       </span>
                       <div className="flex-1 max-w-md">
                         <select
                           value={selectedAgent}
                           onChange={(e) => setSelectedAgent(e.target.value)}
-                          className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                          className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent transition-all"
                         >
                           {agents.map((agent) => (
                             <option key={agent.key} value={agent.key}>
@@ -469,14 +469,14 @@ export const ConversationView: React.FC<ConversationViewProps> = ({
 
                     {/* File Preview Section */}
                     {selectedFile && (
-                      <div className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl">
+                      <div className="flex items-center justify-between p-3 bg-sky-50 dark:bg-sky-900/20 border border-sky-200 dark:border-sky-800 rounded-xl">
                         <div className="flex items-center space-x-3">
-                          <DocumentIcon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                          <DocumentIcon className="w-5 h-5 text-sky-600 dark:text-sky-400" />
                           <div>
-                            <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                            <p className="text-sm font-medium text-sky-900 dark:text-sky-100">
                               {selectedFile.name}
                             </p>
-                            <p className="text-xs text-blue-600 dark:text-blue-400">
+                            <p className="text-xs text-sky-600 dark:text-sky-400">
                               {(selectedFile.size / 1024).toFixed(1)} KB • Will upload when you send
                             </p>
                           </div>
@@ -484,7 +484,7 @@ export const ConversationView: React.FC<ConversationViewProps> = ({
                         <button
                           type="button"
                           onClick={removeFile}
-                          className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                          className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
                           title="Remove file"
                         >
                           ✕
@@ -500,14 +500,14 @@ export const ConversationView: React.FC<ConversationViewProps> = ({
                           onChange={(e) => setMessage(e.target.value)}
                           placeholder={selectedFile ? "Type a message about your document..." : "Type your message to the agent..."}
                           rows={3}
-                          className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none transition-all"
+                          className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-2xl focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent resize-none transition-all"
                           onKeyDown={(e) => {
                             if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
                               handleSubmit(e);
                             }
                           }}
                         />
-                        <div className="absolute bottom-3 right-3 text-xs text-gray-400">
+                        <div className="absolute bottom-3 right-3 text-xs text-slate-400">
                           {selectedFile ? "⌘↵ to upload & send" : "⌘↵ to send"}
                         </div>
                       </div>
@@ -526,7 +526,7 @@ export const ConversationView: React.FC<ConversationViewProps> = ({
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
                         disabled={!selectedAgent}
-                        className="p-3 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-2xl hover:bg-gray-200 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-all transform hover:scale-105 active:scale-95"
+                        className="p-3 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-2xl hover:bg-slate-200 dark:hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-all transform hover:scale-105 active:scale-95"
                         title="Upload document"
                       >
                         <PaperClipIcon className="w-5 h-5" />
@@ -535,7 +535,7 @@ export const ConversationView: React.FC<ConversationViewProps> = ({
                       <button
                         type="submit"
                         disabled={!message.trim() || !selectedAgent || isTyping || isUploading}
-                        className="px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-2xl hover:from-blue-600 hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-all transform hover:scale-105 active:scale-95 min-w-[80px]"
+                        className="px-6 py-3 brand-gradient text-white rounded-2xl hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-sky-400 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-all transform hover:scale-105 active:scale-95 min-w-[80px]"
                         title={selectedFile ? "Send message and upload document" : "Send message"}
                       >
                         {isUploading ? (

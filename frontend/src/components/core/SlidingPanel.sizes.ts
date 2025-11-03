@@ -17,28 +17,28 @@ export interface PanelSizeConfig {
  */
 export const PANEL_SIZES: Record<PanelSize, PanelSizeConfig> = {
   small: {
-    maxWidthClassName: 'w-[90vw] max-w-[600px]',
-    heightClassName: 'h-[80vh] max-h-[600px]',
+    maxWidthClassName: 'w-[88vw] max-w-[560px]',
+    heightClassName: 'h-[78vh] max-h-[560px]',
     description: 'Small panels - simple forms, confirmations',
   },
   medium: {
-    maxWidthClassName: 'w-[90vw] max-w-[900px]',
-    heightClassName: 'h-[85vh] max-h-[800px]',
+    maxWidthClassName: 'w-[90vw] max-w-[880px]',
+    heightClassName: 'h-[84vh] max-h-[780px]',
     description: 'Medium panels - standard forms, single entity management',
   },
   large: {
-    maxWidthClassName: 'w-[95vw] max-w-[1200px]',
-    heightClassName: 'h-[90vh] max-h-[900px]',
+    maxWidthClassName: 'w-[94vw] max-w-[1180px]',
+    heightClassName: 'h-[88vh] max-h-[880px]',
     description: 'Large panels - complex forms, list + detail views',
   },
   xlarge: {
-    maxWidthClassName: 'w-[95vw] max-w-[1600px]',
+    maxWidthClassName: 'w-[95vw] max-w-[1480px]',
     heightClassName: 'h-[90vh]',
     description: 'Extra large panels - comprehensive management interfaces',
   },
   full: {
-    maxWidthClassName: 'w-[98vw]',
-    heightClassName: 'h-[95vh]',
+    maxWidthClassName: 'w-[97vw]',
+    heightClassName: 'h-[94vh]',
     description: 'Full screen panels - maximum workspace (logs, documentation)',
   },
 };

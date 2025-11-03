@@ -427,15 +427,15 @@ export const AgentManagementPanel: React.FC<AgentManagementPanelProps> = ({
         <div className="flex-1 overflow-auto">
           <div className="p-6">
             <Tab.Group selectedIndex={selectedTabIndex} onChange={setSelectedTabIndex}>
-                  <Tab.List className="flex space-x-1 rounded-xl bg-gradient-to-r from-violet-50 to-indigo-50 dark:from-violet-900/30 dark:to-indigo-900/30 border border-violet-200/30 dark:border-violet-700/30 p-1 mb-6">
+                  <Tab.List className="flex space-x-1 rounded-2xl brand-glass p-1 mb-6">
                     {['Basic Info', 'Pre-built Tools', 'Pre-built MCP', 'Custom Code'].map((tab) => (
                       <Tab
                         key={tab}
                         className={({ selected }) =>
-                          `w-full rounded-lg py-2.5 text-sm font-semibold leading-5 text-center transition-all duration-200 ${
+                          `w-full rounded-xl py-2.5 text-sm font-semibold leading-5 text-center transition-all duration-200 ${
                             selected
-                              ? 'bg-gradient-to-r from-violet-500 to-indigo-600 text-white shadow-lg shadow-violet-500/25'
-                              : 'text-slate-600 dark:text-slate-400 hover:text-violet-600 dark:hover:text-violet-400 hover:bg-violet-100/50 dark:hover:bg-violet-900/20'
+                              ? 'brand-gradient text-white shadow-lg shadow-sky-500/25'
+                              : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-slate-800/60'
                           }`
                         }
                       >
@@ -449,63 +449,63 @@ export const AgentManagementPanel: React.FC<AgentManagementPanelProps> = ({
                     <Tab.Panel className="space-y-4">
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-2">
                             Agent Name
                           </label>
                           <input
                             type="text"
                             value={formData.name}
                             onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                            className="brand-field w-full rounded-xl px-3 py-2 text-sm"
                             placeholder="My Agent"
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-2">
                             Agent Key
                           </label>
                           <input
                             type="text"
                             value={formData.key}
                             onChange={(e) => setFormData(prev => ({ ...prev, key: e.target.value }))}
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono"
+                            className="brand-field w-full rounded-xl px-3 py-2 text-sm font-mono"
                             placeholder="my_agent"
                           />
                         </div>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-2">
                           Description
                         </label>
                         <textarea
                           value={formData.description}
                           onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
                           rows={3}
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                          className="brand-field w-full rounded-xl px-3 py-2 text-sm"
                           placeholder="Describe what this agent does..."
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-2">
                           Emoji
                         </label>
                         <input
                           type="text"
                           value={formData.emoji}
                           onChange={(e) => setFormData(prev => ({ ...prev, emoji: e.target.value }))}
-                          className="w-20 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-center text-lg"
+                          className="brand-field w-20 rounded-xl px-3 py-2 text-lg text-center"
                           maxLength={2}
                         />
                       </div>
 
                       {/* LLM Configuration */}
-                      <div className="border-t border-gray-200 dark:border-gray-600 pt-4">
-                        <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-3">
+                      <div className="border-t border-transparent pt-4">
+                        <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-100 mb-3">
                           LLM Configuration
                         </h4>
                         <div className="grid grid-cols-2 gap-4">
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-2">
                               Provider
                             </label>
                             <select
@@ -521,7 +521,7 @@ export const AgentManagementPanel: React.FC<AgentManagementPanelProps> = ({
                                   llm: { provider, model: defaultModel }
                                 }));
                               }}
-                              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                              className="brand-field w-full rounded-xl px-3 py-2 text-sm"
                             >
                               <option value="openai">OpenAI</option>
                               <option value="gemini">Google Gemini</option>
@@ -529,7 +529,7 @@ export const AgentManagementPanel: React.FC<AgentManagementPanelProps> = ({
                             </select>
                           </div>
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-2">
                               Model
                             </label>
                             <select
@@ -538,7 +538,7 @@ export const AgentManagementPanel: React.FC<AgentManagementPanelProps> = ({
                                 ...prev,
                                 llm: { ...prev.llm, model: e.target.value }
                               }))}
-                              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                              className="brand-field w-full rounded-xl px-3 py-2 text-sm"
                             >
                               {formData.llm.provider === 'openai' && (
                                 <>
@@ -567,7 +567,7 @@ export const AgentManagementPanel: React.FC<AgentManagementPanelProps> = ({
                             </select>
                           </div>
                         </div>
-                        <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                        <div className="mt-2 text-xs text-slate-500 dark:text-slate-300">
                           Choose the LLM provider and model for this agent. Document processing uses GPT-4o by default (configurable globally).
                         </div>
                       </div>
@@ -575,20 +575,20 @@ export const AgentManagementPanel: React.FC<AgentManagementPanelProps> = ({
 
                     {/* Pre-built Tools Tab */}
                     <Tab.Panel className="space-y-4">
-                      <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+                      <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
                         Select Pre-built Tools
                       </h3>
 
                       {loading ? (
-                        <div className="flex items-center justify-center py-8">
-                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                          <span className="ml-2 text-gray-600 dark:text-gray-400">Loading tools...</span>
+                        <div className="flex items-center justify-center py-8 text-slate-500 dark:text-slate-300">
+                          <div className="animate-spin rounded-full h-8 w-8 border-2 border-transparent border-t-sky-500 mr-3" />
+                          <span>Loading tools...</span>
                         </div>
                       ) : Object.keys(prebuiltTools).length === 0 ? (
-                        <div className="text-center py-8">
-                          <WrenchIcon className="mx-auto h-12 w-12 text-gray-400" />
-                          <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">No tools available</h3>
-                          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                        <div className="text-center py-8 text-slate-500 dark:text-slate-300">
+                          <WrenchIcon className="mx-auto h-12 w-12 text-sky-400" />
+                          <h3 className="mt-2 text-sm font-semibold text-slate-900 dark:text-white">No tools available</h3>
+                          <p className="mt-1 text-sm opacity-80">
                             Create tools first in the Tools Management panel
                           </p>
                         </div>
@@ -599,33 +599,35 @@ export const AgentManagementPanel: React.FC<AgentManagementPanelProps> = ({
                             return (
                             <div
                               key={id}
-                              className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                              className={`p-4 rounded-2xl border-2 cursor-pointer transition-all ${
                                 isSelected
-                                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                                  : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'
+                                  ? 'border-transparent brand-gradient text-white shadow-lg shadow-sky-500/25'
+                                  : 'border-slate-200 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-500 bg-white/80 dark:bg-slate-900/60'
                               }`}
                               onClick={() => toggleTool(id)}
                             >
                               <div className="flex items-start space-x-3">
                                 <div className="flex-shrink-0">
-                                  {isSelected ? (
-                                    <CheckIcon className="w-5 h-5 text-blue-600" />
-                                  ) : (
-                                    <WrenchIcon className="w-5 h-5 text-gray-400" />
-                                  )}
+                                  <div className={`flex h-10 w-10 items-center justify-center rounded-xl border ${isSelected ? 'border-white/40 bg-white/20 text-white' : 'border-slate-200/80 bg-white/70 text-slate-500 dark:border-slate-600/70 dark:bg-slate-900/70 dark:text-slate-300'}`}>
+                                    {isSelected ? (
+                                      <CheckIcon className="w-5 h-5" />
+                                    ) : (
+                                      <WrenchIcon className="w-5 h-5" />
+                                    )}
+                                  </div>
                                 </div>
                                 <div className="flex-1">
-                                  <h4 className="font-medium text-gray-900 dark:text-white">
+                                  <h4 className={`font-semibold ${isSelected ? 'text-white' : 'text-slate-900 dark:text-white'}`}>
                                     {tool.name}
                                   </h4>
-                                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                                  <p className={`text-sm mt-1 ${isSelected ? 'text-white/80' : 'text-slate-500 dark:text-slate-300'}`}>
                                     {tool.description}
                                   </p>
                                   <div className="flex items-center space-x-2 mt-2">
-                                    <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-xs rounded">
+                                    <span className={`px-2 py-1 text-xs rounded-lg ${isSelected ? 'bg-white/20 text-white' : 'brand-chip'}`}>
                                       {tool.category || 'uncategorized'}
                                     </span>
-                                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                                    <span className={`text-xs ${isSelected ? 'text-white/75' : 'text-slate-400 dark:text-slate-500'}`}>
                                       {tool.functions?.length || 0} functions
                                     </span>
                                   </div>
@@ -640,20 +642,20 @@ export const AgentManagementPanel: React.FC<AgentManagementPanelProps> = ({
 
                     {/* Pre-built MCP Tab */}
                     <Tab.Panel className="space-y-4">
-                      <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+                      <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
                         Select Pre-built MCP Servers
                       </h3>
 
                       {loading ? (
-                        <div className="flex items-center justify-center py-8">
-                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
-                          <span className="ml-2 text-gray-600 dark:text-gray-400">Loading MCP servers...</span>
+                        <div className="flex items-center justify-center py-8 text-slate-500 dark:text-slate-300">
+                          <div className="animate-spin rounded-full h-8 w-8 border-2 border-transparent border-t-sky-500 mr-3" />
+                          <span>Loading MCP servers...</span>
                         </div>
                       ) : Object.keys(prebuiltMCPs).length === 0 ? (
-                        <div className="text-center py-8">
-                          <ServerIcon className="mx-auto h-12 w-12 text-gray-400" />
-                          <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">No MCP servers available</h3>
-                          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                        <div className="text-center py-8 text-slate-500 dark:text-slate-300">
+                          <ServerIcon className="mx-auto h-12 w-12 text-sky-400" />
+                          <h3 className="mt-2 text-sm font-semibold text-slate-900 dark:text-white">No MCP servers available</h3>
+                          <p className="mt-1 text-sm opacity-80">
                             Create MCP servers first in the MCP Management panel
                           </p>
                         </div>
@@ -664,33 +666,35 @@ export const AgentManagementPanel: React.FC<AgentManagementPanelProps> = ({
                             return (
                             <div
                               key={id}
-                              className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                              className={`p-4 rounded-2xl border-2 cursor-pointer transition-all ${
                                 isSelected
-                                  ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20'
-                                  : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'
+                                  ? 'border-transparent brand-gradient text-white shadow-lg shadow-sky-500/25'
+                                  : 'border-slate-200 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-500 bg-white/80 dark:bg-slate-900/60'
                               }`}
                               onClick={() => toggleMCP(id)}
                             >
                               <div className="flex items-start space-x-3">
                                 <div className="flex-shrink-0">
-                                  {isSelected ? (
-                                    <CheckIcon className="w-5 h-5 text-purple-600" />
-                                  ) : (
-                                    <ServerIcon className="w-5 h-5 text-gray-400" />
-                                  )}
+                                  <div className={`flex h-10 w-10 items-center justify-center rounded-xl border ${isSelected ? 'border-white/40 bg-white/20 text-white' : 'border-slate-200/80 bg-white/70 text-slate-500 dark:border-slate-600/70 dark:bg-slate-900/70 dark:text-slate-300'}`}>
+                                    {isSelected ? (
+                                      <CheckIcon className="w-5 h-5" />
+                                    ) : (
+                                      <ServerIcon className="w-5 h-5" />
+                                    )}
+                                  </div>
                                 </div>
                                 <div className="flex-1">
-                                  <h4 className="font-medium text-gray-900 dark:text-white">
+                                  <h4 className={`font-semibold ${isSelected ? 'text-white' : 'text-slate-900 dark:text-white'}`}>
                                     {id}
                                   </h4>
-                                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                                  <p className={`text-sm mt-1 ${isSelected ? 'text-white/80' : 'text-slate-500 dark:text-slate-300'}`}>
                                     {mcp.command} {mcp.args?.join(' ')}
                                   </p>
                                   <div className="flex items-center space-x-2 mt-2">
-                                    <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-xs rounded">
+                                    <span className={`px-2 py-1 text-xs rounded-lg ${isSelected ? 'bg-white/20 text-white' : 'brand-chip'}`}>
                                       mcp
                                     </span>
-                                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                                    <span className={`text-xs ${isSelected ? 'text-white/75' : 'text-slate-400 dark:text-slate-500'}`}>
                                       {mcp.args?.length || 0} args
                                     </span>
                                   </div>
@@ -706,26 +710,26 @@ export const AgentManagementPanel: React.FC<AgentManagementPanelProps> = ({
                     {/* Custom Code Tab */}
                     <Tab.Panel className="space-y-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-2">
                           Custom Tools Code (Python)
                         </label>
                         <textarea
                           value={customToolsCode}
                           onChange={(e) => setCustomToolsCode(e.target.value)}
                           rows={8}
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-sm"
+                          className="brand-field w-full rounded-xl px-3 py-2 font-mono text-sm"
                           placeholder="# Add your custom tools here..."
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-2">
                           Custom MCP Configuration (JSON)
                         </label>
                         <textarea
                           value={customMCPConfig}
                           onChange={(e) => setCustomMCPConfig(e.target.value)}
                           rows={8}
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-sm"
+                          className="brand-field w-full rounded-xl px-3 py-2 font-mono text-sm"
                           placeholder='{\n  "my_custom_server": {\n    "command": "python",\n    "args": ["server.py"]\n  }\n}'
                         />
                       </div>
@@ -734,7 +738,7 @@ export const AgentManagementPanel: React.FC<AgentManagementPanelProps> = ({
                 </Tab.Group>
 
                 {/* Form Actions */}
-                <div className="flex justify-end space-x-3 mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+                <div className="flex justify-end space-x-3 mt-6 pt-6 border-t border-transparent">
                   <BrandedButton
                     onClick={() => {
                       resetForm();

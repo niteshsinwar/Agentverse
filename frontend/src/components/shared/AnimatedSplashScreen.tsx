@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 
 interface AnimatedSplashScreenProps {
   onComplete: () => void;
@@ -25,6 +25,7 @@ const LOADING_BEATS = [
 export const AnimatedSplashScreen: React.FC<AnimatedSplashScreenProps> = ({ onComplete, isLoading }) => {
   const [progress, setProgress] = useState(0);
   const [beatIndex, setBeatIndex] = useState(0);
+  const prefersReducedMotion = useReducedMotion();
 
   const viewport = useMemo(
     () => ({
@@ -36,7 +37,7 @@ export const AnimatedSplashScreen: React.FC<AnimatedSplashScreenProps> = ({ onCo
 
   const orbitConfig = useMemo<OrbitConfig[]>(
     () => [
-      { radius: 110, size: 10, duration: 18, delay: 0, glow: 'from-cyan-400 to-blue-500' },
+      { radius: 110, size: 10, duration: 18, delay: 0, glow: 'from-cyan-400 to-indigo-500' },
       { radius: 160, size: 14, duration: 24, delay: 4, glow: 'from-purple-400 to-indigo-500' },
       { radius: 215, size: 18, duration: 32, delay: 8, glow: 'from-pink-500 to-rose-500' },
     ],
@@ -125,6 +126,8 @@ export const AnimatedSplashScreen: React.FC<AnimatedSplashScreenProps> = ({ onCo
     };
   }, [readyToPlay]);
 
+  const displayProgress = Math.min(Math.round(progress), 100);
+
   if (!isLoading) return null;
 
   return (
@@ -134,123 +137,134 @@ export const AnimatedSplashScreen: React.FC<AnimatedSplashScreenProps> = ({ onCo
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         transition={{ duration: 0.6, ease: 'easeInOut' }}
-        className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950"
+        className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden bg-slate-950"
       >
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(88,28,135,0.3),_transparent_55%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom,_rgba(56,189,248,0.2),_transparent_60%)]" />
+        <div className="absolute inset-0 brand-gradient-soft opacity-70 blur-3xl" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(30,64,175,0.35),_transparent_60%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom,_rgba(236,72,153,0.25),_transparent_65%)] mix-blend-screen opacity-60" />
 
         {/* Starfield */}
-        <div className="pointer-events-none absolute inset-0 overflow-hidden">
-          {Array.from({ length: 60 }).map((_, idx) => (
-            <motion.span
-              key={idx}
-              className="absolute h-0.5 w-0.5 rounded-full bg-white/60"
-              initial={{
-                x: Math.random() * viewport.width,
-                y: Math.random() * viewport.height,
-                opacity: Math.random() * 0.6 + 0.2,
-              }}
-              animate={{
-                y: Math.random() * viewport.height,
-                opacity: [0.2, 0.8, 0.2],
-              }}
+        {!prefersReducedMotion && (
+          <div className="pointer-events-none absolute inset-0 overflow-hidden">
+            {Array.from({ length: 60 }).map((_, idx) => (
+              <motion.span
+                key={idx}
+                className="absolute h-0.5 w-0.5 rounded-full bg-white/60"
+                initial={{
+                  x: Math.random() * viewport.width,
+                  y: Math.random() * viewport.height,
+                  opacity: Math.random() * 0.6 + 0.2,
+                }}
+                animate={{
+                  y: Math.random() * viewport.height,
+                  opacity: [0.2, 0.8, 0.2],
+                }}
+                transition={{
+                  duration: Math.random() * 8 + 6,
+                  repeat: Infinity,
+                  ease: 'easeInOut',
+                }}
+              />
+            ))}
+          </div>
+        )}
+
+        <div className="relative z-10 flex w-full max-w-6xl flex-col items-center gap-12 px-6 text-center">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.94, y: 12 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ duration: 0.7, ease: 'easeOut' }}
+            className="relative flex h-56 w-56 items-center justify-center rounded-full brand-surface-strong shadow-2xl ring-2 ring-white/10"
+          >
+            <motion.div
+              animate={{ rotate: prefersReducedMotion ? 0 : 360 }}
               transition={{
-                duration: Math.random() * 8 + 6,
-                repeat: Infinity,
+                duration: prefersReducedMotion ? 0.01 : 24,
+                repeat: prefersReducedMotion ? 0 : Infinity,
+                ease: 'linear',
+              }}
+              className="absolute inset-6 rounded-full border border-white/15"
+            />
+            <motion.div
+              animate={
+                prefersReducedMotion
+                  ? { opacity: 0.75 }
+                  : { scale: [0.95, 1.06, 0.95], opacity: [0.5, 0.9, 0.5] }
+              }
+              transition={{
+                duration: prefersReducedMotion ? 0.01 : 3,
+                repeat: prefersReducedMotion ? 0 : Infinity,
                 ease: 'easeInOut',
               }}
+              className="absolute inset-10 rounded-full brand-gradient blur-xl opacity-90"
             />
-          ))}
-        </div>
-
-        <div className="relative flex flex-col items-center text-center">
-          {/* Core */}
-          <motion.div
-            initial={{ scale: 0.95, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 0.8, ease: 'easeOut' }}
-            className="relative flex h-52 w-52 items-center justify-center rounded-full bg-slate-900/70 shadow-[0_0_120px_rgba(99,102,241,0.45)] ring-2 ring-indigo-500/30"
-          >
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ duration: 26, repeat: Infinity, ease: 'linear' }}
-              className="absolute inset-6 rounded-full border border-indigo-500/30"
-            />
-            <motion.div
-              animate={{ scale: [0.96, 1.04, 0.96], opacity: [0.5, 0.85, 0.5] }}
-              transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-              className="absolute inset-8 rounded-full bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 blur-xl"
-            />
-            <img
-              src="/logo-icon.svg"
-              alt="AgentVerse"
-              className="relative h-16 w-16 drop-shadow-[0_0_20px_rgba(129,140,248,0.65)]"
-            />
-          </motion.div>
-
-          {/* Orbits */}
-          {orbitConfig.map(({ radius, size, duration, delay, glow }) => (
-            <motion.div
-              key={`${radius}-${size}`}
-              className="absolute flex items-center justify-center"
-              style={{ width: radius * 2, height: radius * 2 }}
-              animate={{ rotate: 360 }}
-              transition={{ duration, delay, repeat: Infinity, ease: 'linear' }}
-            >
-              <div className="relative h-full w-full">
-                <div className="absolute inset-0 rounded-full border border-white/5" />
-                <div
-                  className={`absolute left-1/2 top-0 -translate-x-1/2 rounded-full bg-gradient-to-br ${glow} shadow-[0_0_25px_rgba(147,197,253,0.4)]`}
-                  style={{ width: size, height: size }}
-                />
-              </div>
-            </motion.div>
-          ))}
-
-          {/* Title */}
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4, duration: 0.6 }}
-            className="mt-16"
-          >
-            <h1 className="text-4xl font-bold tracking-tight text-white sm:text-5xl">
-              Deploying the Agent Multiverse
-            </h1>
-            <p className="mt-3 text-sm text-slate-300">
-              Synchronising neural fleets across timelines and task theatres.
-            </p>
-          </motion.div>
-
-          {/* Progress */}
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.6, duration: 0.6 }}
-            className="mt-10 w-80 max-w-[90vw] space-y-4"
-          >
-            <div className="h-2.5 overflow-hidden rounded-full bg-white/10">
-              <motion.div
-                className="h-full rounded-full bg-gradient-to-r from-cyan-400 via-indigo-400 to-pink-400 shadow-[0_0_25px_rgba(96,165,250,0.45)]"
-                initial={{ width: '0%' }}
-                animate={{ width: `${Math.min(progress, 100)}%` }}
-                transition={{ ease: 'easeOut', duration: 0.35 }}
+            <div className="relative flex h-40 w-40 items-center justify-center rounded-full brand-glass">
+              <img
+                src="/logo-icon.svg"
+                alt="AgentVerse"
+                className="h-16 w-16 drop-shadow-[0_0_24px_rgba(129,140,248,0.6)]"
               />
             </div>
-            <div className="flex items-center justify-between text-xs font-medium text-slate-300">
-              <span>{Math.round(progress)}%</span>
-              <span className="uppercase tracking-[0.2em] text-slate-400">Launch sequence</span>
+            {!prefersReducedMotion &&
+              orbitConfig.map(({ radius, size, duration, delay, glow }) => (
+                <motion.div
+                  key={`${radius}-${size}`}
+                  className="absolute flex items-center justify-center"
+                  style={{ width: radius * 2, height: radius * 2 }}
+                  animate={{ rotate: 360 }}
+                  transition={{ duration, delay, repeat: Infinity, ease: 'linear' }}
+                >
+                  <div className="relative h-full w-full">
+                    <div className="absolute inset-0 rounded-full border border-white/5" />
+                    <div
+                      className={`absolute left-1/2 top-0 -translate-x-1/2 rounded-full bg-gradient-to-br ${glow} shadow-[0_0_32px_rgba(147,197,253,0.35)]`}
+                      style={{ width: size, height: size }}
+                    />
+                  </div>
+                </motion.div>
+              ))}
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2, duration: 0.7, ease: 'easeOut' }}
+            className="w-full max-w-xl rounded-3xl brand-surface px-8 py-7 shadow-2xl"
+          >
+            <p className="text-xs font-semibold uppercase tracking-[0.45em] text-slate-500 dark:text-slate-400">
+              AgentVerse Launch Systems
+            </p>
+            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-slate-900 dark:text-white">
+              Deploying the Multiverse Console
+            </h1>
+            <p className="mt-3 text-sm text-slate-500 dark:text-slate-300">
+              Calibrating orchestration engines, secure channels, and collaborative theatres.
+            </p>
+
+            <div className="mt-8 space-y-4 text-left">
+              <div className="h-2.5 overflow-hidden rounded-full brand-progress-track">
+                <motion.div
+                  className="brand-progress-fill h-full rounded-full"
+                  initial={{ width: '0%' }}
+                  animate={{ width: `${displayProgress}%` }}
+                  transition={{ ease: 'easeOut', duration: 0.45 }}
+                />
+              </div>
+              <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-[0.3em] text-slate-500 dark:text-slate-400">
+                <span>{displayProgress}% Ready</span>
+                <span>Systems Online</span>
+              </div>
+              <motion.p
+                key={beatIndex}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.4 }}
+                className="text-sm font-medium text-slate-600 dark:text-slate-200"
+              >
+                {LOADING_BEATS[beatIndex]}
+              </motion.p>
             </div>
-            <motion.p
-              key={beatIndex}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.4 }}
-              className="text-sm text-slate-200"
-            >
-              {LOADING_BEATS[beatIndex]}
-            </motion.p>
           </motion.div>
         </div>
       </motion.div>

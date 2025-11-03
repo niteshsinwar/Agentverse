@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import clsx from 'clsx';
 import {
   Cog6ToothIcon,
   KeyIcon,
@@ -19,7 +20,13 @@ import { useAppStore } from '@/lib/stores/app';
 import { useAuthStore } from '@/lib/stores/auth';
 import { notificationService } from '@/lib/services/notification.service';
 import { debugLogger } from '@/lib/utils/debugLogger';
-import { DEFAULT_SUPPORTED_FILE_FORMATS } from '@/lib/config';
+import {
+  DEFAULT_SUPPORTED_FILE_FORMATS,
+  THEME_CATALOG,
+  THEME_CONSTANTS,
+  type ThemeCatalogEntry,
+} from '@/lib/config';
+import type { Theme } from '@/lib/types';
 import { BrandedBadge } from '../shared/BrandedComponents';
 import { BrandLogo } from '../shared/BrandLogo';
 import { SlidingPanel } from '../core/SlidingPanel';
@@ -109,7 +116,8 @@ interface SettingsConfig {
   // Note: Summarizer uses llm_model from default LLM settings
 
   // UI Settings (frontend only)
-  theme: 'light' | 'dark' | 'system';
+  theme: Theme;
+  theme_mode: 'system' | 'light' | 'dark';
   sidebar_expanded: boolean;
   notifications_enabled: boolean;
   auto_save_interval: number;
@@ -159,14 +167,88 @@ const defaultSettings: SettingsConfig = {
   conversation_summary_trigger_count: 20,
   conversation_summary_window_size: 10,
   conversation_summary_max_tokens: 500,
-  theme: "system",
+  theme: THEME_CONSTANTS.DEFAULT_THEME,
+  theme_mode: 'system',
   notifications_enabled: true,
   auto_save_interval: 30,
   sidebar_expanded: true
 };
 
+const VALID_THEME_VALUES = new Set<string>(Array.from(THEME_CONSTANTS.THEMES));
+
+const resolveTheme = (value: unknown): Theme => {
+  if (typeof value !== 'string') {
+    return THEME_CONSTANTS.DEFAULT_THEME;
+  }
+
+  const normalized = value.trim().toLowerCase();
+  return (VALID_THEME_VALUES.has(normalized) ? normalized : THEME_CONSTANTS.DEFAULT_THEME) as Theme;
+};
+
+const resolveThemeMode = (value: unknown): 'system' | 'light' | 'dark' => {
+  if (value === 'light' || value === 'dark' || value === 'system') {
+    return value;
+  }
+  return 'system';
+};
+
+const readFrontendPreferences = (): Partial<SettingsConfig> => {
+  try {
+    const raw = localStorage.getItem('frontend_settings');
+    if (!raw) {
+      return {};
+    }
+
+    const parsed = JSON.parse(raw);
+    const preferences: Partial<SettingsConfig> = {};
+
+    if (parsed.theme) {
+      preferences.theme = resolveTheme(parsed.theme);
+    }
+    if (parsed.theme_mode) {
+      preferences.theme_mode = resolveThemeMode(parsed.theme_mode);
+    }
+    if (typeof parsed.notifications_enabled === 'boolean') {
+      preferences.notifications_enabled = parsed.notifications_enabled;
+    }
+    if (typeof parsed.sidebar_expanded === 'boolean') {
+      preferences.sidebar_expanded = parsed.sidebar_expanded;
+    }
+
+    const intervalCandidate = Number(parsed.auto_save_interval);
+    if (Number.isFinite(intervalCandidate) && intervalCandidate > 0) {
+      preferences.auto_save_interval = intervalCandidate;
+    }
+
+    return preferences;
+  } catch (error) {
+    console.error('Failed to parse frontend settings:', error);
+    return {};
+  }
+};
+
+const SORTED_THEMES: ThemeCatalogEntry[] = [...THEME_CATALOG];
+
+const THEME_MODE_OPTIONS = [
+  {
+    value: 'system' as const,
+    label: 'Adaptive',
+    description: 'Match your operating system preference automatically.',
+  },
+  {
+    value: 'light' as const,
+    label: 'Light',
+    description: 'Force bright, high-clarity surfaces for this theme.',
+  },
+  {
+    value: 'dark' as const,
+    label: 'Dark',
+    description: 'Force deep, low-light surfaces for this theme.',
+  },
+];
+
 export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose }) => {
-  const { theme, setTheme, setSidebarExpanded, setSupportedFileFormats } = useAppStore();
+  const { theme, themeMode, setTheme, setThemeMode, setSidebarExpanded, setSupportedFileFormats } = useAppStore();
   const { canManageUsers, setAdminDashboardOpen } = useAuthStore();
   const [settings, setSettings] = useState<SettingsConfig>(defaultSettings);
   const [isDirty, setIsDirty] = useState(false);
@@ -176,49 +258,54 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
   const [showCompatibilityWarning, setShowCompatibilityWarning] = useState(false);
 
   useEffect(() => {
-    if (isOpen) {
-      loadSettings();
-      // Don't check compatibility on every panel open - only when user interacts with Embeddings tab
-      // This prevents unnecessary API calls and 500 errors
-      // Load frontend settings from localStorage
-      try {
-        const frontendSettings = localStorage.getItem('frontend_settings');
-        if (frontendSettings) {
-          const parsed = JSON.parse(frontendSettings);
-          setSettings(prev => ({
-            ...prev,
-            theme: parsed.theme || 'system',
-            notifications_enabled: parsed.notifications_enabled ?? true,
-            sidebar_expanded: parsed.sidebar_expanded ?? true,
-            auto_save_interval: parsed.auto_save_interval || 30
-          }));
-        }
-        // Refresh notification settings
-        setNotificationSettings(notificationService.getSettings());
-      } catch (error) {
-        console.error('Failed to load frontend settings:', error);
-      }
+    if (!isOpen) return;
+
+    loadSettings();
+
+    try {
+      setNotificationSettings(notificationService.getSettings());
+    } catch (error) {
+      console.error('Failed to synchronize notification settings:', error);
     }
   }, [isOpen]);
 
   const loadSettings = async () => {
     try {
       setLoading(true);
-      // Try to load settings from backend using correct endpoint
       const response = await settingsApi.getSettings();
 
-      // Merge backend settings with frontend settings (separate storage)
-      const frontendSettings = JSON.parse(localStorage.getItem('frontend_settings') || '{}');
+      const backendSettings = ((response as any)?.settings ?? {}) as Partial<SettingsConfig>;
+      const frontendPreferences = readFrontendPreferences();
 
-      if (response && (response as any).settings) {
-        setSettings({ ...defaultSettings, ...(response as any).settings, ...frontendSettings });
-      } else {
-        setSettings({ ...defaultSettings, ...frontendSettings });
-      }
+      const { theme: backendTheme, theme_mode: backendMode, ...backendRest } = backendSettings;
+      const { theme: frontendTheme, theme_mode: frontendMode, ...frontendRest } = frontendPreferences;
+
+      const resolvedTheme = resolveTheme(frontendTheme ?? theme ?? backendTheme ?? THEME_CONSTANTS.DEFAULT_THEME);
+      const resolvedMode = resolveThemeMode(frontendMode ?? backendMode ?? themeMode);
+
+      setSettings({
+        ...defaultSettings,
+        ...backendRest,
+        ...frontendRest,
+        theme: resolvedTheme,
+        theme_mode: resolvedMode,
+      });
+      setTheme(resolvedTheme);
+      setThemeMode(resolvedMode);
     } catch (error) {
-      console.warn('Failed to load backend settings, using defaults:', error);
-      const frontendSettings = JSON.parse(localStorage.getItem('frontend_settings') || '{}');
-      setSettings({ ...defaultSettings, ...frontendSettings });
+      console.warn('Failed to load backend settings, using local preferences:', error);
+      const frontendPreferences = readFrontendPreferences();
+      const { theme: frontendTheme, theme_mode: frontendMode, ...frontendRest } = frontendPreferences;
+      const resolvedTheme = resolveTheme(frontendTheme ?? theme ?? THEME_CONSTANTS.DEFAULT_THEME);
+      const resolvedMode = resolveThemeMode(frontendMode ?? themeMode);
+      setSettings({
+        ...defaultSettings,
+        ...frontendRest,
+        theme: resolvedTheme,
+        theme_mode: resolvedMode,
+      });
+      setTheme(resolvedTheme);
+      setThemeMode(resolvedMode);
     } finally {
       setLoading(false);
     }
@@ -290,6 +377,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
       // Step 2: Save UI-specific settings to localStorage (frontend.json)
       const uiSettings = {
         theme: settings.theme,
+        theme_mode: settings.theme_mode,
         notifications_enabled: settings.notifications_enabled,
         auto_save_interval: settings.auto_save_interval
       };
@@ -297,6 +385,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
 
       // Step 3: Apply changes ONLY when saving
       setTheme(settings.theme);
+      setThemeMode(settings.theme_mode);
 
       // Apply sidebar setting
       if (settings.sidebar_expanded !== undefined) {
@@ -406,9 +495,34 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
     setIsDirty(true);
   };
 
+  const handleThemeSelection = (selectedTheme: Theme) => {
+    if (theme !== selectedTheme) {
+      setTheme(selectedTheme);
+    }
+    if (settings.theme !== selectedTheme) {
+      updateSetting('theme', selectedTheme);
+    }
+  };
+
+  const handleThemeModeChange = (mode: 'system' | 'light' | 'dark') => {
+    if (themeMode !== mode) {
+      setThemeMode(mode);
+    }
+    if (settings.theme_mode !== mode) {
+      updateSetting('theme_mode', mode);
+    }
+  };
+
+  const activeThemeOption = THEME_CATALOG.find((option) => option.id === settings.theme);
+
   const resetToDefaults = async () => {
     try {
-      setSettings(defaultSettings);
+      setSettings({ ...defaultSettings });
+      setTheme(defaultSettings.theme);
+      setThemeMode(defaultSettings.theme_mode);
+      setSidebarExpanded(defaultSettings.sidebar_expanded);
+      notificationService.setEnabled(defaultSettings.notifications_enabled);
+      setNotificationSettings(notificationService.getSettings());
 
       // Clear localStorage frontend settings
       localStorage.removeItem('frontend_settings');
@@ -441,6 +555,11 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
     { name: 'Interface', icon: SwatchIcon },
   ];
 
+  const labelClass = 'block text-sm font-semibold text-slate-600 dark:text-slate-300 mb-2';
+  const inputClass = 'brand-field w-full rounded-xl px-3 py-2 text-sm';
+  const textareaClass = 'brand-field w-full rounded-xl px-3 py-2 text-sm';
+  const sectionHeadingClass = 'text-lg font-semibold text-slate-900 dark:text-white mb-4';
+
   if (!isOpen) return null;
 
   const headerMeta = isDirty ? (
@@ -458,24 +577,24 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
       icon={<BrandLogo variant="icon" size="md" />}
       meta={headerMeta}
       size="large"
-      containerClassName="bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl rounded-3xl border border-violet-200/30 dark:border-violet-800/30 shadow-2xl"
-      headerClassName="rounded-t-3xl border-b border-violet-200/30 dark:border-violet-800/30"
+      containerClassName="brand-surface-strong"
+      headerClassName="rounded-t-3xl border-b border-transparent"
       contentClassName="flex flex-col flex-1 overflow-hidden"
     >
       <div className="flex-1 flex overflow-hidden">
           <Tab.Group vertical>
             <div className="flex w-full h-full">
               {/* Sidebar */}
-              <div className="w-64 bg-gradient-to-b from-violet-50/50 to-indigo-50/30 dark:from-violet-950/30 dark:to-indigo-950/20 border-r border-violet-200/30 dark:border-violet-800/30">
-                <Tab.List className="flex flex-col space-y-2 p-4">
+              <div className="w-64 border-r border-transparent bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl">
+                <Tab.List className="flex flex-col space-y-2 p-4 brand-glass rounded-2xl m-4">
                 {tabs.map((tab) => (
                   <Tab
                     key={tab.name}
                     className={({ selected }) =>
                       `flex items-center space-x-3 w-full px-4 py-3 text-left rounded-xl transition-all duration-200 ${
                         selected
-                          ? 'bg-gradient-to-r from-violet-500 to-indigo-600 text-white shadow-lg shadow-violet-500/25'
-                          : 'text-slate-600 dark:text-slate-400 hover:bg-violet-100/50 dark:hover:bg-violet-900/30 hover:text-violet-600 dark:hover:text-violet-400'
+                          ? 'brand-gradient text-white shadow-lg shadow-sky-500/30'
+                          : 'text-slate-600 dark:text-slate-300 hover:bg-white/60 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-white'
                       }`
                     }
                   >
@@ -492,29 +611,29 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                 {/* General Settings */}
                 <Tab.Panel className="space-y-6">
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                    <h3 className={sectionHeadingClass}>
                       General Configuration
                     </h3>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        <label className={labelClass}>
                           Application Name
                         </label>
                         <input
                           type="text"
                           value={settings.app_name}
                           onChange={(e) => updateSetting('app_name', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                          className={inputClass}
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        <label className={labelClass}>
                           Environment
                         </label>
                         <select
                           value={settings.environment}
                           onChange={(e) => updateSetting('environment', e.target.value as any)}
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                          className={inputClass}
                         >
                           <option value="development">Development</option>
                           <option value="staging">Staging</option>
@@ -529,9 +648,9 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                         id="debug"
                         checked={settings.debug}
                         onChange={(e) => updateSetting('debug', e.target.checked)}
-                        className="rounded border-gray-300 dark:border-gray-600"
+                        className="rounded border-slate-300 text-sky-500 focus:ring-sky-500 dark:border-slate-600"
                       />
-                      <label htmlFor="debug" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      <label htmlFor="debug" className="text-sm font-medium text-slate-600 dark:text-slate-300">
                         Enable Debug Mode
                       </label>
                     </div>
@@ -541,7 +660,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                 {/* API Keys */}
                 <Tab.Panel className="space-y-6">
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                    <h3 className={sectionHeadingClass}>
                       API Keys Configuration
                     </h3>
                     <div className="space-y-4">
@@ -552,7 +671,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                         { key: 'github_token', label: 'GitHub Token', placeholder: 'ghp_...' }
                       ].map(({ key, label, placeholder }) => (
                         <div key={key}>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          <label className={labelClass}>
                             {label}
                           </label>
                           <input
@@ -560,7 +679,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                             value={settings[key as keyof SettingsConfig] as string || ''}
                             onChange={(e) => updateSetting(key as keyof SettingsConfig, e.target.value)}
                             placeholder={placeholder}
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                            className={inputClass}
                           />
                         </div>
                       ))}
@@ -571,42 +690,42 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                 {/* Server Settings */}
                 <Tab.Panel className="space-y-6">
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                    <h3 className={sectionHeadingClass}>
                       Server Configuration
                     </h3>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        <label className={labelClass}>
                           Host
                         </label>
                         <input
                           type="text"
                           value={settings.host}
                           onChange={(e) => updateSetting('host', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                          className={inputClass}
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        <label className={labelClass}>
                           Port
                         </label>
                         <input
                           type="number"
                           value={settings.port}
                           onChange={(e) => updateSetting('port', parseInt(e.target.value) || 8000)}
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                          className={inputClass}
                         />
                       </div>
                     </div>
                     <div className="mt-4">
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      <label className={labelClass}>
                         Allowed Origins (comma-separated)
                       </label>
                       <input
                         type="text"
                         value={Array.isArray(settings.allowed_origins) ? settings.allowed_origins.join(', ') : ''}
                         onChange={(e) => updateSetting('allowed_origins', e.target.value.split(',').map(s => s.trim()))}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                        className={inputClass}
                         placeholder="http://localhost:1420, https://tauri.localhost"
                       />
                     </div>
@@ -616,19 +735,19 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                 {/* LLM Settings */}
                 <Tab.Panel className="space-y-6">
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
+                    <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4 flex items-center">
                       LLM Configuration
                       <HotReloadBadge />
                     </h3>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        <label className={labelClass}>
                           Primary Provider
                         </label>
                         <select
                           value={settings.llm_provider}
                           onChange={(e) => updateSetting('llm_provider', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                          className={inputClass}
                         >
                           <option value="openai">OpenAI</option>
                           <option value="anthropic">Anthropic</option>
@@ -636,13 +755,13 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                         </select>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        <label className={labelClass}>
                           Fallback Provider
                         </label>
                         <select
                           value={settings.llm_fallback_provider || ''}
                           onChange={(e) => updateSetting('llm_fallback_provider', e.target.value || undefined)}
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                          className={inputClass}
                         >
                           <option value="">None</option>
                           <option value="openai">OpenAI</option>
@@ -653,7 +772,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                     </div>
                     <div className="grid grid-cols-2 gap-4 mt-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        <label className={labelClass}>
                           Temperature ({settings.llm_temperature})
                         </label>
                         <input
@@ -667,25 +786,25 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        <label className={labelClass}>
                           Max Tokens
                         </label>
                         <input
                           type="number"
                           value={settings.llm_max_tokens}
                           onChange={(e) => updateSetting('llm_max_tokens', parseInt(e.target.value) || 4096)}
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                          className={inputClass}
                         />
                       </div>
                     </div>
                     <div className="mt-4">
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      <label className={labelClass}>
                         Model Name
                       </label>
                       <select
                         value={settings.llm_model || ''}
                         onChange={(e) => updateSetting('llm_model', e.target.value || undefined)}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                        className={inputClass}
                       >
                         {settings.llm_provider === 'openai' && (
                           <>
@@ -719,13 +838,13 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                       </select>
                     </div>
 
-                    <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                      <h4 className="text-md font-semibold text-gray-900 dark:text-white mb-3">
+                    <div className="mt-6 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                      <h4 className="text-md font-semibold text-slate-900 dark:text-white mb-3">
                         Agent Configuration
                       </h4>
                       <div className="grid grid-cols-3 gap-4">
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          <label className={labelClass}>
                             Max Iterations
                           </label>
                           <input
@@ -734,11 +853,11 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                             max="20"
                             value={settings.max_agent_iterations}
                             onChange={(e) => updateSetting('max_agent_iterations', parseInt(e.target.value) || 5)}
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                            className={inputClass}
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          <label className={labelClass}>
                             Default Temperature ({settings.default_temperature})
                           </label>
                           <input
@@ -752,14 +871,14 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          <label className={labelClass}>
                             Default Max Tokens
                           </label>
                           <input
                             type="number"
                             value={settings.default_max_tokens}
                             onChange={(e) => updateSetting('default_max_tokens', parseInt(e.target.value) || 4096)}
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                            className={inputClass}
                           />
                         </div>
                       </div>
@@ -770,11 +889,11 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                 {/* Embeddings Settings */}
                 <Tab.Panel className="space-y-6">
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
+                    <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4 flex items-center">
                       Embedding Configuration
                       <HotReloadBadge requiresRestart={true} />
                     </h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                    <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
                       Configure vector embeddings for Multi-Modal RAG (document search & retrieval)
                     </p>
                     <div className="mb-4 p-3 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg">
@@ -786,7 +905,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                     {/* Check compatibility when Embeddings tab is viewed */}
                     <button
                       onClick={checkEmbeddingCompatibility}
-                      className="mb-4 px-4 py-2 text-sm bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
+                      className="mb-4 px-4 py-2 text-sm bg-sky-100 dark:bg-sky-900/30 text-sky-700 dark:text-sky-300 rounded-lg hover:bg-sky-200 dark:hover:bg-sky-900/50 transition-colors"
                     >
                       🔍 Check Embedding Compatibility
                     </button>
@@ -830,7 +949,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
 
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        <label className={labelClass}>
                           Embedding Provider
                         </label>
                         <select
@@ -857,7 +976,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                               updateSetting('vision_model', 'gemini-2.5-flash');
                             }
                           }}
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                          className={inputClass}
                         >
                           <option value="openai">OpenAI</option>
                           <option value="anthropic">Anthropic (Voyage AI)</option>
@@ -865,7 +984,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                         </select>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        <label className={labelClass}>
                           Text Embedding Model
                         </label>
                         <select
@@ -890,7 +1009,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                               updateSetting('embedding_dimensions', dimensionsMap[model]);
                             }
                           }}
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                          className={inputClass}
                         >
                           {settings.embedding_provider === 'openai' && (
                             <>
@@ -916,7 +1035,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                       </div>
                     </div>
                     <div className="mt-4">
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      <label className={labelClass}>
                         Embedding Dimensions (Auto-configured)
                       </label>
                       <input
@@ -924,26 +1043,26 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                         value={settings.embedding_dimensions || 1536}
                         readOnly
                         disabled
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 cursor-not-allowed"
+                        className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 cursor-not-allowed"
                       />
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      <p className="text-xs text-slate-500 dark:text-slate-300 mt-1">
                         Automatically set based on selected model
                       </p>
                     </div>
 
-                    <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                      <h4 className="text-md font-semibold text-gray-900 dark:text-white mb-3">
+                    <div className="mt-6 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                      <h4 className="text-md font-semibold text-slate-900 dark:text-white mb-3">
                         Vision Configuration
                       </h4>
                       <div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          <label className={labelClass}>
                             Vision Model (Auto-configured)
                           </label>
                           <select
                             value={settings.vision_model || ''}
                             onChange={(e) => updateSetting('vision_model', e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                            className={inputClass}
                           >
                             {settings.embedding_provider === 'openai' && (
                               <>
@@ -966,7 +1085,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                               </>
                             )}
                           </select>
-                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          <p className="text-xs text-slate-500 dark:text-slate-300 mt-1">
                             Matches embedding provider automatically
                           </p>
                         </div>
@@ -974,17 +1093,17 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                     </div>
 
                     {/* RAG Retrieval Settings */}
-                    <div className="mt-6 p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
-                      <h4 className="text-md font-semibold text-gray-900 dark:text-white mb-3 flex items-center">
+                    <div className="mt-6 p-4 bg-sky-50 dark:bg-sky-900/20 rounded-lg border border-sky-200 dark:border-sky-800">
+                      <h4 className="text-md font-semibold text-slate-900 dark:text-white mb-3 flex items-center">
                         RAG Retrieval Configuration
                         <HotReloadBadge />
                       </h4>
-                      <p className="text-xs text-gray-600 dark:text-gray-400 mb-4">
+                      <p className="text-xs text-slate-600 dark:text-slate-400 mb-4">
                         Control how documents are retrieved and matched to queries • <span className="text-green-600 dark:text-green-400 font-semibold">Changes apply instantly</span>
                       </p>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          <label className={labelClass}>
                             Similarity Threshold
                           </label>
                           <input
@@ -994,14 +1113,14 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                             step="0.05"
                             value={settings.rag_similarity_threshold || 0.35}
                             onChange={(e) => updateSetting('rag_similarity_threshold', parseFloat(e.target.value) || 0.35)}
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                            className={inputClass}
                           />
-                          <p className="text-xs text-gray-500 mt-1">
+                          <p className="text-xs text-slate-500 mt-1">
                             Minimum similarity (0-1). Higher = stricter filtering.
                           </p>
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          <label className={labelClass}>
                             Top K Results
                           </label>
                           <input
@@ -1010,9 +1129,9 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                             max="20"
                             value={settings.rag_top_k || 5}
                             onChange={(e) => updateSetting('rag_top_k', parseInt(e.target.value) || 5)}
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                            className={inputClass}
                           />
-                          <p className="text-xs text-gray-500 mt-1">
+                          <p className="text-xs text-slate-500 mt-1">
                             Max chunks to retrieve per query
                           </p>
                         </div>
@@ -1022,7 +1141,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                     {/* Position-Based Decay (ArXiv 2509.19376) */}
                     <div className="mt-4 p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
                       <div className="flex items-center justify-between mb-3">
-                        <h4 className="text-md font-semibold text-gray-900 dark:text-white flex items-center">
+                        <h4 className="text-md font-semibold text-slate-900 dark:text-white flex items-center">
                           Position-Based Document Decay
                           <HotReloadBadge />
                         </h4>
@@ -1033,15 +1152,15 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                             onChange={(e) => updateSetting('rag_decay_enabled', e.target.checked)}
                             className="sr-only peer"
                           />
-                          <div className="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 dark:peer-focus:ring-green-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-green-600"></div>
+                          <div className="relative w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 dark:peer-focus:ring-green-800 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-green-600"></div>
                         </label>
                       </div>
-                      <p className="text-xs text-gray-600 dark:text-gray-400 mb-4">
+                      <p className="text-xs text-slate-600 dark:text-slate-400 mb-4">
                         Documents naturally lose relevance as conversation progresses (ArXiv 2509.19376 formula)
                       </p>
                       <div className="grid grid-cols-3 gap-3">
                         <div>
-                          <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
                             Alpha (α)
                           </label>
                           <input
@@ -1051,13 +1170,13 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                             step="0.1"
                             value={settings.rag_decay_alpha || 0.7}
                             onChange={(e) => updateSetting('rag_decay_alpha', parseFloat(e.target.value) || 0.7)}
-                            className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                            className="w-full px-2 py-1 text-sm border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
                             disabled={!settings.rag_decay_enabled}
                           />
-                          <p className="text-xs text-gray-500 mt-1">Semantic weight (0.7 = 70%)</p>
+                          <p className="text-xs text-slate-500 mt-1">Semantic weight (0.7 = 70%)</p>
                         </div>
                         <div>
-                          <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
                             Half-Life (messages)
                           </label>
                           <input
@@ -1067,13 +1186,13 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                             step="10"
                             value={settings.rag_decay_half_life_messages || 50}
                             onChange={(e) => updateSetting('rag_decay_half_life_messages', parseInt(e.target.value) || 50)}
-                            className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                            className="w-full px-2 py-1 text-sm border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
                             disabled={!settings.rag_decay_enabled}
                           />
-                          <p className="text-xs text-gray-500 mt-1">50% relevance after N msgs</p>
+                          <p className="text-xs text-slate-500 mt-1">50% relevance after N msgs</p>
                         </div>
                         <div>
-                          <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
                             Min Factor
                           </label>
                           <input
@@ -1083,18 +1202,18 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                             step="0.05"
                             value={settings.rag_decay_min_factor || 0.1}
                             onChange={(e) => updateSetting('rag_decay_min_factor', parseFloat(e.target.value) || 0.1)}
-                            className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                            className="w-full px-2 py-1 text-sm border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
                             disabled={!settings.rag_decay_enabled}
                           />
-                          <p className="text-xs text-gray-500 mt-1">Never below 10%</p>
+                          <p className="text-xs text-slate-500 mt-1">Never below 10%</p>
                         </div>
                       </div>
                     </div>
 
                     {/* Conversation Summarization */}
-                    <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                    <div className="mt-4 p-4 bg-sky-50 dark:bg-sky-900/20 rounded-lg border border-sky-200 dark:border-sky-800">
                       <div className="flex items-center justify-between mb-3">
-                        <h4 className="text-md font-semibold text-gray-900 dark:text-white flex items-center">
+                        <h4 className="text-md font-semibold text-slate-900 dark:text-white flex items-center">
                           Conversation Summarization
                           <HotReloadBadge requiresRestart={true} />
                         </h4>
@@ -1105,15 +1224,15 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                             onChange={(e) => updateSetting('conversation_summary_enabled', e.target.checked)}
                             className="sr-only peer"
                           />
-                          <div className="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+                          <div className="relative w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-sky-300 dark:peer-focus:ring-sky-800 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-sky-600"></div>
                         </label>
                       </div>
-                      <p className="text-xs text-gray-600 dark:text-gray-400 mb-4">
+                      <p className="text-xs text-slate-600 dark:text-slate-400 mb-4">
                         Progressive summarization: First 10 messages → Summary, Keep last 10 raw
                       </p>
                       <div className="grid grid-cols-2 gap-3 mb-3">
                         <div>
-                          <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
                             Trigger Count
                           </label>
                           <input
@@ -1122,13 +1241,13 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                             max="50"
                             value={settings.conversation_summary_trigger_count || 20}
                             onChange={(e) => updateSetting('conversation_summary_trigger_count', parseInt(e.target.value) || 20)}
-                            className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                            className="w-full px-2 py-1 text-sm border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
                             disabled={!settings.conversation_summary_enabled}
                           />
-                          <p className="text-xs text-gray-500 mt-1">Start summarizing after N messages</p>
+                          <p className="text-xs text-slate-500 mt-1">Start summarizing after N messages</p>
                         </div>
                         <div>
-                          <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
                             Window Size
                           </label>
                           <input
@@ -1137,28 +1256,28 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                             max="15"
                             value={settings.conversation_summary_window_size || 10}
                             onChange={(e) => updateSetting('conversation_summary_window_size', parseInt(e.target.value) || 10)}
-                            className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                            className="w-full px-2 py-1 text-sm border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
                             disabled={!settings.conversation_summary_enabled}
                           />
-                          <p className="text-xs text-gray-500 mt-1">Summarize first N messages</p>
+                          <p className="text-xs text-slate-500 mt-1">Summarize first N messages</p>
                         </div>
                       </div>
                       <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
                             Summary Model
-                            <span className="ml-2 text-xs text-gray-500">(Uses default LLM)</span>
+                            <span className="ml-2 text-xs text-slate-500">(Uses default LLM)</span>
                           </label>
-                          <div className="px-3 py-2 text-sm bg-gray-100 dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300">
+                          <div className="px-3 py-2 text-sm bg-slate-100 dark:bg-slate-800 rounded border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300">
                             {settings.llm_provider === 'openai' && (settings.llm_model || 'gpt-4o-mini')}
                             {settings.llm_provider === 'anthropic' && (settings.llm_model || 'claude-3-5-sonnet-20241022')}
                             {settings.llm_provider === 'gemini' && (settings.llm_model || 'gemini-2.5-flash')}
                             {!['openai', 'anthropic', 'gemini'].includes(settings.llm_provider) && (settings.llm_model || 'default')}
                           </div>
-                          <p className="text-xs text-gray-500 mt-1">Configure in LLM Settings tab</p>
+                          <p className="text-xs text-slate-500 mt-1">Configure in LLM Settings tab</p>
                         </div>
                         <div>
-                          <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
                             Max Tokens
                           </label>
                           <input
@@ -1168,16 +1287,16 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                             step="100"
                             value={settings.conversation_summary_max_tokens || 500}
                             onChange={(e) => updateSetting('conversation_summary_max_tokens', parseInt(e.target.value) || 500)}
-                            className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                            className="w-full px-2 py-1 text-sm border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
                             disabled={!settings.conversation_summary_enabled}
                           />
-                          <p className="text-xs text-gray-500 mt-1">Summary length limit</p>
+                          <p className="text-xs text-slate-500 mt-1">Summary length limit</p>
                         </div>
                       </div>
                     </div>
 
-                    <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                      <p className="text-sm text-blue-800 dark:text-blue-300">
+                    <div className="mt-4 p-3 bg-sky-50 dark:bg-sky-900/20 rounded-lg border border-sky-200 dark:border-sky-800">
+                      <p className="text-sm text-sky-800 dark:text-sky-300">
                         <strong>ℹ️ Recommended Settings (2025):</strong><br/>
                         • OpenAI: text-embedding-3-small (1536d) - Cost-effective<br/>
                         • Voyage AI: voyage-3 (1024d) - State-of-the-art (Anthropic partner)<br/>
@@ -1193,18 +1312,18 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                 {/* Database Settings */}
                 <Tab.Panel className="space-y-6">
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                    <h3 className={sectionHeadingClass}>
                       Database Configuration
                     </h3>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      <label className={labelClass}>
                         Database URL
                       </label>
                       <input
                         type="text"
                         value={settings.database_url}
                         onChange={(e) => updateSetting('database_url', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-sm"
+                        className={inputClass + " font-mono"}
                       />
                     </div>
                   </div>
@@ -1213,12 +1332,12 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                 {/* Documents Settings */}
                 <Tab.Panel className="space-y-6">
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                    <h3 className={sectionHeadingClass}>
                       Document Processing
                     </h3>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        <label className={labelClass}>
                           Max Upload Size (MB)
                         </label>
                         <input
@@ -1227,12 +1346,12 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                           max="100"
                           value={settings.max_upload_size_mb}
                           onChange={(e) => updateSetting('max_upload_size_mb', parseInt(e.target.value) || 10)}
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                          className={inputClass}
                         />
-                        <p className="text-xs text-gray-500 mt-1">Maximum file size for document uploads</p>
+                        <p className="text-xs text-slate-500 mt-1">Maximum file size for document uploads</p>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        <label className={labelClass}>
                           Max Document Characters
                         </label>
                         <input
@@ -1241,12 +1360,12 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                           step="1000"
                           value={settings.max_document_characters}
                           onChange={(e) => updateSetting('max_document_characters', Math.max(1000, parseInt(e.target.value) || 200000))}
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                          className={inputClass}
                         />
-                        <p className="text-xs text-gray-500 mt-1">Guardrail to prevent extremely large unstructured uploads</p>
+                        <p className="text-xs text-slate-500 mt-1">Guardrail to prevent extremely large unstructured uploads</p>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        <label className={labelClass}>
                           Max Tabular Rows
                         </label>
                         <input
@@ -1255,12 +1374,12 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                           step="1000"
                           value={settings.max_tabular_rows}
                           onChange={(e) => updateSetting('max_tabular_rows', Math.max(1000, parseInt(e.target.value) || 50000))}
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                          className={inputClass}
                         />
-                        <p className="text-xs text-gray-500 mt-1">Rejects spreadsheets that exceed safe sampling limits</p>
+                        <p className="text-xs text-slate-500 mt-1">Rejects spreadsheets that exceed safe sampling limits</p>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        <label className={labelClass}>
                           Max PDF Pages
                         </label>
                         <input
@@ -1268,38 +1387,38 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                           min="1"
                           value={settings.max_pdf_pages}
                           onChange={(e) => updateSetting('max_pdf_pages', Math.max(1, parseInt(e.target.value) || 200))}
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                          className={inputClass}
                         />
-                        <p className="text-xs text-gray-500 mt-1">Prevents oversized multi-hundred page PDFs from being ingested</p>
+                        <p className="text-xs text-slate-500 mt-1">Prevents oversized multi-hundred page PDFs from being ingested</p>
                       </div>
                     </div>
                     <div className="mt-4">
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      <label className={labelClass}>
                         Supported File Formats (comma-separated)
                       </label>
                       <input
                         type="text"
                         value={Array.isArray(settings.supported_file_formats) ? settings.supported_file_formats.join(', ') : ''}
                         onChange={(e) => updateSetting('supported_file_formats', e.target.value.split(',').map(s => s.trim().toLowerCase()))}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                        className={inputClass}
                         placeholder="txt, csv, json, pdf, docx, md, png"
                       />
-                      <p className="text-xs text-gray-500 mt-1">File extensions allowed for upload (without dots)</p>
+                      <p className="text-xs text-slate-500 mt-1">File extensions allowed for upload (without dots)</p>
                     </div>
 
-                    <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                      <h4 className="text-md font-semibold text-gray-900 dark:text-white mb-3">
+                    <div className="mt-6 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                      <h4 className="text-md font-semibold text-slate-900 dark:text-white mb-3">
                         Logging Configuration
                       </h4>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          <label className={labelClass}>
                             Log Level
                           </label>
                           <select
                             value={settings.log_level}
                             onChange={(e) => updateSetting('log_level', e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                            className={inputClass}
                           >
                             <option value="DEBUG">Debug</option>
                             <option value="INFO">Info</option>
@@ -1309,7 +1428,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                           </select>
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          <label className={labelClass}>
                             Max Log File Size (MB)
                           </label>
                           <input
@@ -1318,7 +1437,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                             max="100"
                             value={settings.log_file_max_size_mb}
                             onChange={(e) => updateSetting('log_file_max_size_mb', parseInt(e.target.value) || 10)}
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                            className={inputClass}
                           />
                         </div>
                       </div>
@@ -1329,9 +1448,9 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                             id="enable_file_logging"
                             checked={settings.enable_file_logging}
                             onChange={(e) => updateSetting('enable_file_logging', e.target.checked)}
-                            className="rounded border-gray-300 dark:border-gray-600"
+                            className="rounded border-slate-300 text-sky-500 focus:ring-sky-500 dark:border-slate-600"
                           />
-                          <label htmlFor="enable_file_logging" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                          <label htmlFor="enable_file_logging" className="text-sm font-medium text-slate-600 dark:text-slate-300">
                             Enable File Logging
                           </label>
                         </div>
@@ -1343,30 +1462,30 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                 {/* Security Settings */}
                 <Tab.Panel className="space-y-6">
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                    <h3 className={sectionHeadingClass}>
                       Security Configuration
                     </h3>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        <label className={labelClass}>
                           Secret Key
                         </label>
                         <input
                           type="password"
                           value={settings.secret_key}
                           onChange={(e) => updateSetting('secret_key', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                          className={inputClass}
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        <label className={labelClass}>
                           Session Timeout (hours)
                         </label>
                         <input
                           type="number"
                           value={settings.session_timeout_hours}
                           onChange={(e) => updateSetting('session_timeout_hours', parseInt(e.target.value))}
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                          className={inputClass}
                         />
                       </div>
                     </div>
@@ -1376,38 +1495,158 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                 {/* Interface Settings */}
                 <Tab.Panel className="space-y-6">
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                    <h3 className={sectionHeadingClass}>
                       Interface Configuration
                     </h3>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-8">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                          Theme
-                        </label>
-                        <select
-                          value={theme}
-                          onChange={(e) => {
-                            const newTheme = e.target.value as 'light' | 'dark' | 'system';
-                            setTheme(newTheme);
-                            updateSetting('theme', newTheme);
-                          }}
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                        >
-                          <option value="light">Light</option>
-                          <option value="dark">Dark</option>
-                          <option value="system">System</option>
-                        </select>
+                        <div className="flex items-center justify-between">
+                          <label className={labelClass}>
+                            Theme
+                          </label>
+                          {activeThemeOption && (
+                            <BrandedBadge variant="secondary" size="sm">
+                              {activeThemeOption.label}
+                            </BrandedBadge>
+                          )}
+                        </div>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          Curate the visual identity of AgentVerse. Selections apply instantly across the workspace.
+                        </p>
+                        <div className="mt-4 space-y-6">
+                          <div className="space-y-3">
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+                              Appearance Mode
+                            </p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                              Decide how this theme handles brightness across the workspace.
+                            </p>
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                              {THEME_MODE_OPTIONS.map((modeOption) => {
+                                const isModeActive = settings.theme_mode === modeOption.value;
+                                return (
+                                  <button
+                                    key={modeOption.value}
+                                    type="button"
+                                    onClick={() => handleThemeModeChange(modeOption.value)}
+                                    className={clsx(
+                                      'group relative w-full overflow-hidden rounded-2xl border border-slate-200/70 dark:border-slate-700/40 bg-white/80 dark:bg-slate-900/60 backdrop-blur transition-all duration-300',
+                                      'p-4 text-left shadow-sm hover:-translate-y-0.5 hover:shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/70 focus-visible:ring-offset-2',
+                                      isModeActive && 'border-transparent ring-2 ring-sky-500/70 shadow-lg'
+                                    )}
+                                  >
+                                    {isModeActive && (
+                                      <div className="absolute top-3 right-4">
+                                        <BrandedBadge variant="success" size="sm">Active</BrandedBadge>
+                                      </div>
+                                    )}
+                                    <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                                      {modeOption.label}
+                                    </p>
+                                    <p className="mt-1 text-xs leading-relaxed text-slate-600 dark:text-slate-400">
+                                      {modeOption.description}
+                                    </p>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+                            {SORTED_THEMES.map((option) => {
+                              const isActive = option.id === settings.theme;
+                              return (
+                                <button
+                                  key={option.id}
+                                  type="button"
+                                  onClick={() => handleThemeSelection(option.id)}
+                                  aria-pressed={isActive}
+                                  aria-label={`Activate ${option.label} theme`}
+                                  className={clsx(
+                                    'group relative w-full overflow-hidden rounded-2xl border border-slate-200/70 dark:border-slate-700/40 bg-white/80 dark:bg-slate-900/60 backdrop-blur transition-all duration-300',
+                                    'p-5 text-left shadow-sm hover:-translate-y-0.5 hover:shadow-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/70 focus-visible:ring-offset-2',
+                                    isActive && 'border-transparent ring-2 ring-sky-500/70 shadow-xl'
+                                  )}
+                                >
+                                  {option.badge && (
+                                    <div className="absolute top-4 right-4">
+                                      <BrandedBadge variant={option.badge.variant ?? 'secondary'} size="sm">
+                                        {option.badge.text}
+                                      </BrandedBadge>
+                                    </div>
+                                  )}
+                                  {isActive && (
+                                    <div className="absolute top-4 left-4">
+                                      <BrandedBadge variant="success" size="sm">Active</BrandedBadge>
+                                    </div>
+                                  )}
+                                  <div className="relative mb-4 h-20 overflow-hidden rounded-xl border border-white/40 dark:border-white/10 shadow-inner">
+                                    <div className="absolute inset-0" style={{ background: option.previewGradient }} />
+                                    <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-white/0 to-black/20 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+                                    <div className="absolute bottom-2 left-2 flex items-center space-x-2">
+                                      {option.previewColors.map((color, index) => (
+                                        <span
+                                          key={`${option.id}-swatch-${index}`}
+                                          className="h-2.5 w-8 rounded-full border border-white/30 dark:border-white/10 shadow-sm"
+                                          style={{ background: color }}
+                                        />
+                                      ))}
+                                    </div>
+                                  </div>
+                                  <div className="flex items-start justify-between space-x-3">
+                                    <div>
+                                      <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                                        {option.label}
+                                      </p>
+                                      <p className="mt-1 text-xs leading-relaxed text-slate-600 dark:text-slate-400">
+                                        {option.description}
+                                      </p>
+                                    </div>
+                                    <div className="flex flex-col items-end space-y-2">
+                                      <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
+                                        Designed for {option.scheme}
+                                      </span>
+                                      <span
+                                        className="flex h-9 w-9 items-center justify-center rounded-full border border-white/60 text-[10px] font-bold uppercase tracking-wide text-white shadow-md"
+                                        style={{ background: option.accent }}
+                                      >
+                                        {option.shortLabel}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <div className="mt-4 flex items-center justify-between text-[11px] font-semibold">
+                                    <span className="text-slate-400 dark:text-slate-500">
+                                      {isActive ? 'Currently active' : 'Tap to activate'}
+                                    </span>
+                                    <span
+                                      className={clsx(
+                                        'transition-colors',
+                                        isActive ? 'text-sky-500' : 'text-sky-400 group-hover:text-sky-500'
+                                      )}
+                                    >
+                                      {option.id.toUpperCase()}
+                                    </span>
+                                  </div>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        <label className={labelClass}>
                           Auto-save Interval (seconds)
                         </label>
                         <input
                           type="number"
+                          min={5}
                           value={settings.auto_save_interval}
                           onChange={(e) => updateSetting('auto_save_interval', parseInt(e.target.value))}
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                          className={inputClass}
                         />
+                        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                          Determines how frequently workspace drafts are persisted automatically.
+                        </p>
                       </div>
                     </div>
                     <div className="space-y-3 mt-4">
@@ -1417,9 +1656,9 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                           id="sidebar_expanded"
                           checked={settings.sidebar_expanded || false}
                           onChange={(e) => updateSetting('sidebar_expanded', e.target.checked)}
-                          className="rounded border-gray-300 dark:border-gray-600"
+                          className="rounded border-slate-300 text-sky-500 focus:ring-sky-500 dark:border-slate-600"
                         />
-                        <label htmlFor="sidebar_expanded" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        <label htmlFor="sidebar_expanded" className="text-sm font-medium text-slate-600 dark:text-slate-300">
                           Sidebar Expanded by Default
                         </label>
                       </div>
@@ -1434,15 +1673,15 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                             notificationService.setEnabled(enabled);
                             setNotificationSettings(notificationService.getSettings());
                           }}
-                          className="rounded border-gray-300 dark:border-gray-600"
+                          className="rounded border-slate-300 text-sky-500 focus:ring-sky-500 dark:border-slate-600"
                         />
-                        <label htmlFor="notifications_enabled" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        <label htmlFor="notifications_enabled" className="text-sm font-medium text-slate-600 dark:text-slate-300">
                           Enable Notifications
                         </label>
                       </div>
 
                       {/* Permission Status */}
-                      <div className="mt-3 text-xs text-gray-600 dark:text-gray-400">
+                      <div className="mt-3 text-xs text-slate-600 dark:text-slate-400">
                         Permission: <span className="font-mono">
                           {typeof Notification !== 'undefined' ? Notification.permission : 'not supported'}
                         </span>
@@ -1464,7 +1703,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                               toast.error('Permission error: ' + String(error));
                             }
                           }}
-                          className="px-3 py-1.5 text-xs bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-300 rounded-lg transition-colors"
+                          className="px-3 py-1.5 text-xs bg-sky-100 hover:bg-sky-200 dark:bg-sky-900/30 dark:hover:bg-sky-900/50 text-sky-700 dark:text-sky-300 rounded-lg transition-colors"
                         >
                           Request Permission
                         </button>
@@ -1472,7 +1711,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
 
                       {/* Sound Selection */}
                       <div className="mt-4 space-y-2">
-                        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
                           Notification Sound
                         </label>
                         <select
@@ -1482,7 +1721,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                             notificationService.setSound(sound);
                             setNotificationSettings(notificationService.getSettings());
                           }}
-                          className="w-full px-3 py-2 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="w-full px-3 py-2 text-sm bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
                         >
                           <option value="none">None (Silent)</option>
                           <option value="bell">Bell</option>
@@ -1494,7 +1733,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
 
                       {/* Volume Control */}
                       <div className="mt-4 space-y-2">
-                        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
                           Volume: {Math.round(notificationSettings.volume * 100)}%
                         </label>
                         <input
@@ -1508,7 +1747,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                             notificationService.setVolume(volume);
                             setNotificationSettings(notificationService.getSettings());
                           }}
-                          className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer"
+                          className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer"
                         />
                       </div>
 
@@ -1534,57 +1773,57 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                 {canManageUsers() && (
                   <Tab.Panel className="space-y-6">
                     <div>
-                      <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2 flex items-center space-x-2">
+                      <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-2 flex items-center space-x-2">
                         <span>👑</span>
                         <span>Enterprise Admin Controls</span>
                       </h3>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                      <p className="text-sm text-slate-600 dark:text-slate-400">
                         Manage users, groups, and resource permissions for your organization
                       </p>
                     </div>
 
                     {/* Quick Stats */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-xl p-4 border border-blue-200 dark:border-blue-800">
-                        <div className="text-3xl font-bold text-blue-600 dark:text-blue-400 mb-1">5</div>
-                        <div className="text-sm text-gray-600 dark:text-gray-400">Team Members</div>
+                      <div className="bg-gradient-to-br from-slate-50 to-sky-100 dark:from-slate-900/30 dark:to-sky-900/25 rounded-xl p-4 border border-sky-200 dark:border-sky-800">
+                        <div className="text-3xl font-bold text-sky-600 dark:text-sky-400 mb-1">5</div>
+                        <div className="text-sm text-slate-600 dark:text-slate-400">Team Members</div>
                       </div>
                       <div className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 rounded-xl p-4 border border-green-200 dark:border-green-800">
                         <div className="text-3xl font-bold text-green-600 dark:text-green-400 mb-1">4</div>
-                        <div className="text-sm text-gray-600 dark:text-gray-400">Active Groups</div>
+                        <div className="text-sm text-slate-600 dark:text-slate-400">Active Groups</div>
                       </div>
-                      <div className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 rounded-xl p-4 border border-purple-200 dark:border-purple-800">
-                        <div className="text-3xl font-bold text-purple-600 dark:text-purple-400 mb-1">6</div>
-                        <div className="text-sm text-gray-600 dark:text-gray-400">Protected Resources</div>
+                      <div className="bg-gradient-to-br from-slate-50 to-sky-50 dark:from-slate-900/30 dark:to-sky-900/25 rounded-xl p-4 border border-sky-200 dark:border-sky-800">
+                        <div className="text-3xl font-bold text-sky-600 dark:text-sky-400 mb-1">6</div>
+                        <div className="text-sm text-slate-600 dark:text-slate-400">Protected Resources</div>
                       </div>
                     </div>
 
                     {/* Admin Dashboard Button */}
-                    <div className="bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 border border-purple-200 dark:border-purple-800 rounded-2xl p-6">
+                    <div className="bg-gradient-to-br from-slate-50 to-sky-50 dark:from-slate-900/30 dark:to-sky-900/25 border border-sky-200 dark:border-sky-800 rounded-2xl p-6">
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
-                          <h4 className="text-lg font-bold text-gray-900 dark:text-white mb-2 flex items-center space-x-2">
-                            <UserGroupIcon className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+                          <h4 className="text-lg font-bold text-slate-900 dark:text-white mb-2 flex items-center space-x-2">
+                            <UserGroupIcon className="w-6 h-6 text-sky-600 dark:text-sky-400" />
                             <span>Full Admin Dashboard</span>
                           </h4>
-                          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                          <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
                             Access the complete admin interface to manage users, groups, permissions, and resource access control. 
                             View detailed analytics, audit logs, and configure enterprise settings.
                           </p>
                           <ul className="space-y-2 mb-6">
-                            <li className="flex items-center text-sm text-gray-700 dark:text-gray-300">
+                            <li className="flex items-center text-sm text-slate-700 dark:text-slate-300">
                               <span className="w-5 h-5 bg-green-500 text-white rounded-full flex items-center justify-center mr-2 text-xs">✓</span>
                               User & Group Management
                             </li>
-                            <li className="flex items-center text-sm text-gray-700 dark:text-gray-300">
+                            <li className="flex items-center text-sm text-slate-700 dark:text-slate-300">
                               <span className="w-5 h-5 bg-green-500 text-white rounded-full flex items-center justify-center mr-2 text-xs">✓</span>
                               Access Control Matrix
                             </li>
-                            <li className="flex items-center text-sm text-gray-700 dark:text-gray-300">
+                            <li className="flex items-center text-sm text-slate-700 dark:text-slate-300">
                               <span className="w-5 h-5 bg-green-500 text-white rounded-full flex items-center justify-center mr-2 text-xs">✓</span>
                               Resource Permissions (MCPs, Agents, Tools)
                             </li>
-                            <li className="flex items-center text-sm text-gray-700 dark:text-gray-300">
+                            <li className="flex items-center text-sm text-slate-700 dark:text-slate-300">
                               <span className="w-5 h-5 bg-green-500 text-white rounded-full flex items-center justify-center mr-2 text-xs">✓</span>
                               Protected Resource Management
                             </li>
@@ -1594,7 +1833,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                               onClose();
                               setAdminDashboardOpen(true);
                             }}
-                            className="w-full px-6 py-4 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-xl font-semibold transition-all transform hover:scale-105 shadow-lg flex items-center justify-center space-x-2"
+                            className="w-full px-6 py-4 brand-gradient hover:opacity-90 text-white rounded-xl font-semibold transition-all transform hover:scale-105 shadow-lg flex items-center justify-center space-x-2"
                           >
                             <ShieldCheckIcon className="w-5 h-5" />
                             <span>Open Admin Dashboard</span>
@@ -1604,8 +1843,8 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                     </div>
 
                     {/* Additional Info */}
-                    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4">
-                      <p className="text-sm text-blue-900 dark:text-blue-300">
+                    <div className="bg-sky-50 dark:bg-sky-900/20 border border-sky-200 dark:border-sky-800 rounded-xl p-4">
+                      <p className="text-sm text-sky-900 dark:text-sky-300">
                         <strong>Note:</strong> The Admin Dashboard provides a full-screen interface for managing all aspects of your enterprise account. 
                         This includes advanced features like bulk user operations, group access matrices, and granular resource permissions.
                       </p>
@@ -1620,9 +1859,9 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
         </div>
 
         {/* Footer */}
-        <div className="border-t border-gray-200 dark:border-gray-700">
+        <div className="border-t border-slate-200 dark:border-slate-700">
           {/* Settings Info */}
-          <div className="px-6 py-3 bg-gray-50 dark:bg-gray-800/50 text-xs text-gray-600 dark:text-gray-400">
+          <div className="px-6 py-3 bg-slate-50 dark:bg-slate-800/50 text-xs text-slate-600 dark:text-slate-400">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
                 <span>📱 Interface settings save automatically</span>
@@ -1644,14 +1883,14 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
           <div className="flex space-x-3">
             <button
               onClick={onClose}
-              className="px-6 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+              className="px-6 py-2 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
             >
               Cancel
             </button>
             <button
               onClick={saveSettings}
               disabled={loading || !isDirty}
-              className="px-6 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg hover:from-blue-600 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              className="px-6 py-2 brand-gradient text-white rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               title={!isDirty ? 'No changes to save' : 'Save backend settings'}
             >
               {loading ? 'Saving...' : 'Save Settings'}

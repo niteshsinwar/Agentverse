@@ -14,46 +14,35 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({ currentStep, steps, is
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: -20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      className="fixed inset-0 bg-gradient-to-br from-slate-900/80 via-violet-900/30 to-cyan-900/20 backdrop-blur-sm flex items-center justify-center z-[70]"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/70 dark:bg-slate-950/75 backdrop-blur-[10px]"
     >
-      {/* Background Animation */}
-      <div className="absolute inset-0">
-        <motion.div
-          className="absolute inset-0 opacity-20"
-          animate={{
-            background: [
-              "radial-gradient(circle at 20% 50%, rgba(139, 92, 246, 0.3) 0%, transparent 50%)",
-              "radial-gradient(circle at 80% 20%, rgba(79, 70, 229, 0.3) 0%, transparent 50%)",
-              "radial-gradient(circle at 40% 80%, rgba(236, 72, 153, 0.3) 0%, transparent 50%)",
-              "radial-gradient(circle at 20% 50%, rgba(139, 92, 246, 0.3) 0%, transparent 50%)"
-            ]
-          }}
-          transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-        />
-
-        {/* Floating Particles */}
-        {[...Array(8)].map((_, i) => (
-          <motion.div
-            key={i}
-            className="absolute w-1.5 h-1.5 bg-gradient-to-r from-indigo-400 to-purple-500 rounded-full opacity-40"
+      <div className="pointer-events-none absolute inset-0 z-0">
+        {[...Array(36)].map((_, index) => (
+          <motion.span
+            key={index}
+            className="absolute rounded-full"
             style={{
+              width: `${Math.random() * 4 + 1.5}px`,
+              height: `${Math.random() * 4 + 1.5}px`,
               left: `${Math.random() * 100}%`,
               top: `${Math.random() * 100}%`,
+              background: `rgba(var(--brand-secondary-rgb), ${0.35 + Math.random() * 0.5})`,
+              boxShadow: `0 0 ${6 + Math.random() * 10}px rgba(var(--brand-accent-rgb), 0.8)`,
+              opacity: 0.8,
             }}
             animate={{
-              y: [0, -20, 0],
-              x: [0, Math.random() * 15 - 7.5, 0],
-              scale: [1, 1.2, 1],
-              opacity: [0.4, 0.8, 0.4]
+              y: [0, Math.random() * 16 - 8, 0],
+              x: [0, Math.random() * 24 - 12, 0],
+              opacity: [0.65, 1, 0.65],
             }}
             transition={{
-              duration: 3 + Math.random() * 2,
+              duration: 5 + Math.random() * 5,
               repeat: Infinity,
-              delay: Math.random() * 2,
-              ease: "easeInOut"
+              ease: 'easeInOut',
+              delay: Math.random() * 3,
             }}
           />
         ))}
@@ -62,8 +51,9 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({ currentStep, steps, is
       <motion.div
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        transition={{ duration: 0.5, ease: "easeOut" }}
-        className="bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl rounded-3xl p-8 max-w-lg w-full mx-4 shadow-2xl border border-violet-200/30 dark:border-violet-800/30 relative z-10"
+        exit={{ scale: 0.95, opacity: 0 }}
+        transition={{ duration: 0.4, ease: 'easeOut' }}
+        className="relative z-10 max-w-lg w-full mx-6 p-8 rounded-3xl border border-slate-200/50 dark:border-slate-800/40 bg-white/82 dark:bg-slate-900/78 backdrop-blur-3xl shadow-[0_30px_80px_-35px_rgba(15,23,42,0.45)] pointer-events-auto"
       >
         <div className="text-center">
           {/* Branded Logo Animation */}
@@ -125,9 +115,18 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({ currentStep, steps, is
                     isCompleted
                       ? 'bg-gradient-to-r from-emerald-50 to-green-50 dark:from-emerald-900/30 dark:to-green-900/30 text-emerald-700 dark:text-emerald-300 border-emerald-200/50 dark:border-emerald-700/50 shadow-sm'
                       : isCurrent
-                      ? 'bg-gradient-to-r from-violet-50 to-indigo-50 dark:from-violet-900/30 dark:to-indigo-900/30 text-violet-700 dark:text-violet-300 border-violet-200/50 dark:border-violet-700/50 shadow-lg'
+                      ? 'bg-white/85 dark:bg-slate-900/70 text-slate-800 dark:text-slate-200 shadow-lg'
                       : 'bg-slate-50/80 dark:bg-slate-700/50 text-slate-500 dark:text-slate-400 border-slate-200/30 dark:border-slate-600/30'
                   }`}
+                  style={
+                    isCurrent
+                      ? {
+                          borderColor: 'rgba(var(--brand-primary-rgb),0.35)',
+                          boxShadow: '0 20px 45px -25px rgba(var(--brand-primary-rgb),0.4)',
+                          background: 'linear-gradient(135deg, rgba(var(--brand-primary-rgb),0.15) 0%, rgba(var(--brand-secondary-rgb),0.12) 100%)',
+                        }
+                      : undefined
+                  }
                 >
                   <span className="font-semibold text-sm">{step}</span>
 
@@ -150,7 +149,8 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({ currentStep, steps, is
                           rotate: [0, 180, 360]
                         }}
                         transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                        className="w-5 h-5 bg-gradient-to-br from-violet-500 to-indigo-600 rounded-full shadow-lg"
+                        className="w-5 h-5 rounded-full shadow-lg"
+                        style={{ background: 'linear-gradient(135deg, rgba(var(--brand-primary-rgb),0.95) 0%, rgba(var(--brand-secondary-rgb),0.95) 100%)' }}
                       />
                     )}
 
@@ -170,10 +170,14 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({ currentStep, steps, is
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4 }}
-              className="mt-6 p-4 bg-gradient-to-r from-violet-50/50 to-indigo-50/50 dark:from-violet-900/20 dark:to-indigo-900/20 rounded-2xl border border-violet-200/30 dark:border-violet-700/30 backdrop-blur-sm"
+              className="mt-6 p-4 rounded-2xl border backdrop-blur-sm"
+              style={{
+                background: 'linear-gradient(135deg, rgba(var(--brand-primary-rgb),0.16) 0%, rgba(var(--brand-secondary-rgb),0.14) 100%)',
+                borderColor: 'rgba(var(--brand-primary-rgb),0.28)',
+              }}
             >
               <p className="text-sm text-slate-600 dark:text-slate-400 font-medium">
-                <span className="text-violet-600 dark:text-violet-400 font-semibold">Processing:</span> {steps[currentStep]}...
+                <span className="font-semibold" style={{ color: 'var(--brand-primary)' }}>Processing:</span> {steps[currentStep]}...
               </p>
 
               {/* Progress Bar */}
@@ -182,7 +186,8 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({ currentStep, steps, is
                   initial={{ width: 0 }}
                   animate={{ width: '100%' }}
                   transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                  className="h-full bg-gradient-to-r from-violet-500 to-indigo-600 rounded-full"
+                  className="h-full rounded-full"
+                  style={{ background: 'linear-gradient(135deg, rgba(var(--brand-primary-rgb),1) 0%, rgba(var(--brand-secondary-rgb),1) 100%)' }}
                 />
               </div>
             </motion.div>

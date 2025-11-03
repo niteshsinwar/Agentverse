@@ -135,21 +135,21 @@ export const DocumentsListPanel: React.FC<DocumentsListPanelProps> = ({
   const totalDocuments = documents.length;
 
   return (
-    <div className="h-full flex flex-col bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700">
+    <div className="h-full flex flex-col brand-shell border-l border-transparent">
       {/* Header */}
-      <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+      <div className="p-4 border-b border-transparent">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <FolderIcon className="h-5 w-5 text-gray-500" />
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+            <FolderIcon className="h-5 w-5 text-slate-500" />
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
               Documents
             </h3>
-            <span className="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs px-2 py-1 rounded-full">
+            <span className="bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 text-xs px-2 py-1 rounded-full">
               {totalDocuments}
             </span>
           </div>
         </div>
-        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+        <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
           Files uploaded to this group
         </p>
       </div>
@@ -158,8 +158,8 @@ export const DocumentsListPanel: React.FC<DocumentsListPanelProps> = ({
       <div className="flex-1 overflow-y-auto">
         {loading ? (
           <div className="p-4 text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">Loading documents...</p>
+            <div className="animate-spin rounded-full h-8 w-8 border-2 border-transparent border-t-indigo-500 mx-auto"></div>
+            <p className="text-sm text-slate-600 dark:text-slate-400 mt-2">Loading documents...</p>
           </div>
         ) : totalDocuments === 0 ? (
           <BrandedCard variant="glass" className="p-6 text-center m-2">
@@ -184,19 +184,19 @@ export const DocumentsListPanel: React.FC<DocumentsListPanelProps> = ({
                   {/* Agent Header */}
                   <button
                     onClick={() => toggleAgentExpansion(agentId)}
-                    className="w-full flex items-center justify-between p-2 text-left hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                    className="w-full flex items-center justify-between p-2 text-left hover:bg-slate-50 dark:hover:bg-slate-700 rounded-lg transition-colors"
                   >
                     <div className="flex items-center space-x-2">
                       {isExpanded ? (
-                        <ChevronDownIcon className="h-4 w-4 text-gray-500" />
+                        <ChevronDownIcon className="h-4 w-4 text-slate-500" />
                       ) : (
-                        <ChevronRightIcon className="h-4 w-4 text-gray-500" />
+                        <ChevronRightIcon className="h-4 w-4 text-slate-500" />
                       )}
                       <span className="text-sm">{agentInfo?.emoji || '🤖'}</span>
-                      <span className="text-sm font-medium text-gray-900 dark:text-white">
+                      <span className="text-sm font-medium text-slate-900 dark:text-white">
                         {agentInfo?.name || agentId}
                       </span>
-                      <span className="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs px-2 py-1 rounded-full">
+                      <span className="bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 text-xs px-2 py-1 rounded-full">
                         {agentDocuments.length}
                       </span>
                     </div>
@@ -216,17 +216,17 @@ export const DocumentsListPanel: React.FC<DocumentsListPanelProps> = ({
                           {agentDocuments.map((document) => (
                             <div
                               key={document.document_id}
-                              className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+                              className="p-3 bg-slate-50 dark:bg-slate-700 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors"
                             >
                               <div className="flex items-start justify-between">
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center space-x-2">
-                                    <DocumentIcon className="h-4 w-4 text-blue-600 flex-shrink-0" />
-                                    <span className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                                    <DocumentIcon className="h-4 w-4 text-indigo-600 flex-shrink-0" />
+                                    <span className="text-sm font-medium text-slate-900 dark:text-white truncate">
                                       {document.filename}
                                     </span>
                                   </div>
-                                  <div className="flex items-center space-x-4 mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                  <div className="flex items-center space-x-4 mt-1 text-xs text-slate-500 dark:text-slate-400">
                                     <span className="flex items-center space-x-1">
                                       <span>📁</span>
                                       <span>{formatFileSize(document.size)}</span>
@@ -241,14 +241,14 @@ export const DocumentsListPanel: React.FC<DocumentsListPanelProps> = ({
                                 <div className="flex items-center space-x-1 ml-2">
                                   <button
                                     onClick={() => handleDownloadDocument(document.document_id, document.filename)}
-                                    className="p-1 text-gray-400 hover:text-blue-600 rounded"
+                                    className="p-1 text-slate-400 hover:text-indigo-600 rounded"
                                     title="Download document"
                                   >
                                     <ArrowDownTrayIcon className="h-4 w-4" />
                                   </button>
                                   <button
                                     onClick={() => handleDeleteDocument(document.document_id, document.filename)}
-                                    className="p-1 text-gray-400 hover:text-red-600 rounded"
+                                    className="p-1 text-slate-400 hover:text-red-600 rounded"
                                     title="Delete document"
                                   >
                                     <TrashIcon className="h-4 w-4" />
@@ -269,11 +269,11 @@ export const DocumentsListPanel: React.FC<DocumentsListPanelProps> = ({
       </div>
 
       {/* Footer with Refresh Button */}
-      <div className="p-3 border-t border-gray-200 dark:border-gray-700">
+      <div className="p-3 border-t border-slate-200 dark:border-slate-700">
         <button
           onClick={loadDocuments}
           disabled={loading}
-          className="w-full text-xs text-center text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 disabled:opacity-50"
+          className="w-full text-xs text-center text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 disabled:opacity-50"
         >
           {loading ? 'Refreshing...' : 'Refresh Documents'}
         </button>

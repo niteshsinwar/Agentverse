@@ -149,14 +149,14 @@ export const LogViewer: React.FC<LogViewerProps> = ({ sessionId, className = '' 
     if (level === 'WARNING') return <ExclamationTriangleIcon className="h-5 w-5 text-yellow-500" />;
 
     if (eventCategories.system.includes(eventType)) return <ServerIcon className="h-5 w-5 text-slate-500" />;
-    if (eventCategories.tools.includes(eventType)) return <WrenchScrewdriverIcon className="h-5 w-5 text-blue-500" />;
+    if (eventCategories.tools.includes(eventType)) return <WrenchScrewdriverIcon className="h-5 w-5 text-indigo-500" />;
     if (eventCategories.mcp.includes(eventType)) return <ServerIcon className="h-5 w-5 text-purple-500" />;
     if (eventCategories.communication.includes(eventType)) return <UserIcon className="h-5 w-5 text-green-500" />;
     if (eventCategories.documents.includes(eventType)) return <DocumentTextIcon className="h-5 w-5 text-indigo-500" />;
     if (eventCategories.rag.includes(eventType)) return <MagnifyingGlassCircleIcon className="h-5 w-5 text-cyan-500" />;
     if (eventCategories.summarization.includes(eventType)) return <ChatBubbleLeftRightIcon className="h-5 w-5 text-amber-500" />;
 
-    return <InformationCircleIcon className="h-5 w-5 text-gray-500" />;
+    return <InformationCircleIcon className="h-5 w-5 text-slate-500" />;
   };
 
   // Get color for event level
@@ -164,9 +164,9 @@ export const LogViewer: React.FC<LogViewerProps> = ({ sessionId, className = '' 
     switch (level) {
       case 'ERROR': return 'bg-red-100 text-red-800 border-red-200';
       case 'WARNING': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'INFO': return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'DEBUG': return 'bg-gray-100 text-gray-800 border-gray-200';
-      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+      case 'INFO': return 'bg-indigo-100 text-indigo-800 border-indigo-200';
+      case 'DEBUG': return 'bg-slate-100 text-slate-800 border-slate-200';
+      default: return 'bg-slate-100 text-slate-800 border-slate-200';
     }
   };
 
@@ -201,14 +201,14 @@ export const LogViewer: React.FC<LogViewerProps> = ({ sessionId, className = '' 
   return (
     <div className={`bg-white rounded-lg shadow-lg ${className}`}>
       {/* Header */}
-      <div className="px-6 py-4 border-b border-gray-200">
+      <div className="px-6 py-4 border-b border-slate-200">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <ClockIcon className="h-6 w-6 text-gray-600" />
-            <h2 className="text-xl font-semibold text-gray-900">
+            <ClockIcon className="h-6 w-6 text-slate-600" />
+            <h2 className="text-xl font-semibold text-slate-900">
               Log Viewer
               {sessionId && (
-                <span className="ml-2 text-sm font-normal text-gray-500">
+                <span className="ml-2 text-sm font-normal text-slate-500">
                   Session: {sessionId}
                 </span>
               )}
@@ -217,7 +217,7 @@ export const LogViewer: React.FC<LogViewerProps> = ({ sessionId, className = '' 
           <div className="flex items-center space-x-2">
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className="flex items-center px-3 py-2 text-sm text-gray-600 hover:text-gray-900 border border-gray-300 rounded-md hover:border-gray-400 transition-colors"
+              className="flex items-center px-3 py-2 text-sm text-slate-600 hover:text-slate-900 border border-slate-300 rounded-md hover:border-slate-400 transition-colors"
             >
               <FunnelIcon className="h-4 w-4 mr-1" />
               Filters
@@ -225,14 +225,14 @@ export const LogViewer: React.FC<LogViewerProps> = ({ sessionId, className = '' 
             <button
               onClick={fetchLogs}
               disabled={loading}
-              className="flex items-center px-3 py-2 text-sm text-gray-600 hover:text-gray-900 border border-gray-300 rounded-md hover:border-gray-400 transition-colors disabled:opacity-50"
+              className="flex items-center px-3 py-2 text-sm text-slate-600 hover:text-slate-900 border border-slate-300 rounded-md hover:border-slate-400 transition-colors disabled:opacity-50"
             >
               <ArrowPathIcon className={`h-4 w-4 mr-1 ${loading ? 'animate-spin' : ''}`} />
               Refresh
             </button>
             <button
               onClick={downloadLogs}
-              className="flex items-center px-3 py-2 text-sm text-gray-600 hover:text-gray-900 border border-gray-300 rounded-md hover:border-gray-400 transition-colors"
+              className="flex items-center px-3 py-2 text-sm text-slate-600 hover:text-slate-900 border border-slate-300 rounded-md hover:border-slate-400 transition-colors"
             >
               <ArrowDownTrayIcon className="h-4 w-4 mr-1" />
               Export
@@ -242,25 +242,25 @@ export const LogViewer: React.FC<LogViewerProps> = ({ sessionId, className = '' 
       </div>
 
       {/* Performance Summary */}
-      <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
+      <div className="px-6 py-4 bg-slate-50 border-b border-slate-200">
         <div className="grid grid-cols-4 gap-4">
           <div className="text-center">
-            <div className="text-2xl font-bold text-blue-600">{performanceMetrics.totalEvents}</div>
-            <div className="text-sm text-gray-500">Total Events</div>
+            <div className="text-2xl font-bold text-indigo-600">{performanceMetrics.totalEvents}</div>
+            <div className="text-sm text-slate-500">Total Events</div>
           </div>
           <div className="text-center">
             <div className="text-2xl font-bold text-purple-600">{performanceMetrics.toolCalls}</div>
-            <div className="text-sm text-gray-500">Tool Calls</div>
+            <div className="text-sm text-slate-500">Tool Calls</div>
           </div>
           <div className="text-center">
             <div className="text-2xl font-bold text-green-600">{performanceMetrics.avgDuration}ms</div>
-            <div className="text-sm text-gray-500">Avg Duration</div>
+            <div className="text-sm text-slate-500">Avg Duration</div>
           </div>
           <div className="text-center">
             <div className={`text-2xl font-bold ${performanceMetrics.errorCount > 0 ? 'text-red-600' : 'text-green-600'}`}>
               {performanceMetrics.successRate}%
             </div>
-            <div className="text-sm text-gray-500">Success Rate</div>
+            <div className="text-sm text-slate-500">Success Rate</div>
           </div>
         </div>
       </div>
@@ -272,29 +272,29 @@ export const LogViewer: React.FC<LogViewerProps> = ({ sessionId, className = '' 
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            className="px-6 py-4 bg-gray-50 border-b border-gray-200"
+            className="px-6 py-4 bg-slate-50 border-b border-slate-200"
           >
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Search</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Search</label>
                 <div className="relative">
-                  <MagnifyingGlassIcon className="h-4 w-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                  <MagnifyingGlassIcon className="h-4 w-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" />
                   <input
                     type="text"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     placeholder="Search logs..."
-                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
+                    className="w-full pl-10 pr-3 py-2 border border-slate-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 text-sm"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Level</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Level</label>
                 <select
                   value={levelFilter}
                   onChange={(e) => setLevelFilter(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 text-sm"
                 >
                   <option value="ALL">All Levels</option>
                   <option value="ERROR">Error</option>
@@ -305,11 +305,11 @@ export const LogViewer: React.FC<LogViewerProps> = ({ sessionId, className = '' 
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Event Type</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Event Type</label>
                 <select
                   value={eventTypeFilter}
                   onChange={(e) => setEventTypeFilter(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 text-sm"
                 >
                   <option value="ALL">All Types</option>
                   {uniqueEventTypes.map(type => (
@@ -319,11 +319,11 @@ export const LogViewer: React.FC<LogViewerProps> = ({ sessionId, className = '' 
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Agent</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Agent</label>
                 <select
                   value={agentFilter}
                   onChange={(e) => setAgentFilter(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 text-sm"
                 >
                   <option value="ALL">All Agents</option>
                   {uniqueAgents.map(agent => (
@@ -339,9 +339,9 @@ export const LogViewer: React.FC<LogViewerProps> = ({ sessionId, className = '' 
                   type="checkbox"
                   checked={autoRefresh}
                   onChange={(e) => setAutoRefresh(e.target.checked)}
-                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
                 />
-                <span className="ml-2 text-sm text-gray-700">Auto-refresh every 5 seconds</span>
+                <span className="ml-2 text-sm text-slate-700">Auto-refresh every 5 seconds</span>
               </label>
             </div>
           </motion.div>
@@ -352,19 +352,19 @@ export const LogViewer: React.FC<LogViewerProps> = ({ sessionId, className = '' 
       <div className="max-h-96 overflow-y-auto">
         {loading ? (
           <div className="flex items-center justify-center p-8">
-            <ArrowPathIcon className="h-6 w-6 animate-spin text-gray-400 mr-2" />
-            <span className="text-gray-500">Loading logs...</span>
+            <ArrowPathIcon className="h-6 w-6 animate-spin text-slate-400 mr-2" />
+            <span className="text-slate-500">Loading logs...</span>
           </div>
         ) : filteredLogs.length === 0 ? (
           <div className="text-center py-8">
-            <InformationCircleIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-sm font-medium text-gray-900 mb-1">No logs found</h3>
-            <p className="text-sm text-gray-500">
+            <InformationCircleIcon className="h-12 w-12 text-slate-400 mx-auto mb-4" />
+            <h3 className="text-sm font-medium text-slate-900 mb-1">No logs found</h3>
+            <p className="text-sm text-slate-500">
               {logs.length === 0 ? 'No logs available for this session.' : 'Try adjusting your filters.'}
             </p>
           </div>
         ) : (
-          <div className="divide-y divide-gray-200">
+          <div className="divide-y divide-slate-200">
             {filteredLogs.map((log, index) => {
               const logId = `${log.timestamp}-${index}`;
               const isExpanded = expandedEntries.has(logId);
@@ -375,7 +375,7 @@ export const LogViewer: React.FC<LogViewerProps> = ({ sessionId, className = '' 
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.05 }}
-                  className="p-4 hover:bg-gray-50 transition-colors"
+                  className="p-4 hover:bg-slate-50 transition-colors"
                 >
                   <div className="flex items-start space-x-3">
                     <div className="flex-shrink-0 mt-1">
@@ -385,14 +385,14 @@ export const LogViewer: React.FC<LogViewerProps> = ({ sessionId, className = '' 
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-2">
-                          <span className="text-xs text-gray-500">
+                          <span className="text-xs text-slate-500">
                             {formatTimestamp(log.timestamp)}
                           </span>
                           <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${getLevelColor(log.level)}`}>
                             {log.level}
                           </span>
                           {log.agent_id && (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-800 border border-indigo-200">
                               {log.agent_id}
                             </span>
                           )}
@@ -406,7 +406,7 @@ export const LogViewer: React.FC<LogViewerProps> = ({ sessionId, className = '' 
                         {(log.details || log.error) && (
                           <button
                             onClick={() => toggleExpanded(logId)}
-                            className="flex items-center text-xs text-gray-500 hover:text-gray-700"
+                            className="flex items-center text-xs text-slate-500 hover:text-slate-700"
                           >
                             {isExpanded ? (
                               <ChevronUpIcon className="h-4 w-4" />
@@ -417,7 +417,7 @@ export const LogViewer: React.FC<LogViewerProps> = ({ sessionId, className = '' 
                         )}
                       </div>
 
-                      <p className="mt-1 text-sm text-gray-900">{log.message}</p>
+                      <p className="mt-1 text-sm text-slate-900">{log.message}</p>
 
                       <AnimatePresence>
                         {isExpanded && (log.details || log.error) && (
@@ -438,8 +438,8 @@ export const LogViewer: React.FC<LogViewerProps> = ({ sessionId, className = '' 
 
                             {log.details && (
                               <div>
-                                <h4 className="text-xs font-medium text-gray-600 mb-1">Details:</h4>
-                                <div className="bg-gray-50 border border-gray-200 rounded p-2 text-xs text-gray-900 font-mono overflow-x-auto">
+                                <h4 className="text-xs font-medium text-slate-600 mb-1">Details:</h4>
+                                <div className="bg-slate-50 border border-slate-200 rounded p-2 text-xs text-slate-900 font-mono overflow-x-auto">
                                   <pre className="whitespace-pre-wrap">
                                     {JSON.stringify(log.details, null, 2)}
                                   </pre>

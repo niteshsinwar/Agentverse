@@ -35,15 +35,15 @@ export const BrandedButton: React.FC<BrandedButtonProps> = ({
   const getVariantClasses = () => {
     switch (variant) {
       case 'primary':
-        return 'bg-gradient-to-r from-violet-500 to-indigo-600 text-white border border-violet-400/30 shadow-lg hover:from-violet-600 hover:to-indigo-700 hover:shadow-xl disabled:from-violet-300 disabled:to-indigo-400';
+        return 'brand-gradient text-white border border-transparent shadow-lg hover:opacity-95 hover:shadow-xl disabled:opacity-60 disabled:cursor-not-allowed';
       case 'secondary':
-        return 'bg-gradient-to-r from-violet-50 to-indigo-50 dark:from-violet-900/30 dark:to-indigo-900/30 text-violet-700 dark:text-violet-300 border border-violet-200/50 dark:border-violet-700/50 hover:from-violet-100 hover:to-indigo-100 dark:hover:from-violet-900/50 dark:hover:to-indigo-900/50';
+        return 'bg-gradient-to-r from-slate-100/90 via-sky-100/80 to-cyan-100/80 dark:from-slate-900/40 dark:via-sky-900/35 dark:to-cyan-900/35 text-slate-800 dark:text-slate-200 border border-slate-200/60 dark:border-sky-800/40 hover:from-slate-100 hover:to-sky-100 dark:hover:from-slate-900/55 dark:hover:to-sky-900/45';
       case 'outline':
-        return 'bg-transparent text-violet-600 dark:text-violet-400 border border-violet-300 dark:border-violet-600 hover:bg-violet-50 dark:hover:bg-violet-900/20';
+        return 'bg-transparent text-sky-600 dark:text-sky-300 border border-sky-400/70 dark:border-sky-600 hover:bg-sky-50 dark:hover:bg-sky-900/20';
       case 'ghost':
-        return 'bg-transparent text-violet-600 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-900/20';
+        return 'bg-transparent text-sky-600 dark:text-sky-300 hover:bg-sky-50 dark:hover:bg-sky-900/20';
       default:
-        return 'bg-gradient-to-r from-violet-500 to-indigo-600 text-white';
+        return 'brand-gradient text-white';
     }
   };
 
@@ -59,7 +59,7 @@ export const BrandedButton: React.FC<BrandedButtonProps> = ({
         ${getVariantClasses()}
         font-semibold rounded-xl transition-all duration-200
         disabled:opacity-50 disabled:cursor-not-allowed
-        focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2
+        focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2
         ${className}
       `}
     >
@@ -92,11 +92,11 @@ export const BrandedCard: React.FC<BrandedCardProps> = ({
   const getVariantClasses = () => {
     switch (variant) {
       case 'glass':
-        return 'bg-white/80 dark:bg-slate-800/80 backdrop-blur-xl border border-violet-200/30 dark:border-violet-800/30 shadow-lg';
+        return 'brand-surface backdrop-blur-xl border border-transparent shadow-lg';
       case 'gradient':
-        return 'bg-gradient-to-br from-violet-50/80 to-indigo-50/80 dark:from-violet-900/20 dark:to-indigo-900/20 border border-violet-200/50 dark:border-violet-700/50 shadow-lg';
+        return 'bg-gradient-to-br from-slate-100/85 via-sky-100/70 to-cyan-100/70 dark:from-slate-900/35 dark:via-sky-900/30 dark:to-cyan-900/30 border border-slate-200/50 dark:border-sky-800/40 shadow-lg';
       default:
-        return 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm';
+        return 'brand-shell shadow-sm';
     }
   };
 
@@ -109,7 +109,7 @@ export const BrandedCard: React.FC<BrandedCardProps> = ({
       className={`
         ${getVariantClasses()}
         rounded-2xl p-6 transition-all duration-300
-        ${hover ? 'hover:shadow-xl hover:shadow-violet-500/10' : ''}
+        ${hover ? 'hover:shadow-xl hover:shadow-sky-500/10' : ''}
         ${className}
       `}
     >
@@ -144,19 +144,19 @@ export const BrandedBadge: React.FC<BrandedBadgeProps> = ({
   const getVariantClasses = () => {
     switch (variant) {
       case 'primary':
-        return 'bg-gradient-to-r from-violet-500 to-indigo-600 text-white';
+        return 'brand-gradient text-white';
       case 'secondary':
-        return 'bg-gradient-to-r from-violet-50 to-indigo-50 dark:from-violet-900/30 dark:to-indigo-900/30 text-violet-700 dark:text-violet-300 border border-violet-200/50 dark:border-violet-700/50';
+        return 'bg-gradient-to-r from-slate-100 to-sky-100 dark:from-slate-900/40 dark:to-sky-900/35 text-slate-800 dark:text-slate-200 border border-slate-200/60 dark:border-sky-700/40';
       case 'success':
-        return 'bg-gradient-to-r from-emerald-50 to-green-50 dark:from-emerald-900/30 dark:to-green-900/30 text-emerald-700 dark:text-emerald-300 border border-emerald-200/50 dark:border-emerald-700/50';
+        return 'bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/30 dark:to-teal-900/30 text-emerald-700 dark:text-emerald-300 border border-emerald-200/50 dark:border-emerald-700/50';
       case 'warning':
         return 'bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/30 dark:to-orange-900/30 text-amber-700 dark:text-amber-300 border border-amber-200/50 dark:border-amber-700/50';
       case 'error':
-        return 'bg-gradient-to-r from-red-50 to-rose-50 dark:from-red-900/30 dark:to-rose-900/30 text-red-700 dark:text-red-300 border border-red-200/50 dark:border-red-700/50';
+        return 'bg-gradient-to-r from-red-50 to-rose-50 dark:from-red-900/30 dark:to-rose-900/30 text-red-700 dark:text-rose-300 border border-red-200/50 dark:border-rose-700/50';
       case 'info':
-        return 'bg-gradient-to-r from-cyan-50 to-blue-50 dark:from-cyan-900/30 dark:to-blue-900/30 text-cyan-700 dark:text-cyan-300 border border-cyan-200/50 dark:border-cyan-700/50';
+        return 'bg-gradient-to-r from-sky-50 to-cyan-50 dark:from-sky-900/30 dark:to-cyan-900/30 text-sky-700 dark:text-cyan-300 border border-sky-200/50 dark:border-cyan-700/50';
       default:
-        return 'bg-gradient-to-r from-violet-500 to-indigo-600 text-white';
+        return 'brand-gradient text-white';
     }
   };
 

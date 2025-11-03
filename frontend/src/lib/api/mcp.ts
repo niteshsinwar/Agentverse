@@ -23,6 +23,25 @@ export interface McpValidationResult {
   };
 }
 
+export interface OAuthCheckResult {
+  requires_oauth: boolean;
+  has_token: boolean;
+  auth_store?: string;
+  message: string;
+}
+
+export interface OAuthInitiateResult {
+  success: boolean;
+  mcp_id: string;
+  auth_store: string;
+  message: string;
+  token_info?: {
+    has_access_token: boolean;
+    has_refresh_token: boolean;
+    expires_at?: string;
+  };
+}
+
 export const mcpApi = {
   // MCP Server CRUD operations
   async getMcpServers(): Promise<{mcpServers: Record<string, any>, count: number}> {
@@ -43,6 +62,15 @@ export const mcpApi = {
 
   async deleteMcpServer(mcpId: string): Promise<void> {
     return httpClient.delete<void>(`/api/v1/config/mcp/${mcpId}`);
+  },
+
+  // OAuth operations
+  async checkOAuthRequirement(mcpId: string, data: CreateMcpServerRequest): Promise<OAuthCheckResult> {
+    return httpClient.post<OAuthCheckResult>(`/api/v1/config/mcp/${mcpId}/check-oauth`, data);
+  },
+
+  async initiateOAuth(mcpId: string, data: CreateMcpServerRequest): Promise<OAuthInitiateResult> {
+    return httpClient.post<OAuthInitiateResult>(`/api/v1/config/mcp/${mcpId}/oauth/initiate`, data);
   },
 
   // MCP validation

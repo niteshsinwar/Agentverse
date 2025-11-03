@@ -45,7 +45,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       id: `group-${group.id}`,
       title: group.name,
       subtitle: 'Switch to workspace',
-      icon: <UserGroupIcon className="w-5 h-5 text-blue-500" />,
+      icon: <UserGroupIcon className="w-5 h-5 text-indigo-500" />,
       action: () => {
         onSelectGroup(group);
         onClose();
@@ -103,29 +103,26 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
   }, [isOpen]);
 
   return (
-    <Dialog
-      open={isOpen}
-      onClose={onClose}
-      className="fixed inset-0 z-50 overflow-y-auto"
-    >
-      <div className="flex min-h-screen items-center justify-center p-4">
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+    <Dialog open={isOpen} onClose={onClose} className="fixed inset-0 z-50 overflow-y-auto">
+      <div className="flex min-h-screen items-center justify-center p-4 sm:p-6">
+        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-md" onClick={onClose} />
         
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: -20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: -20 }}
-          className="relative bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-2xl mx-auto border border-gray-200 dark:border-gray-700 overflow-hidden"
+          className="relative w-full max-w-2xl mx-auto overflow-hidden rounded-3xl brand-surface shadow-[0_35px_120px_rgba(15,23,42,0.45)] border border-transparent"
         >
           <Combobox onChange={(command: Command) => command.action()}>
             {/* Header */}
-            <div className="flex items-center px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-              <CommandLineIcon className="w-5 h-5 text-gray-400 mr-3" />
-              <Dialog.Title className="text-lg font-semibold text-gray-900 dark:text-white">
+            <div className="relative flex items-center px-6 py-4 border-b border-transparent">
+              <div className="pointer-events-none absolute inset-0 brand-gradient-soft opacity-40" />
+              <CommandLineIcon className="relative w-5 h-5 text-indigo-500 dark:text-indigo-300 mr-3" />
+              <Dialog.Title className="relative text-lg font-semibold text-slate-900 dark:text-white">
                 Command Palette
               </Dialog.Title>
-              <div className="ml-auto">
-                <kbd className="px-2 py-1 text-xs font-medium text-gray-500 bg-gray-100 dark:bg-gray-700 rounded">
+              <div className="relative ml-auto">
+                <kbd className="px-2 py-1 text-xs font-semibold text-slate-500 bg-white/70 dark:bg-slate-800/70 border border-slate-200/60 dark:border-slate-700/60 rounded-lg">
                   ESC
                 </kbd>
               </div>
@@ -133,9 +130,9 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
 
             {/* Search Input */}
             <div className="relative">
-              <MagnifyingGlassIcon className="absolute left-6 top-4 w-5 h-5 text-gray-400" />
+              <MagnifyingGlassIcon className="absolute left-6 top-4 w-5 h-5 text-slate-400 dark:text-slate-500" />
               <Combobox.Input
-                className="w-full pl-14 pr-6 py-4 text-lg bg-transparent border-0 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none"
+                className="w-full pl-14 pr-6 py-4 text-lg bg-transparent text-slate-900 dark:text-white placeholder:text-slate-400/70 focus:outline-none"
                 placeholder="Search workspaces, agents, and actions..."
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
@@ -144,7 +141,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
             </div>
 
             {/* Results */}
-            <div className="max-h-96 overflow-y-auto border-t border-gray-200 dark:border-gray-700">
+            <div className="max-h-96 overflow-y-auto border-t border-transparent">
               <Combobox.Options static className="py-4">
                 {Object.entries(groupedCommands).map(([category, commands]) => {
                   if (commands.length === 0) return null;
@@ -158,7 +155,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
                   return (
                     <div key={category} className="mb-6 last:mb-0">
                       <div className="px-6 py-2">
-                        <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        <h3 className="text-xs font-semibold uppercase tracking-[0.45em] text-slate-500 dark:text-slate-400">
                           {categoryLabels[category as keyof typeof categoryLabels]}
                         </h3>
                       </div>
@@ -169,10 +166,10 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
                             key={command.id}
                             value={command}
                             className={({ active }) =>
-                              `relative cursor-pointer select-none px-6 py-3 flex items-center space-x-4 transition-colors ${
+                              `relative cursor-pointer select-none px-6 py-3 flex items-center space-x-4 rounded-2xl mx-2 transition-all duration-200 ${
                                 active
-                                  ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-900 dark:text-blue-100'
-                                  : 'text-gray-900 dark:text-white'
+                                  ? 'brand-gradient text-white shadow-lg shadow-indigo-500/25'
+                                  : 'text-slate-900 dark:text-white hover:bg-white/60 dark:hover:bg-slate-800/60'
                               }`
                             }
                           >
@@ -183,16 +180,16 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
                                 </div>
                                 
                                 <div className="flex-1 min-w-0">
-                                  <div className="text-sm font-medium truncate">
+                                  <div className="text-sm font-semibold truncate">
                                     {command.title}
                                   </div>
-                                  <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                                  <div className="text-xs text-slate-500 dark:text-slate-300 truncate">
                                     {command.subtitle}
                                   </div>
                                 </div>
                                 
                                 {active && (
-                                  <ArrowRightIcon className="w-4 h-4 text-blue-500 flex-shrink-0" />
+                                  <ArrowRightIcon className="w-4 h-4 text-white flex-shrink-0" />
                                 )}
                               </>
                             )}
@@ -204,12 +201,12 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
                 })}
 
                 {filteredCommands.length === 0 && (
-                  <div className="px-6 py-12 text-center">
-                    <MagnifyingGlassIcon className="w-8 h-8 text-gray-400 mx-auto mb-4" />
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                  <div className="px-6 py-12 text-center text-slate-500 dark:text-slate-300">
+                    <MagnifyingGlassIcon className="w-8 h-8 text-indigo-400 mx-auto mb-4" />
+                    <p className="text-sm">
                       No results found for "{query}"
                     </p>
-                    <p className="text-xs text-gray-400 mt-1">
+                    <p className="text-xs opacity-70 mt-1">
                       Try searching for workspaces, agents, or actions
                     </p>
                   </div>
@@ -218,15 +215,15 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
             </div>
 
             {/* Footer */}
-            <div className="px-6 py-3 bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
-              <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+            <div className="px-6 py-3 border-t border-transparent bg-white/60 dark:bg-slate-900/60">
+              <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-300">
                 <div className="flex items-center space-x-4">
                   <div className="flex items-center space-x-1">
-                    <kbd className="px-1.5 py-0.5 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-xs">↵</kbd>
+                    <kbd className="px-1.5 py-0.5 bg-white/80 dark:bg-slate-800/70 border border-slate-200/60 dark:border-slate-700/60 rounded-lg text-xs">↵</kbd>
                     <span>to select</span>
                   </div>
                   <div className="flex items-center space-x-1">
-                    <kbd className="px-1.5 py-0.5 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-xs">↑↓</kbd>
+                    <kbd className="px-1.5 py-0.5 bg-white/80 dark:bg-slate-800/70 border border-slate-200/60 dark:border-slate-700/60 rounded-lg text-xs">↑↓</kbd>
                     <span>to navigate</span>
                   </div>
                 </div>

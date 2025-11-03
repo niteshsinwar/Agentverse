@@ -67,6 +67,9 @@ export const ToolsManagementPanel: React.FC<ToolsManagementPanelProps> = ({
     'custom'
   ];
 
+  const labelClass = 'block text-sm font-semibold text-slate-600 dark:text-slate-300 mb-2';
+  const inputClass = 'brand-field w-full rounded-xl px-3 py-2 text-sm';
+
   useEffect(() => {
     if (isOpen) {
       loadTools();
@@ -230,7 +233,7 @@ export const ToolsManagementPanel: React.FC<ToolsManagementPanelProps> = ({
       <button
         onClick={loadTools}
         disabled={loading}
-        className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 disabled:opacity-50 transition-colors"
+        className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 disabled:opacity-50 transition-colors"
         title="Refresh tools"
       >
         <ArrowPathIcon className={`h-5 w-5 ${loading ? 'animate-spin' : ''}`} />
@@ -253,21 +256,21 @@ export const ToolsManagementPanel: React.FC<ToolsManagementPanelProps> = ({
       onClose={onClose}
       title="Tools Management"
       subtitle="Create, validate, and maintain automation tools"
-      icon={<CodeBracketIcon className="h-6 w-6 text-blue-600" />}
+      icon={<CodeBracketIcon className="h-6 w-6 text-sky-500" />}
       actions={headerActions}
       size="xlarge"
-      headerClassName="border-b border-gray-200 dark:border-gray-700"
+      headerClassName="border-b border-transparent"
       headerBackgroundClassName={null}
-      containerClassName="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-2xl"
+      containerClassName="brand-surface-strong rounded-3xl border border-transparent shadow-2xl"
       contentClassName="flex flex-1 min-h-0"
     >
       <div className="flex-1 flex flex-col min-h-0">
         <Tab.Group vertical className="flex-1 flex flex-col min-h-0">
           <div className="flex flex-1 min-h-0">
             {/* Tools List */}
-            <div className="w-[400px] min-w-[400px] max-w-[400px] border-r border-gray-200 dark:border-gray-700 flex flex-col min-h-0">
-              <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+            <div className="w-[400px] min-w-[400px] max-w-[400px] border-r border-transparent flex flex-col min-h-0">
+              <div className="p-4 border-b border-transparent">
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
                   Available Tools ({Object.keys(tools).length})
                 </h3>
               </div>
@@ -275,8 +278,8 @@ export const ToolsManagementPanel: React.FC<ToolsManagementPanelProps> = ({
               <div className="flex-1 overflow-y-auto">
                 {loading ? (
                   <div className="p-6 text-center">
-                    <ArrowPathIcon className="h-8 w-8 animate-spin mx-auto text-blue-600 mb-2" />
-                    <p className="text-gray-600 dark:text-gray-400">Loading tools...</p>
+                    <ArrowPathIcon className="h-8 w-8 animate-spin mx-auto text-sky-500 mb-2" />
+                    <p className="text-slate-600 dark:text-slate-400">Loading tools...</p>
                   </div>
                 ) : Object.keys(tools).length === 0 ? (
                   <BrandedCard variant="glass" className="p-6 text-center m-4">
@@ -297,26 +300,26 @@ export const ToolsManagementPanel: React.FC<ToolsManagementPanelProps> = ({
                     {Object.entries(tools).filter(([toolId, tool]) => toolId && tool).map(([toolId, tool]) => (
                       <div
                         key={`tool-${toolId}`}
-                        className={`p-3 rounded-lg border cursor-pointer transition-all ${
+                        className={`p-3 rounded-2xl border cursor-pointer transition-all ${
                           selectedTool === toolId
-                            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                            : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                            ? 'border-transparent brand-gradient text-white shadow-lg shadow-sky-500/25'
+                            : 'border-transparent hover:bg-white/60 dark:hover:bg-slate-800/60'
                         }`}
                         onClick={() => setSelectedTool(toolId)}
                       >
                         <div className="flex items-start justify-between">
                           <div className="flex-1 min-w-0">
-                            <h4 className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                            <h4 className={`text-sm font-medium truncate ${selectedTool === toolId ? 'text-white' : 'text-slate-900 dark:text-white'}`}>
                               {tool.name}
                             </h4>
-                            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">
+                            <p className={`text-xs mt-1 line-clamp-2 ${selectedTool === toolId ? 'text-white/80' : 'text-slate-600 dark:text-slate-400'}`}>
                               {tool.description}
                             </p>
                             <div className="flex items-center space-x-2 mt-2">
-                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
+                              <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${selectedTool === toolId ? 'bg-white/20 text-white' : 'brand-chip'}`}>
                                 {tool.category}
                               </span>
-                              <span className="text-xs text-gray-500 dark:text-gray-400">
+                              <span className={`text-xs ${selectedTool === toolId ? 'text-white/80' : 'text-slate-500 dark:text-slate-400'}`}>
                                 {tool.functions.length} functions
                               </span>
                             </div>
@@ -327,7 +330,7 @@ export const ToolsManagementPanel: React.FC<ToolsManagementPanelProps> = ({
                                 e.stopPropagation();
                                 handleEditTool(toolId);
                               }}
-                              className="p-1 text-gray-400 hover:text-blue-600"
+                              className="p-1 text-slate-400 hover:text-sky-500"
                               title="Edit tool"
                             >
                               <PencilIcon className="h-4 w-4" />
@@ -337,7 +340,7 @@ export const ToolsManagementPanel: React.FC<ToolsManagementPanelProps> = ({
                                 e.stopPropagation();
                                 handleDeleteTool(toolId);
                               }}
-                              className="p-1 text-gray-400 hover:text-red-600"
+                              className="p-1 text-slate-400 hover:text-red-600"
                               title="Delete tool"
                             >
                               <TrashIcon className="h-4 w-4" />
@@ -356,21 +359,21 @@ export const ToolsManagementPanel: React.FC<ToolsManagementPanelProps> = ({
               {(isEditing || isCreating) ? (
                 <div className="flex-1 flex flex-col">
                   {/* Editor Header */}
-                  <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+                  <div className="p-4 border-b border-transparent">
                     <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                      <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
                         {isCreating ? 'Create New Tool' : 'Edit Tool'}
                       </h3>
                       <div className="flex items-center space-x-2">
                         <button
                           onClick={resetForm}
-                          className="px-3 py-1 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
+                          className="px-3 py-1 text-slate-600 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
                         >
                           Cancel
                         </button>
                         <button
                           onClick={handleSaveTool}
-                          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg"
+                          className="px-4 py-2 brand-cta rounded-xl"
                         >
                           {isCreating ? 'Create Tool' : 'Save Changes'}
                         </button>
@@ -381,28 +384,28 @@ export const ToolsManagementPanel: React.FC<ToolsManagementPanelProps> = ({
                   {/* Form */}
                   <div className="flex-1 flex flex-col min-h-0 overflow-y-auto">
                     {/* Basic Fields - Fixed at top, scrollable */}
-                    <div className="flex-shrink-0 p-4 space-y-4 border-b border-gray-200 dark:border-gray-700">
+                    <div className="flex-shrink-0 p-4 space-y-4 border-b border-transparent">
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          <label className={labelClass}>
                             Tool Name *
                           </label>
                           <input
                             type="text"
                             value={formData.name}
                             onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                            className={`${inputClass} focus:ring-2 focus:ring-sky-500 focus:border-transparent`}
                             placeholder="Enter tool name"
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          <label className={labelClass}>
                             Category
                           </label>
                           <select
                             value={formData.category}
                             onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                            className={`${inputClass} focus:ring-2 focus:ring-sky-500 focus:border-transparent`}
                           >
                             <option value="">Select category</option>
                             {categories.map(cat => (
@@ -415,28 +418,28 @@ export const ToolsManagementPanel: React.FC<ToolsManagementPanelProps> = ({
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        <label className={labelClass}>
                           Description *
                         </label>
                         <textarea
                           value={formData.description}
                           onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
                           rows={2}
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white resize-none"
+                          className={`${inputClass} focus:ring-2 focus:ring-sky-500 focus:border-transparent resize-none`}
                           placeholder="Describe what this tool does"
                         />
                       </div>
 
                       {formData.functions.length > 0 && (
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          <label className={labelClass}>
                             Functions Found
                           </label>
                           <div className="flex flex-wrap gap-2">
                             {formData.functions.filter(func => func && func.trim()).map((func, index) => (
                               <span
                                 key={`func-${func}-${index}`}
-                                className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400"
+                                className="inline-flex items-center px-2 py-1 rounded-full text-xs border border-emerald-300/40 dark:border-emerald-600/40 bg-gradient-to-r from-emerald-500/15 to-teal-500/15 text-emerald-600 dark:text-emerald-300"
                               >
                                 <CheckCircleIcon className="h-3 w-3 mr-1" />
                                 {func}
@@ -449,16 +452,16 @@ export const ToolsManagementPanel: React.FC<ToolsManagementPanelProps> = ({
 
                     {/* Code Editor - Takes remaining space */}
                     <div className="flex-1 flex flex-col min-h-0">
-                      <div className="flex-shrink-0 p-4 border-b border-gray-200 dark:border-gray-700">
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      <div className="flex-shrink-0 p-4 border-b border-transparent">
+                        <label className={labelClass}>
                           Python Code *
                         </label>
                       </div>
-                      <div className="flex-1 bg-gray-900 min-h-0">
+                      <div className="flex-1 bg-slate-950 min-h-0 rounded-t-3xl">
                         <textarea
                           value={formData.code}
                           onChange={(e) => handleCodeChange(e.target.value)}
-                          className="w-full h-full p-4 bg-gray-900 text-gray-100 font-mono text-sm border-none outline-none resize-none"
+                          className="w-full h-full p-4 bg-slate-900 text-slate-100 font-mono text-sm border-none outline-none resize-none"
                           placeholder="# Write your Python tool code here
 def example_function():
     '''
@@ -473,19 +476,19 @@ def example_function():
               ) : selectedTool && tools[selectedTool] ? (
                 <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
                   {/* Tool Details Header */}
-                  <div className="flex-shrink-0 p-4 border-b border-gray-200 dark:border-gray-700">
+                  <div className="flex-shrink-0 p-4 border-b border-transparent">
                     <div className="flex items-center justify-between">
                       <div>
-                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                        <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
                           {tools[selectedTool].name}
                         </h3>
-                        <p className="text-gray-600 dark:text-gray-400 mt-1">
+                        <p className="text-slate-600 dark:text-slate-400 mt-1">
                           {tools[selectedTool].description}
                         </p>
                       </div>
                       <button
                         onClick={() => handleEditTool(selectedTool)}
-                        className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
+                        className="flex items-center space-x-2 brand-cta px-4 py-2 rounded-xl"
                       >
                         <PencilIcon className="h-4 w-4" />
                         <span>Edit Tool</span>
@@ -498,23 +501,23 @@ def example_function():
                     <div className="p-4 space-y-6">
                       {/* Metadata */}
                       <div>
-                        <h4 className="font-medium text-gray-900 dark:text-white mb-3">Tool Information</h4>
+                        <h4 className="font-medium text-slate-900 dark:text-white mb-3">Tool Information</h4>
                         <div className="grid grid-cols-2 gap-4">
                           <div>
-                            <span className="text-sm text-gray-600 dark:text-gray-400">Category</span>
+                            <span className="text-sm text-slate-600 dark:text-slate-400">Category</span>
                             <p className="mt-1">
-                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs brand-chip">
                                 {tools[selectedTool].category}
                               </span>
                             </p>
                           </div>
                           <div>
-                            <span className="text-sm text-gray-600 dark:text-gray-400">Functions</span>
+                            <span className="text-sm text-slate-600 dark:text-slate-400">Functions</span>
                             <p className="mt-1 flex flex-wrap gap-1">
                               {tools[selectedTool].functions.filter(func => func && func.trim()).map((func, index) => (
                                 <span
                                   key={`selected-func-${func}-${index}`}
-                                  className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400"
+                                  className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-gradient-to-r from-slate-400/20 to-sky-500/20 text-sky-600 dark:text-sky-300 border border-sky-300/40 dark:border-sky-600/40"
                                 >
                                   {func}
                                 </span>
@@ -527,20 +530,20 @@ def example_function():
                       {/* Code Preview */}
                       <div>
                         <div className="flex items-center justify-between mb-3">
-                          <h4 className="font-medium text-gray-900 dark:text-white">Python Code</h4>
+                          <h4 className="font-medium text-slate-900 dark:text-white">Python Code</h4>
                           <button
                             onClick={() => {
                               navigator.clipboard.writeText(tools[selectedTool].code);
                               toast.success('Code copied to clipboard');
                             }}
-                            className="flex items-center space-x-1 text-sm text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
+                            className="flex items-center space-x-1 text-sm text-slate-600 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
                           >
                             <DocumentDuplicateIcon className="h-4 w-4" />
                             <span>Copy</span>
                           </button>
                         </div>
-                        <div className="bg-gray-900 rounded-lg overflow-hidden">
-                          <pre className="p-4 text-gray-100 text-sm overflow-x-auto">
+                        <div className="bg-slate-900 rounded-lg overflow-hidden">
+                          <pre className="p-4 text-slate-100 text-sm overflow-x-auto">
                             <code>{tools[selectedTool].code}</code>
                           </pre>
                         </div>
@@ -551,16 +554,16 @@ def example_function():
               ) : (
                 <div className="flex-1 flex items-center justify-center">
                   <div className="text-center">
-                    <CodeBracketIcon className="h-16 w-16 mx-auto text-gray-400 mb-4" />
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                    <CodeBracketIcon className="h-16 w-16 mx-auto text-slate-400 mb-4" />
+                    <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
                       Select a tool to view details
                     </h3>
-                    <p className="text-gray-600 dark:text-gray-400 mb-4">
+                    <p className="text-slate-600 dark:text-slate-400 mb-4">
                       Choose a tool from the list or create a new one
                     </p>
                     <button
                       onClick={handleCreateNew}
-                      className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg mx-auto"
+                      className="flex items-center space-x-2 brand-cta px-4 py-2 rounded-xl mx-auto"
                     >
                       <PlusIcon className="h-4 w-4" />
                       <span>Create New Tool</span>

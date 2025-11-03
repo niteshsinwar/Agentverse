@@ -399,7 +399,21 @@ export interface FileUpload {
 // UI & COMPONENT TYPES
 // ============================================================================
 
-export type Theme = 'light' | 'dark' | 'auto' | 'system';
+export type Theme =
+  | 'light'
+  | 'dark'
+  | 'auto'
+  | 'system'
+  | 'sentinel'
+  | 'carbon'
+  | 'arctic'
+  | 'quantum'
+  | 'titan'
+  | 'sci-fi-indigo'
+  | 'carpet-orange'
+  | 'royal-dark-green'
+  | 'bloody-reddish'
+  | 'party-yellow';
 
 export interface UserPreferences {
   theme: Theme;

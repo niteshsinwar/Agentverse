@@ -24,6 +24,7 @@ export interface AppState {
 
   // Theme
   theme: Theme;
+  themeMode: 'system' | 'light' | 'dark';
 
   // Loading states
   appLoading: boolean;
@@ -54,6 +55,7 @@ export interface AppActions {
 
   // Theme Actions
   setTheme: (theme: Theme) => void;
+  setThemeMode: (mode: 'system' | 'light' | 'dark') => void;
 
   // Loading Actions
   setAppLoading: (loading: boolean) => void;
@@ -88,6 +90,7 @@ const initialState: AppState = {
 
   // Theme
   theme: 'system',
+  themeMode: 'system',
 
   // Loading states
   appLoading: true,
@@ -130,6 +133,7 @@ export const useAppStore = create<AppStore>()(
 
       // Theme Actions
       setTheme: (theme) => set({ theme }),
+      setThemeMode: (mode) => set({ themeMode: mode }),
 
       // Loading Actions
       setAppLoading: (loading) => set({ appLoading: loading }),
@@ -158,6 +162,7 @@ export const useAppStore = create<AppStore>()(
         // Only persist UI preferences, not loading states
         sidebarExpanded: state.sidebarExpanded,
         theme: state.theme,
+        themeMode: state.themeMode,
         currentView: state.currentView,
       }),
     }

@@ -42,20 +42,20 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
     >
       <defs>
         <linearGradient id="primaryGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#6366f1" stopOpacity="1" />
-          <stop offset="35%" stopColor="#8b5cf6" stopOpacity="1" />
-          <stop offset="70%" stopColor="#ec4899" stopOpacity="1" />
-          <stop offset="100%" stopColor="#f97316" stopOpacity="1" />
+          <stop offset="0%" stopColor="#0f172a" stopOpacity="1" />
+          <stop offset="35%" stopColor="#1d4ed8" stopOpacity="1" />
+          <stop offset="70%" stopColor="#0ea5e9" stopOpacity="1" />
+          <stop offset="100%" stopColor="#22d3ee" stopOpacity="1" />
         </linearGradient>
         <linearGradient id="accentGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#06b6d4" stopOpacity="1" />
-          <stop offset="50%" stopColor="#3b82f6" stopOpacity="1" />
-          <stop offset="100%" stopColor="#6366f1" stopOpacity="1" />
+          <stop offset="0%" stopColor="#22d3ee" stopOpacity="1" />
+          <stop offset="50%" stopColor="#38bdf8" stopOpacity="1" />
+          <stop offset="100%" stopColor="#60a5fa" stopOpacity="1" />
         </linearGradient>
         <linearGradient id="networkGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#10b981" stopOpacity="0.9" />
-          <stop offset="50%" stopColor="#06b6d4" stopOpacity="0.9" />
-          <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0.9" />
+          <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.9" />
+          <stop offset="50%" stopColor="#22d3ee" stopOpacity="0.9" />
+          <stop offset="100%" stopColor="#1d4ed8" stopOpacity="0.9" />
         </linearGradient>
         <filter id="glow">
           <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
@@ -156,11 +156,11 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
       </div>
       {showText && (
         <div className="flex flex-col">
-          <span className={`font-bold bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 bg-clip-text text-transparent ${getTextSize()}`}>
+          <span className={`font-bold bg-gradient-to-r from-sky-400 via-blue-500 to-indigo-600 bg-clip-text text-transparent ${getTextSize()}`}>
             AgentVerse
           </span>
           {size !== 'sm' && (
-            <span className="text-xs text-gray-500 dark:text-gray-400 font-medium tracking-wider uppercase">
+            <span className="text-xs text-slate-500 dark:text-slate-400 font-medium tracking-wider uppercase">
               Multiverse of Agents
             </span>
           )}

@@ -304,17 +304,17 @@ export const ComprehensiveLogPanel: React.FC<ComprehensiveLogPanelProps> = ({
         </div>
 
         {/* Tab Navigation */}
-        <div className="border-b border-violet-200/30 dark:border-violet-800/30">
+        <div className="border-b border-transparent">
           <Tab.Group selectedIndex={selectedTab} onChange={setSelectedTab}>
-            <Tab.List className="flex">
+            <Tab.List className="flex rounded-2xl brand-glass overflow-hidden mx-4">
               {tabs.map((tab, _index) => (
                 <Tab
                   key={tab.name}
                   className={({ selected }) =>
                     `flex-1 px-6 py-4 text-sm font-semibold focus:outline-none transition-all duration-200 ${
                       selected
-                        ? 'text-indigo-600 dark:text-indigo-400 border-b-2 border-indigo-600 dark:border-indigo-400 bg-gradient-to-r from-indigo-50/50 to-purple-50/30 dark:from-indigo-950/30 dark:to-purple-950/20'
-                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-violet-50/50 dark:hover:bg-violet-950/30'
+                        ? 'brand-gradient text-white shadow-lg shadow-indigo-500/30'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-slate-800/60'
                     }`
                   }
                 >

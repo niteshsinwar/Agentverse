@@ -69,7 +69,7 @@ export const HelpPanel: React.FC<HelpPanelProps> = ({ isOpen, onClose }) => {
 
           <div className="grid md:grid-cols-2 gap-6">
             <BrandedCard variant="glass" className="p-6">
-              <CpuChipIcon className="h-8 w-8 text-indigo-600 mb-3" />
+              <CpuChipIcon className="h-8 w-8 text-sky-600 mb-3" />
               <h3 className="font-semibold text-slate-800 dark:text-slate-200 mb-2">Multi-Agent Orchestration</h3>
               <p className="text-sm text-slate-600 dark:text-slate-400">
                 Create sophisticated workflows with multiple AI agents working together using LangGraph and LangChain integration.
@@ -77,7 +77,7 @@ export const HelpPanel: React.FC<HelpPanelProps> = ({ isOpen, onClose }) => {
             </BrandedCard>
 
             <BrandedCard variant="glass" className="p-6">
-              <WrenchScrewdriverIcon className="h-8 w-8 text-purple-600 mb-3" />
+              <WrenchScrewdriverIcon className="h-8 w-8 text-sky-600 mb-3" />
               <h3 className="font-semibold text-slate-800 dark:text-slate-200 mb-2">Tool Integration</h3>
               <p className="text-sm text-slate-600 dark:text-slate-400">
                 Integrate custom tools and external APIs to extend agent capabilities with Python-based tool definitions.
@@ -93,7 +93,7 @@ export const HelpPanel: React.FC<HelpPanelProps> = ({ isOpen, onClose }) => {
             </BrandedCard>
 
             <BrandedCard variant="glass" className="p-6">
-              <DocumentTextIcon className="h-8 w-8 text-indigo-600 mb-3" />
+              <DocumentTextIcon className="h-8 w-8 text-sky-600 mb-3" />
               <h3 className="font-semibold text-slate-800 dark:text-slate-200 mb-2">Document Intelligence</h3>
               <p className="text-sm text-slate-600 dark:text-slate-400">
                 Upload and analyze documents with AI-powered insights and multi-format support including PDFs, images, and more.
@@ -103,24 +103,24 @@ export const HelpPanel: React.FC<HelpPanelProps> = ({ isOpen, onClose }) => {
 
           <BrandedCard variant="glass" className="p-6">
             <h3 className="font-semibold text-slate-800 dark:text-slate-200 mb-4 flex items-center">
-              <RocketLaunchIcon className="h-5 w-5 mr-2 text-indigo-600" />
+              <RocketLaunchIcon className="h-5 w-5 mr-2 text-sky-600" />
               Quick Start Guide
             </h3>
             <ol className="space-y-3 text-sm text-slate-600 dark:text-slate-400">
               <li className="flex items-start">
-                <span className="bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-400 rounded-full w-6 h-6 flex items-center justify-center text-xs font-semibold mr-3 mt-0.5">1</span>
+                <span className="bg-sky-100 dark:bg-sky-900 text-sky-600 dark:text-sky-400 rounded-full w-6 h-6 flex items-center justify-center text-xs font-semibold mr-3 mt-0.5">1</span>
                 <span>Create a conversation group by clicking "+" in the sidebar Groups section</span>
               </li>
               <li className="flex items-start">
-                <span className="bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-400 rounded-full w-6 h-6 flex items-center justify-center text-xs font-semibold mr-3 mt-0.5">2</span>
+                <span className="bg-sky-100 dark:bg-sky-900 text-sky-600 dark:text-sky-400 rounded-full w-6 h-6 flex items-center justify-center text-xs font-semibold mr-3 mt-0.5">2</span>
                 <span>Switch to "Agent Management" view and create your first AI agent</span>
               </li>
               <li className="flex items-start">
-                <span className="bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-400 rounded-full w-6 h-6 flex items-center justify-center text-xs font-semibold mr-3 mt-0.5">3</span>
+                <span className="bg-sky-100 dark:bg-sky-900 text-sky-600 dark:text-sky-400 rounded-full w-6 h-6 flex items-center justify-center text-xs font-semibold mr-3 mt-0.5">3</span>
                 <span>Return to "Chat" view, select your group, and add your agent</span>
               </li>
               <li className="flex items-start">
-                <span className="bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-400 rounded-full w-6 h-6 flex items-center justify-center text-xs font-semibold mr-3 mt-0.5">4</span>
+                <span className="bg-sky-100 dark:bg-sky-900 text-sky-600 dark:text-sky-400 rounded-full w-6 h-6 flex items-center justify-center text-xs font-semibold mr-3 mt-0.5">4</span>
                 <span>Start messaging agents and drag & drop documents for analysis</span>
               </li>
             </ol>
@@ -145,24 +145,24 @@ export const HelpPanel: React.FC<HelpPanelProps> = ({ isOpen, onClose }) => {
 
           <BrandedCard variant="glass" className="p-6">
             <h3 className="font-semibold text-slate-800 dark:text-slate-200 mb-4 flex items-center">
-              <PlusIcon className="h-5 w-5 mr-2 text-indigo-600" />
+              <PlusIcon className="h-5 w-5 mr-2 text-sky-600" />
               Creating Your First Group
             </h3>
             <ol className="space-y-3 text-sm text-slate-600 dark:text-slate-400">
               <li className="flex items-start">
-                <span className="bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-400 rounded-full w-6 h-6 flex items-center justify-center text-xs font-semibold mr-3 mt-0.5">1</span>
+                <span className="bg-sky-100 dark:bg-sky-900 text-sky-600 dark:text-sky-400 rounded-full w-6 h-6 flex items-center justify-center text-xs font-semibold mr-3 mt-0.5">1</span>
                 <span>Look for the "Groups" section in the left sidebar</span>
               </li>
               <li className="flex items-start">
-                <span className="bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-400 rounded-full w-6 h-6 flex items-center justify-center text-xs font-semibold mr-3 mt-0.5">2</span>
+                <span className="bg-sky-100 dark:bg-sky-900 text-sky-600 dark:text-sky-400 rounded-full w-6 h-6 flex items-center justify-center text-xs font-semibold mr-3 mt-0.5">2</span>
                 <span>Click the "+" (plus) button next to "Groups"</span>
               </li>
               <li className="flex items-start">
-                <span className="bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-400 rounded-full w-6 h-6 flex items-center justify-center text-xs font-semibold mr-3 mt-0.5">3</span>
+                <span className="bg-sky-100 dark:bg-sky-900 text-sky-600 dark:text-sky-400 rounded-full w-6 h-6 flex items-center justify-center text-xs font-semibold mr-3 mt-0.5">3</span>
                 <span>Enter a descriptive name (e.g., "Marketing Team", "Code Review")</span>
               </li>
               <li className="flex items-start">
-                <span className="bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-400 rounded-full w-6 h-6 flex items-center justify-center text-xs font-semibold mr-3 mt-0.5">4</span>
+                <span className="bg-sky-100 dark:bg-sky-900 text-sky-600 dark:text-sky-400 rounded-full w-6 h-6 flex items-center justify-center text-xs font-semibold mr-3 mt-0.5">4</span>
                 <span>Press Enter or click Create - your group appears in the sidebar</span>
               </li>
             </ol>
@@ -258,7 +258,7 @@ export const HelpPanel: React.FC<HelpPanelProps> = ({ isOpen, onClose }) => {
 
           <BrandedCard variant="glass" className="p-6">
             <h3 className="font-semibold text-slate-800 dark:text-slate-200 mb-4 flex items-center">
-              <PlayIcon className="h-5 w-5 mr-2 text-indigo-600" />
+              <PlayIcon className="h-5 w-5 mr-2 text-sky-600" />
               Step 1: Access Agent Management
             </h3>
             <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
@@ -347,19 +347,19 @@ export const HelpPanel: React.FC<HelpPanelProps> = ({ isOpen, onClose }) => {
             </h3>
             <ol className="space-y-3 text-sm text-slate-600 dark:text-slate-400">
               <li className="flex items-start">
-                <span className="bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-400 rounded-full w-6 h-6 flex items-center justify-center text-xs font-semibold mr-3 mt-0.5">1</span>
+                <span className="bg-sky-100 dark:bg-sky-900 text-sky-600 dark:text-sky-400 rounded-full w-6 h-6 flex items-center justify-center text-xs font-semibold mr-3 mt-0.5">1</span>
                 <span>Test your agent configuration with sample prompts</span>
               </li>
               <li className="flex items-start">
-                <span className="bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-400 rounded-full w-6 h-6 flex items-center justify-center text-xs font-semibold mr-3 mt-0.5">2</span>
+                <span className="bg-sky-100 dark:bg-sky-900 text-sky-600 dark:text-sky-400 rounded-full w-6 h-6 flex items-center justify-center text-xs font-semibold mr-3 mt-0.5">2</span>
                 <span>Verify tool integrations work as expected</span>
               </li>
               <li className="flex items-start">
-                <span className="bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-400 rounded-full w-6 h-6 flex items-center justify-center text-xs font-semibold mr-3 mt-0.5">3</span>
+                <span className="bg-sky-100 dark:bg-sky-900 text-sky-600 dark:text-sky-400 rounded-full w-6 h-6 flex items-center justify-center text-xs font-semibold mr-3 mt-0.5">3</span>
                 <span>Save your agent configuration</span>
               </li>
               <li className="flex items-start">
-                <span className="bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-400 rounded-full w-6 h-6 flex items-center justify-center text-xs font-semibold mr-3 mt-0.5">4</span>
+                <span className="bg-sky-100 dark:bg-sky-900 text-sky-600 dark:text-sky-400 rounded-full w-6 h-6 flex items-center justify-center text-xs font-semibold mr-3 mt-0.5">4</span>
                 <span>Deploy to a conversation group for use</span>
               </li>
             </ol>
@@ -467,13 +467,13 @@ export const HelpPanel: React.FC<HelpPanelProps> = ({ isOpen, onClose }) => {
               <div>
                 <h4 className="font-medium text-slate-700 dark:text-slate-300 mb-2">Tool Categories Available</h4>
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg">
-                    <h5 className="font-medium text-indigo-800 dark:text-indigo-200">File Operations</h5>
-                    <p className="text-xs text-indigo-600 dark:text-indigo-300">Read, write, manage files</p>
+                  <div className="p-3 bg-sky-50 dark:bg-sky-900/20 rounded-lg">
+                    <h5 className="font-medium text-sky-800 dark:text-sky-200">File Operations</h5>
+                    <p className="text-xs text-sky-600 dark:text-sky-300">Read, write, manage files</p>
                   </div>
-                  <div className="p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
-                    <h5 className="font-medium text-purple-800 dark:text-purple-200">Web & API</h5>
-                    <p className="text-xs text-purple-600 dark:text-purple-300">Search, scrape, API calls</p>
+                  <div className="p-3 bg-sky-50 dark:bg-sky-900/20 rounded-lg">
+                    <h5 className="font-medium text-sky-800 dark:text-sky-200">Web & API</h5>
+                    <p className="text-xs text-sky-600 dark:text-sky-300">Search, scrape, API calls</p>
                   </div>
                   <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
                     <h5 className="font-medium text-green-800 dark:text-green-200">Data Processing</h5>
@@ -530,13 +530,13 @@ export const HelpPanel: React.FC<HelpPanelProps> = ({ isOpen, onClose }) => {
                   Switch between the two main views using the toggle at the top:
                 </p>
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg">
-                    <h5 className="font-medium text-indigo-800 dark:text-indigo-200">Chat View</h5>
-                    <p className="text-xs text-indigo-600 dark:text-indigo-300">Talk with agents in groups</p>
+                  <div className="p-3 bg-sky-50 dark:bg-sky-900/20 rounded-lg">
+                    <h5 className="font-medium text-sky-800 dark:text-sky-200">Chat View</h5>
+                    <p className="text-xs text-sky-600 dark:text-sky-300">Talk with agents in groups</p>
                   </div>
-                  <div className="p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
-                    <h5 className="font-medium text-purple-800 dark:text-purple-200">Agent Management</h5>
-                    <p className="text-xs text-purple-600 dark:text-purple-300">Create and configure agents</p>
+                  <div className="p-3 bg-sky-50 dark:bg-sky-900/20 rounded-lg">
+                    <h5 className="font-medium text-sky-800 dark:text-sky-200">Agent Management</h5>
+                    <p className="text-xs text-sky-600 dark:text-sky-300">Create and configure agents</p>
                   </div>
                 </div>
               </div>
@@ -696,18 +696,18 @@ export const HelpPanel: React.FC<HelpPanelProps> = ({ isOpen, onClose }) => {
               It enables secure, standardized connections between AI agents and various services.
             </p>
             <div className="grid md:grid-cols-2 gap-4">
-              <div className="p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg">
-                <h4 className="font-medium text-indigo-800 dark:text-indigo-200 mb-2">Key Benefits</h4>
-                <ul className="text-sm text-indigo-700 dark:text-indigo-300 space-y-1">
+              <div className="p-4 bg-sky-50 dark:bg-sky-900/20 rounded-lg">
+                <h4 className="font-medium text-sky-800 dark:text-sky-200 mb-2">Key Benefits</h4>
+                <ul className="text-sm text-sky-700 dark:text-sky-300 space-y-1">
                   <li>• Standardized data access</li>
                   <li>• Secure authentication</li>
                   <li>• Real-time updates</li>
                   <li>• Extensible architecture</li>
                 </ul>
               </div>
-              <div className="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
-                <h4 className="font-medium text-purple-800 dark:text-purple-200 mb-2">Use Cases</h4>
-                <ul className="text-sm text-purple-700 dark:text-purple-300 space-y-1">
+              <div className="p-4 bg-sky-50 dark:bg-sky-900/20 rounded-lg">
+                <h4 className="font-medium text-sky-800 dark:text-sky-200 mb-2">Use Cases</h4>
+                <ul className="text-sm text-sky-700 dark:text-sky-300 space-y-1">
                   <li>• Database connections</li>
                   <li>• API integrations</li>
                   <li>• File system access</li>
@@ -750,16 +750,16 @@ export const HelpPanel: React.FC<HelpPanelProps> = ({ isOpen, onClose }) => {
               Popular MCP Servers
             </h3>
             <div className="grid md:grid-cols-2 gap-4">
-              <div className="p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg">
-                <h4 className="font-medium text-indigo-800 dark:text-indigo-200 mb-2">File System Access</h4>
-                <p className="text-sm text-indigo-700 dark:text-indigo-300">
+              <div className="p-4 bg-sky-50 dark:bg-sky-900/20 rounded-lg">
+                <h4 className="font-medium text-sky-800 dark:text-sky-200 mb-2">File System Access</h4>
+                <p className="text-sm text-sky-700 dark:text-sky-300">
                   Enables agents to read, write, and manage files securely within designated directories.
                 </p>
               </div>
 
-              <div className="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
-                <h4 className="font-medium text-purple-800 dark:text-purple-200 mb-2">Database Connections</h4>
-                <p className="text-sm text-purple-700 dark:text-purple-300">
+              <div className="p-4 bg-sky-50 dark:bg-sky-900/20 rounded-lg">
+                <h4 className="font-medium text-sky-800 dark:text-sky-200 mb-2">Database Connections</h4>
+                <p className="text-sm text-sky-700 dark:text-sky-300">
                   Connect agents to databases for data queries, analysis, and operations.
                 </p>
               </div>
@@ -831,14 +831,14 @@ export const HelpPanel: React.FC<HelpPanelProps> = ({ isOpen, onClose }) => {
       onClose={onClose}
       title="Help & Documentation"
       subtitle="Comprehensive guides for mastering AgentVerse"
-      icon={<QuestionMarkCircleIcon className="h-8 w-8 text-indigo-600" />}
+      icon={<QuestionMarkCircleIcon className="h-8 w-8 text-sky-600" />}
       size="full"
       contentClassName="flex flex-col overflow-hidden"
     >
       <div className="flex-1 flex min-h-0 overflow-hidden">
         {/* Sidebar Navigation */}
-        <div className="w-64 border-r border-gray-200 dark:border-gray-700 flex flex-col min-h-0 overflow-hidden">
-          <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-indigo-300 dark:scrollbar-thumb-indigo-600 scrollbar-track-transparent">
+        <div className="w-64 border-r border-slate-200 dark:border-slate-700 flex flex-col min-h-0 overflow-hidden">
+          <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-sky-300 dark:scrollbar-thumb-sky-600 scrollbar-track-transparent">
             <div className="p-4">
               <nav className="space-y-2">
                 {helpSections.map((section) => {
@@ -854,8 +854,8 @@ export const HelpPanel: React.FC<HelpPanelProps> = ({ isOpen, onClose }) => {
                         }}
                         className={`w-full flex items-center justify-between p-3 text-left rounded-lg transition-colors ${
                           activeSection === section.id
-                            ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300'
-                            : 'hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
+                            ? 'bg-sky-50 dark:bg-sky-900/30 text-sky-700 dark:text-sky-300'
+                            : 'hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300'
                         }`}
                       >
                         <div className="flex items-center space-x-3">
@@ -869,7 +869,7 @@ export const HelpPanel: React.FC<HelpPanelProps> = ({ isOpen, onClose }) => {
                                 </BrandedBadge>
                               )}
                             </div>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 text-left">
+                            <p className="text-xs text-slate-500 dark:text-slate-400 text-left">
                               {section.description}
                             </p>
                           </div>
@@ -899,7 +899,7 @@ export const HelpPanel: React.FC<HelpPanelProps> = ({ isOpen, onClose }) => {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
                   transition={{ duration: 0.2 }}
-                  className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-indigo-300 dark:scrollbar-thumb-indigo-600 scrollbar-track-transparent p-6"
+                  className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-sky-300 dark:scrollbar-thumb-sky-600 scrollbar-track-transparent p-6"
                 >
                   {section.content}
                 </motion.div>

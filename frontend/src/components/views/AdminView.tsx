@@ -36,7 +36,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ adminTab, onTabChange }) =
   ];
 
   const mockGroups = [
-    { id: '1', name: 'Engineering', description: 'Software development team', color: 'blue', memberCount: 3 },
+    { id: '1', name: 'Engineering', description: 'Software development team', color: 'indigo', memberCount: 3 },
     { id: '2', name: 'Data Science', description: 'ML and AI research', color: 'purple', memberCount: 2 },
     { id: '3', name: 'Product', description: 'Product management', color: 'green', memberCount: 3 },
     { id: '4', name: 'Design', description: 'UX/UI design team', color: 'pink', memberCount: 0 },
@@ -76,59 +76,59 @@ export const AdminView: React.FC<AdminViewProps> = ({ adminTab, onTabChange }) =
   const renderOverview = () => (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Admin Overview</h2>
-        <p className="text-gray-600 dark:text-gray-400">
+        <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Admin Overview</h2>
+        <p className="text-slate-600 dark:text-slate-400">
           Manage your organization's users, groups, and resource permissions
         </p>
       </div>
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-2xl p-6 border border-blue-200 dark:border-blue-800">
+        <div className="bg-gradient-to-br from-slate-50 to-sky-100 dark:from-slate-900/30 dark:to-sky-900/20 rounded-2xl p-6 border border-slate-200 dark:border-slate-700">
           <div className="flex items-center justify-between mb-4">
-            <UsersIcon className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+            <UsersIcon className="w-8 h-8 text-sky-600 dark:text-sky-400" />
           </div>
-          <div className="text-3xl font-bold text-gray-900 dark:text-white mb-1">{mockUsers.length}</div>
-          <div className="text-sm text-gray-600 dark:text-gray-400">Total Users</div>
+          <div className="text-3xl font-bold text-slate-900 dark:text-white mb-1">{mockUsers.length}</div>
+          <div className="text-sm text-slate-600 dark:text-slate-400">Total Users</div>
         </div>
 
         <div className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 rounded-2xl p-6 border border-green-200 dark:border-green-800">
           <div className="flex items-center justify-between mb-4">
             <UserGroupIcon className="w-8 h-8 text-green-600 dark:text-green-400" />
           </div>
-          <div className="text-3xl font-bold text-gray-900 dark:text-white mb-1">{mockGroups.length}</div>
-          <div className="text-sm text-gray-600 dark:text-gray-400">Active Groups</div>
+          <div className="text-3xl font-bold text-slate-900 dark:text-white mb-1">{mockGroups.length}</div>
+          <div className="text-sm text-slate-600 dark:text-slate-400">Active Groups</div>
         </div>
 
-        <div className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 rounded-2xl p-6 border border-purple-200 dark:border-purple-800">
+        <div className="bg-gradient-to-br from-sky-50 to-slate-100 dark:from-sky-900/20 dark:to-slate-900/25 rounded-2xl p-6 border border-sky-200 dark:border-slate-700">
           <div className="flex items-center justify-between mb-4">
-            <CubeIcon className="w-8 h-8 text-purple-600 dark:text-purple-400" />
+            <CubeIcon className="w-8 h-8 text-sky-600 dark:text-sky-400" />
           </div>
-          <div className="text-3xl font-bold text-gray-900 dark:text-white mb-1">{mockResources.length}</div>
-          <div className="text-sm text-gray-600 dark:text-gray-400">Resources</div>
+          <div className="text-3xl font-bold text-slate-900 dark:text-white mb-1">{mockResources.length}</div>
+          <div className="text-sm text-slate-600 dark:text-slate-400">Resources</div>
         </div>
 
         <div className="bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/20 dark:to-amber-800/20 rounded-2xl p-6 border border-amber-200 dark:border-amber-800">
           <div className="flex items-center justify-between mb-4">
             <ChartBarIcon className="w-8 h-8 text-amber-600 dark:text-amber-400" />
           </div>
-          <div className="text-3xl font-bold text-gray-900 dark:text-white mb-1">Enterprise</div>
-          <div className="text-sm text-gray-600 dark:text-gray-400">Account Type</div>
+          <div className="text-3xl font-bold text-slate-900 dark:text-white mb-1">Enterprise</div>
+          <div className="text-sm text-slate-600 dark:text-slate-400">Account Type</div>
         </div>
       </div>
 
       {/* Quick Actions */}
-      <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6">
-        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Quick Actions</h3>
+      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6">
+        <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Quick Actions</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <button
             onClick={() => onTabChange?.('users')}
-            className="flex items-center space-x-3 p-4 bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-xl hover:shadow-md transition-shadow border border-blue-200 dark:border-blue-800"
+            className="flex items-center space-x-3 p-4 bg-gradient-to-r from-slate-50 to-sky-100 dark:from-slate-900/30 dark:to-sky-900/20 rounded-xl hover:shadow-md transition-shadow border border-slate-200 dark:border-slate-700"
           >
-            <UsersIcon className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+            <UsersIcon className="w-6 h-6 text-sky-600 dark:text-sky-400" />
             <div className="text-left">
-              <div className="font-semibold text-gray-900 dark:text-white">Add User</div>
-              <div className="text-sm text-gray-600 dark:text-gray-400">Invite new member</div>
+              <div className="font-semibold text-slate-900 dark:text-white">Add User</div>
+              <div className="text-sm text-slate-600 dark:text-slate-400">Invite new member</div>
             </div>
           </button>
 
@@ -138,19 +138,19 @@ export const AdminView: React.FC<AdminViewProps> = ({ adminTab, onTabChange }) =
           >
             <UserGroupIcon className="w-6 h-6 text-green-600 dark:text-green-400" />
             <div className="text-left">
-              <div className="font-semibold text-gray-900 dark:text-white">Create Group</div>
-              <div className="text-sm text-gray-600 dark:text-gray-400">New access group</div>
+              <div className="font-semibold text-slate-900 dark:text-white">Create Group</div>
+              <div className="text-sm text-slate-600 dark:text-slate-400">New access group</div>
             </div>
           </button>
 
           <button
             onClick={() => onTabChange?.('resources')}
-            className="flex items-center space-x-3 p-4 bg-gradient-to-r from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 rounded-xl hover:shadow-md transition-shadow border border-purple-200 dark:border-purple-800"
+            className="flex items-center space-x-3 p-4 bg-gradient-to-r from-sky-50 to-slate-100 dark:from-sky-900/20 dark:to-slate-900/25 rounded-xl hover:shadow-md transition-shadow border border-sky-200 dark:border-slate-700"
           >
-            <CubeIcon className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+            <CubeIcon className="w-6 h-6 text-sky-600 dark:text-sky-400" />
             <div className="text-left">
-              <div className="font-semibold text-gray-900 dark:text-white">Manage Permissions</div>
-              <div className="text-sm text-gray-600 dark:text-gray-400">Resource access control</div>
+              <div className="font-semibold text-slate-900 dark:text-white">Manage Permissions</div>
+              <div className="text-sm text-slate-600 dark:text-slate-400">Resource access control</div>
             </div>
           </button>
         </div>
@@ -161,43 +161,43 @@ export const AdminView: React.FC<AdminViewProps> = ({ adminTab, onTabChange }) =
   const renderUsers = () => (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">User Management</h2>
-        <button className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg text-sm font-semibold hover:from-indigo-700 hover:to-purple-700 transition-all">
+        <h2 className="text-2xl font-bold text-slate-900 dark:text-white">User Management</h2>
+        <button className="px-4 py-2 brand-gradient text-white rounded-lg text-sm font-semibold hover:opacity-90 transition-all">
           + Add User
         </button>
       </div>
 
       {/* Users Table Placeholder */}
-      <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
         <table className="w-full">
-          <thead className="bg-gray-50 dark:bg-gray-900">
+          <thead className="bg-slate-50 dark:bg-slate-900">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">User</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Role</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Last Active</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">User</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Role</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Status</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Last Active</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+          <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
             {mockUsers.map((user) => (
-              <tr key={user.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+              <tr key={user.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
                 <td className="px-6 py-4">
                   <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-indigo-500 rounded-full flex items-center justify-center text-white text-sm font-bold">
+                    <div className="w-10 h-10 brand-gradient rounded-full flex items-center justify-center text-white text-sm font-bold">
                       {user.name.charAt(0)}
                     </div>
                     <div>
-                      <div className="font-medium text-gray-900 dark:text-white">{user.name}</div>
-                      <div className="text-sm text-gray-500 dark:text-gray-400">{user.email}</div>
+                      <div className="font-medium text-slate-900 dark:text-white">{user.name}</div>
+                      <div className="text-sm text-slate-500 dark:text-slate-400">{user.email}</div>
                     </div>
                   </div>
                 </td>
                 <td className="px-6 py-4">
                   <span className={`px-2 py-1 text-xs font-medium rounded-full ${
                     user.role === 'admin' 
-                      ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300'
-                      : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+                      ? 'bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300'
+                      : 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300'
                   }`}>
                     {user.role}
                   </span>
@@ -211,9 +211,9 @@ export const AdminView: React.FC<AdminViewProps> = ({ adminTab, onTabChange }) =
                     {user.status}
                   </span>
                 </td>
-                <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{user.lastActive}</td>
+                <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">{user.lastActive}</td>
                 <td className="px-6 py-4">
-                  <button className="text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 text-sm font-medium">
+                  <button className="text-sky-600 hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300 text-sm font-medium">
                     Edit
                   </button>
                 </td>
@@ -228,7 +228,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ adminTab, onTabChange }) =
   const renderGroups = () => (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Group Management</h2>
+        <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Group Management</h2>
         <button className="px-4 py-2 bg-gradient-to-r from-green-600 to-teal-600 text-white rounded-lg text-sm font-semibold hover:from-green-700 hover:to-teal-700 transition-all">
           + Create Group
         </button>
@@ -237,27 +237,27 @@ export const AdminView: React.FC<AdminViewProps> = ({ adminTab, onTabChange }) =
       {/* Groups Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {mockGroups.map((group) => (
-          <div key={group.id} className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6 hover:shadow-lg transition-shadow">
+          <div key={group.id} className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 hover:shadow-lg transition-shadow">
             <div className="flex items-start justify-between mb-4">
               <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${
-                group.color === 'blue' ? 'from-blue-400 to-blue-600' :
-                group.color === 'purple' ? 'from-purple-400 to-purple-600' :
-                group.color === 'green' ? 'from-green-400 to-green-600' :
-                'from-pink-400 to-pink-600'
+                group.color === 'indigo' ? 'from-sky-500 to-cyan-600' :
+                group.color === 'purple' ? 'from-cyan-400 to-sky-500' :
+                group.color === 'green' ? 'from-emerald-400 to-emerald-600' :
+                'from-amber-400 to-amber-600'
               } flex items-center justify-center text-white text-xl font-bold shadow-lg`}>
                 {group.name.charAt(0)}
               </div>
-              <button className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+              <button className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
                 </svg>
               </button>
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">{group.name}</h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">{group.description}</p>
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">{group.name}</h3>
+            <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">{group.description}</p>
             <div className="flex items-center justify-between text-sm">
-              <span className="text-gray-500 dark:text-gray-400">{group.memberCount} members</span>
-              <button className="text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 font-medium">
+              <span className="text-slate-500 dark:text-slate-400">{group.memberCount} members</span>
+              <button className="text-sky-600 hover:text-sky-700 dark:text-sky-400 font-medium">
                 Manage →
               </button>
             </div>
@@ -270,8 +270,8 @@ export const AdminView: React.FC<AdminViewProps> = ({ adminTab, onTabChange }) =
   const renderResources = () => (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Resource Permissions</h2>
-        <button className="px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg text-sm font-semibold hover:from-purple-700 hover:to-pink-700 transition-all">
+        <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Resource Permissions</h2>
+        <button className="px-4 py-2 brand-gradient text-white rounded-lg text-sm font-semibold hover:opacity-90 transition-all">
           + Add Resource
         </button>
       </div>
@@ -279,21 +279,21 @@ export const AdminView: React.FC<AdminViewProps> = ({ adminTab, onTabChange }) =
       {/* Resources List */}
       <div className="space-y-4">
         {mockResources.map((resource) => (
-          <div key={resource.id} className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6">
+          <div key={resource.id} className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6">
             <div className="flex items-start justify-between">
               <div className="flex-1">
                 <div className="flex items-center space-x-3 mb-2">
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{resource.name}</h3>
+                  <h3 className="text-lg font-semibold text-slate-900 dark:text-white">{resource.name}</h3>
                   {resource.isProtected && (
                     <span className="px-2 py-1 bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300 text-xs font-medium rounded-full">
                       Protected
                     </span>
                   )}
-                  <span className="px-2 py-1 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 text-xs font-medium rounded-full uppercase">
+                  <span className="px-2 py-1 bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300 text-xs font-medium rounded-full uppercase">
                     {resource.type}
                   </span>
                 </div>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">{resource.description}</p>
+                <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">{resource.description}</p>
                 
                 {/* Permission Pills */}
                 <div className="flex flex-wrap gap-2">
@@ -305,14 +305,14 @@ export const AdminView: React.FC<AdminViewProps> = ({ adminTab, onTabChange }) =
                     if (perms.canExecute) permissionLabels.push('Execute');
                     
                     return (
-                      <span key={groupId} className="px-3 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-xs font-medium rounded-full">
+                      <span key={groupId} className="px-3 py-1 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-medium rounded-full">
                         Group {groupId}: {permissionLabels.join(', ')}
                       </span>
                     );
                   })}
                 </div>
               </div>
-              <button className="ml-4 text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 text-sm font-medium">
+              <button className="ml-4 text-sky-600 hover:text-sky-700 dark:text-sky-400 text-sm font-medium">
                 Edit Permissions
               </button>
             </div>
@@ -324,29 +324,29 @@ export const AdminView: React.FC<AdminViewProps> = ({ adminTab, onTabChange }) =
 
   const renderSettings = () => (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Admin Settings</h2>
+      <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Admin Settings</h2>
 
       {/* Settings Sections */}
       <div className="space-y-6">
         {/* General Settings */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">General Settings</h3>
+        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6">
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">General Settings</h3>
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <div className="font-medium text-gray-900 dark:text-white">Allow User Registration</div>
-                <div className="text-sm text-gray-600 dark:text-gray-400">Enable new users to sign up</div>
+                <div className="font-medium text-slate-900 dark:text-white">Allow User Registration</div>
+                <div className="text-sm text-slate-600 dark:text-slate-400">Enable new users to sign up</div>
               </div>
-              <button className="relative inline-flex h-6 w-11 items-center rounded-full bg-indigo-600">
+              <button className="relative inline-flex h-6 w-11 items-center rounded-full bg-sky-600">
                 <span className="translate-x-6 inline-block h-4 w-4 transform rounded-full bg-white transition" />
               </button>
             </div>
             <div className="flex items-center justify-between">
               <div>
-                <div className="font-medium text-gray-900 dark:text-white">Require Email Verification</div>
-                <div className="text-sm text-gray-600 dark:text-gray-400">Users must verify their email</div>
+                <div className="font-medium text-slate-900 dark:text-white">Require Email Verification</div>
+                <div className="text-sm text-slate-600 dark:text-slate-400">Users must verify their email</div>
               </div>
-              <button className="relative inline-flex h-6 w-11 items-center rounded-full bg-gray-200 dark:bg-gray-700">
+              <button className="relative inline-flex h-6 w-11 items-center rounded-full bg-slate-200 dark:bg-slate-700">
                 <span className="translate-x-1 inline-block h-4 w-4 transform rounded-full bg-white transition" />
               </button>
             </div>
@@ -354,24 +354,24 @@ export const AdminView: React.FC<AdminViewProps> = ({ adminTab, onTabChange }) =
         </div>
 
         {/* Security Settings */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Security Settings</h3>
+        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6">
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Security Settings</h3>
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <div className="font-medium text-gray-900 dark:text-white">Two-Factor Authentication</div>
-                <div className="text-sm text-gray-600 dark:text-gray-400">Require 2FA for admin accounts</div>
+                <div className="font-medium text-slate-900 dark:text-white">Two-Factor Authentication</div>
+                <div className="text-sm text-slate-600 dark:text-slate-400">Require 2FA for admin accounts</div>
               </div>
-              <button className="relative inline-flex h-6 w-11 items-center rounded-full bg-indigo-600">
+              <button className="relative inline-flex h-6 w-11 items-center rounded-full bg-sky-600">
                 <span className="translate-x-6 inline-block h-4 w-4 transform rounded-full bg-white transition" />
               </button>
             </div>
             <div className="flex items-center justify-between">
               <div>
-                <div className="font-medium text-gray-900 dark:text-white">Session Timeout</div>
-                <div className="text-sm text-gray-600 dark:text-gray-400">Auto logout after inactivity</div>
+                <div className="font-medium text-slate-900 dark:text-white">Session Timeout</div>
+                <div className="text-sm text-slate-600 dark:text-slate-400">Auto logout after inactivity</div>
               </div>
-              <select className="px-3 py-1.5 bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-sm">
+              <select className="px-3 py-1.5 bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-sm">
                 <option>30 minutes</option>
                 <option>1 hour</option>
                 <option>4 hours</option>
@@ -382,15 +382,15 @@ export const AdminView: React.FC<AdminViewProps> = ({ adminTab, onTabChange }) =
         </div>
 
         {/* Notification Settings */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Notification Settings</h3>
+        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6">
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Notification Settings</h3>
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <div className="font-medium text-gray-900 dark:text-white">Email Notifications</div>
-                <div className="text-sm text-gray-600 dark:text-gray-400">Send email alerts for admin events</div>
+                <div className="font-medium text-slate-900 dark:text-white">Email Notifications</div>
+                <div className="text-sm text-slate-600 dark:text-slate-400">Send email alerts for admin events</div>
               </div>
-              <button className="relative inline-flex h-6 w-11 items-center rounded-full bg-indigo-600">
+              <button className="relative inline-flex h-6 w-11 items-center rounded-full bg-sky-600">
                 <span className="translate-x-6 inline-block h-4 w-4 transform rounded-full bg-white transition" />
               </button>
             </div>

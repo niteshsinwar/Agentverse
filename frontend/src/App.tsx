@@ -30,6 +30,7 @@ import { AnimatedSplashScreen } from './components/shared/AnimatedSplashScreen';
 import { AppHeader, HeaderMenuItem } from './components/core/AppHeader';
 import { AppFooter } from './components/core/AppFooter';
 import { settingsApi } from '@/lib/api';
+import { THEME_CONSTANTS } from '@/lib/config';
 
 function App() {
   // App Store
@@ -60,6 +61,7 @@ function App() {
     initialLoadCompleted: storeInitialLoadCompleted,
     setInitialLoadCompleted,
     theme,
+    themeMode,
     setSupportedFileFormats,
   } = useAppStore();
 
@@ -188,19 +190,56 @@ function App() {
   // Apply theme to document element
   useEffect(() => {
     const root = document.documentElement;
-    
-    // Remove existing theme classes
-    root.classList.remove('light', 'dark');
-    
-    if (theme === 'system' || theme === 'auto') {
-      // Use system preference
-      const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      root.classList.add(isDark ? 'dark' : 'light');
-    } else {
-      // Use explicit theme
-      root.classList.add(theme);
+    const baseClasses: Array<'light' | 'dark'> = ['light', 'dark'];
+    const removableThemeClasses = THEME_CONSTANTS.THEMES
+      .filter((themeId) => !['light', 'dark', 'system', 'auto'].includes(themeId))
+      .map((themeId) => `theme-${themeId}`);
+
+    const resolveMode = (): 'light' | 'dark' => {
+      if (theme === 'light') {
+        return 'light';
+      }
+      if (theme === 'dark') {
+        return 'dark';
+      }
+
+      if (theme === 'system' || theme === 'auto') {
+        if (themeMode === 'light' || themeMode === 'dark') {
+          return themeMode;
+        }
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        return prefersDark ? 'dark' : 'light';
+      }
+
+      if (themeMode === 'system') {
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        return prefersDark ? 'dark' : 'light';
+      }
+
+      return themeMode;
+    };
+
+    const applyTheme = () => {
+      root.classList.remove(...baseClasses, ...removableThemeClasses);
+      const appliedMode = resolveMode();
+      root.classList.add(appliedMode);
+
+      if (!['light', 'dark', 'system', 'auto'].includes(theme)) {
+        root.classList.add(`theme-${theme}`);
+      }
+    };
+
+    applyTheme();
+
+    if (themeMode === 'system' || theme === 'system' || theme === 'auto') {
+      const media = window.matchMedia('(prefers-color-scheme: dark)');
+      const listener = () => applyTheme();
+      media.addEventListener?.('change', listener);
+      return () => media.removeEventListener?.('change', listener);
     }
-  }, [theme]);
+
+    return undefined;
+  }, [theme, themeMode]);
 
   // Redirect non-admin users away from admin view
   useEffect(() => {
@@ -344,7 +383,7 @@ function App() {
 
       {/* Main App Content */}
       {!showSplash && !appLoading && (
-      <div className="flex flex-col h-screen bg-gradient-to-br from-slate-50 via-violet-50/30 to-cyan-50/20 dark:from-slate-900 dark:via-violet-950/30 dark:to-cyan-950/20 overflow-hidden">
+      <div className="flex flex-col h-screen brand-app overflow-hidden">
 
         <Toaster
           position="top-right"
@@ -405,9 +444,9 @@ function App() {
             initial={{ width: sidebarExpanded ? 320 : 80 }}
             animate={{ width: sidebarExpanded ? 320 : 80 }}
             transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
-            className="relative bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl border-r border-violet-200/30 dark:border-violet-800/30 flex flex-col shadow-2xl shadow-violet-500/10"
+            className="relative brand-shell flex flex-col"
           >
-            <div className="absolute inset-0 bg-gradient-to-b from-violet-50/50 to-cyan-50/20 dark:from-violet-950/50 dark:to-cyan-950/20" />
+            <div className="pointer-events-none absolute inset-0 brand-gradient-soft opacity-40" />
             <div className="relative z-10">
               <Sidebar
                 groups={groups.data || []}
@@ -432,7 +471,8 @@ function App() {
 
           {/* Immersive Main Workspace */}
 <div className="flex-1 flex flex-col min-w-0 relative overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-white/60 via-violet-50/40 to-cyan-50/30 dark:from-slate-900/60 dark:via-violet-950/40 dark:to-cyan-950/30" />
+            <div className="pointer-events-none absolute inset-0 brand-gradient-soft opacity-60" />
+            <div className="pointer-events-none absolute inset-0 bg-white/40 dark:bg-slate-950/50" />
 
             {currentView === 'chat' ? (
               <motion.div

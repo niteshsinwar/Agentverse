@@ -6,6 +6,7 @@ import {
   UserIcon,
   BuildingOffice2Icon,
 } from '@heroicons/react/24/outline';
+import clsx from 'clsx';
 import { BrandLogo } from '@/components/shared/BrandLogo';
 import { useAuthStore, type AccountType } from '@/lib/stores/auth';
 
@@ -55,172 +56,238 @@ export const AuthenticationPortal: React.FC<AuthenticationPortalProps> = ({ isOp
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm"
+            className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md transition-opacity"
           />
 
           <motion.div
-            initial={{ opacity: 0, scale: 0.98 }}
+            initial={{ opacity: 0, scale: 0.97 }}
             animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.98 }}
-            transition={{ type: 'spring', damping: 24, stiffness: 240 }}
-            className="fixed inset-0 z-50 flex items-center justify-center px-4 py-10"
+            exit={{ opacity: 0, scale: 0.97 }}
+            transition={{ type: 'spring', damping: 26, stiffness: 240 }}
+            className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto px-4 py-10 sm:px-6 lg:py-16"
           >
-            <div className="relative flex w-full max-w-5xl min-h-[640px] flex-col overflow-hidden rounded-[32px] bg-white/92 shadow-[0_40px_160px_rgba(15,23,42,0.35)] ring-1 ring-black/5 backdrop-blur-xl dark:bg-slate-950/90 dark:ring-white/10 lg:flex-row lg:items-stretch">
-              <div className="relative flex flex-1 flex-col justify-between overflow-hidden bg-gradient-to-br from-slate-900 via-indigo-900 to-purple-900 px-10 py-12 text-white">
-                <div className="pointer-events-none absolute inset-0 opacity-30">
-                  <div className="absolute -left-32 top-12 h-72 w-72 rounded-full bg-cyan-400/50 blur-3xl" />
-                  <div className="absolute bottom-12 right-12 h-96 w-96 rounded-full bg-violet-500/40 blur-3xl" />
+            <div className="pointer-events-none absolute inset-0 brand-gradient-soft opacity-40" />
+            <div className="relative w-full max-w-5xl">
+              <div className="absolute -inset-x-16 -inset-y-12 bg-gradient-to-b from-white/10 via-transparent to-transparent blur-3xl dark:from-white/5" />
+              <div className="relative flex w-full min-h-[640px] flex-col overflow-hidden rounded-[32px] brand-shell lg:flex-row lg:items-stretch">
+                <div className="relative flex flex-1 flex-col justify-between overflow-hidden px-10 py-12 text-white sm:px-12">
+                  <div className="absolute inset-0 bg-slate-950/88" />
+                  <div className="absolute inset-0 brand-gradient opacity-85" />
+                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_12%_15%,_rgba(59,130,246,0.35),_transparent_55%)]" />
+                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_85%_88%,_rgba(236,72,153,0.28),_transparent_60%)]" />
+                  <div className="relative z-10 flex flex-1 flex-col justify-between space-y-12">
+                    <div className="space-y-6">
+                      <BrandLogo
+                        variant="horizontal"
+                        size="lg"
+                        className="drop-shadow-[0_18px_36px_rgba(79,70,229,0.45)]"
+                      />
+                      <div className="space-y-3 text-sm text-white/80">
+                        <p className="text-xs font-semibold uppercase tracking-[0.4em] text-white/60">
+                          Command Access
+                        </p>
+                        <h1 className="text-3xl font-semibold tracking-tight">
+                          Authenticate your mission console
+                        </h1>
+                        <p className="leading-6 text-white/70">
+                          Enter secure credentials to orchestrate cross-agent collaboration with full telemetry and
+                          governance safeguards.
+                        </p>
+                      </div>
+                      <div className="grid gap-4 text-left sm:grid-cols-2">
+                        <div className="rounded-2xl bg-white/10 p-4 backdrop-blur-md">
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-white/60">
+                            Orchestrate
+                          </p>
+                          <p className="mt-2 text-sm font-medium text-white opacity-90">
+                            Deploy multi-agent task forces with zero-code lift.
+                          </p>
+                        </div>
+                        <div className="rounded-2xl bg-white/10 p-4 backdrop-blur-md">
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-white/60">
+                            Govern
+                          </p>
+                          <p className="mt-2 text-sm font-medium text-white opacity-90">
+                            Role-aware policies with continuous audit visibility.
+                          </p>
+                        </div>
+                        <div className="rounded-2xl bg-white/10 p-4 backdrop-blur-md sm:col-span-2">
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-white/60">
+                            Collaborate
+                          </p>
+                          <p className="mt-2 text-sm font-medium text-white opacity-90">
+                            Align human teams and AI cohorts under one shared mission view.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="rounded-2xl border border-white/15 bg-white/10 p-4 text-xs text-white/75 backdrop-blur">
+                      Access monitored. Unauthorized usage triggers automated containment.
+                    </div>
+                  </div>
                 </div>
 
-                <div className="relative z-10 flex flex-1 flex-col justify-between">
-                  <div className="space-y-5">
-                    <BrandLogo variant="horizontal" size="lg" className="drop-shadow-[0_18px_36px_rgba(79,70,229,0.45)]" />
-                    <div className="space-y-2 text-sm text-white/80">
-                      <p className="text-xs uppercase tracking-[0.35em] text-white/60">Command Access</p>
-                      <h1 className="text-3xl font-semibold tracking-tight">Authenticate to continue</h1>
-                      <p className="text-xs leading-5 text-white/65">
-                        Use your workspace credentials to enter the AgentVerse control console.
+                <div className="relative flex flex-1 flex-col px-8 py-10 sm:px-12 lg:px-14 brand-surface backdrop-blur-xl lg:border-l lg:border-white/10 dark:lg:border-slate-700/40">
+                  <div className="relative z-10 flex h-full flex-col gap-10 overflow-y-auto">
+                    <div className="space-y-2 text-left">
+                      <p className="text-xs font-semibold uppercase tracking-[0.35em] text-slate-500 dark:text-slate-400">
+                        Autonomous Readiness
+                      </p>
+                      <h2 className="text-2xl font-semibold text-slate-900 dark:text-white">
+                        Authenticate your command stack
+                      </h2>
+                      <p className="text-sm text-slate-500 dark:text-slate-300">
+                        Choose your access mode and confirm workspace identity to proceed.
                       </p>
                     </div>
-                  </div>
 
-                  <div className="mt-8 rounded-2xl border border-white/15 bg-white/10 p-4 text-xs text-white/70 backdrop-blur">
-                    Access monitored. Unauthorized usage triggers automated containment.
-                  </div>
-                </div>
-              </div>
-
-              <div className="relative flex flex-1 flex-col justify-between px-10 py-12 sm:px-14">
-                <div className="space-y-8">
-                  <div className="flex items-center gap-4">
-                    <BrandLogo variant="icon" size="md" />
-                    <div>
-                      <p className="text-xs uppercase tracking-[0.35em] text-slate-500 dark:text-slate-400">Autonomous Readiness</p>
-                      <h2 className="text-2xl font-semibold text-slate-900 dark:text-white">Authenticate your command stack</h2>
-                    </div>
-                  </div>
-
-                  <div className="flex rounded-full bg-slate-100 p-1 text-sm font-medium dark:bg-slate-900">
-                    <button
-                      type="button"
-                      onClick={() => setMode('login')}
-                      className={`flex-1 rounded-full px-4 py-2 transition ${
-                        mode === 'login'
-                          ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-800 dark:text-white'
-                          : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
-                      }`}
-                    >
-                      Sign in
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setMode('register')}
-                      className={`flex-1 rounded-full px-4 py-2 transition ${
-                        mode === 'register'
-                          ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-800 dark:text-white'
-                          : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
-                      }`}
-                    >
-                      Request access
-                    </button>
-                  </div>
-
-                  <form onSubmit={handleSubmit} className="space-y-6">
-                    <div className="space-y-3">
-                      <label className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Credentials</label>
-                      <div className="relative">
-                        <EnvelopeIcon className="pointer-events-none absolute left-3 top-2.5 h-5 w-5 text-slate-400 dark:text-slate-500" />
-                        <input
-                          type="email"
-                          required
-                          autoComplete="email"
-                          value={email}
-                          onChange={(event) => setEmail(event.target.value)}
-                          className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-11 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-indigo-400"
-                          placeholder="you@organization.com"
-                        />
+                    <form onSubmit={handleSubmit} className="space-y-6">
+                      <div className="flex rounded-full brand-glass p-1 text-sm font-semibold">
+                        <button
+                          type="button"
+                          onClick={() => setMode('login')}
+                          className={clsx(
+                            'flex-1 rounded-full px-4 py-2 transition-all duration-200',
+                            mode === 'login'
+                              ? 'brand-gradient text-white shadow-lg shadow-indigo-500/30'
+                              : 'text-slate-500 hover:text-slate-800 dark:text-slate-300 dark:hover:text-white'
+                          )}
+                        >
+                          Sign in
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setMode('register')}
+                          className={clsx(
+                            'flex-1 rounded-full px-4 py-2 transition-all duration-200',
+                            mode === 'register'
+                              ? 'brand-gradient text-white shadow-lg shadow-indigo-500/30'
+                              : 'text-slate-500 hover:text-slate-800 dark:text-slate-300 dark:hover:text-white'
+                          )}
+                        >
+                          Request access
+                        </button>
                       </div>
-                      <div className="relative">
-                        <LockClosedIcon className="pointer-events-none absolute left-3 top-2.5 h-5 w-5 text-slate-400 dark:text-slate-500" />
-                        <input
-                          type="password"
-                          required
-                          autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-                          value={password}
-                          onChange={(event) => setPassword(event.target.value)}
-                          className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-11 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-indigo-400"
-                          placeholder="Enter secure passphrase"
-                        />
-                      </div>
-                    </div>
 
-                    <div className="space-y-3">
-                      <label className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Access scope</label>
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid gap-3 sm:grid-cols-2">
                         <button
                           type="button"
                           onClick={() => handleAccountTypeChange('individual')}
-                          className={`flex items-center gap-3 rounded-xl border px-4 py-3 text-left transition ${
+                          className={clsx(
+                            'group flex items-start gap-3 rounded-2xl border px-4 py-4 text-left transition-all duration-200',
                             accountType === 'individual'
-                              ? 'border-indigo-500 bg-indigo-500/10 text-indigo-600 dark:border-indigo-400 dark:bg-indigo-500/10 dark:text-indigo-200'
-                              : 'border-slate-200 text-slate-600 hover:border-slate-300 dark:border-slate-700 dark:text-slate-300 dark:hover:border-slate-600'
-                          }`}
+                              ? 'border-transparent brand-gradient text-white shadow-xl shadow-indigo-500/30'
+                              : 'border-slate-200 bg-white/70 text-slate-600 hover:border-slate-400 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-300 dark:hover:border-slate-500 dark:hover:text-white'
+                          )}
                         >
-                          <UserIcon className="h-5 w-5" />
-                          <div>
-                            <p className="text-sm font-semibold">Individual</p>
-                            <p className="text-xs text-slate-500 dark:text-slate-400">Solo builder workspace</p>
-                          </div>
+                          <span
+                            className={clsx(
+                              'flex h-10 w-10 items-center justify-center rounded-xl text-base transition-colors',
+                              accountType === 'individual'
+                                ? 'bg-white/15 text-white'
+                                : 'bg-slate-200/60 text-slate-600 dark:bg-slate-800 dark:text-slate-200'
+                            )}
+                          >
+                            <UserIcon className="h-5 w-5" />
+                          </span>
+                          <span className="flex flex-col">
+                            <span className="text-sm font-semibold">Individual</span>
+                            <span className="text-xs opacity-80">Personal workspace with full visibility.</span>
+                          </span>
                         </button>
-
                         <button
                           type="button"
                           onClick={() => handleAccountTypeChange('enterprise')}
-                          className={`flex items-center gap-3 rounded-xl border px-4 py-3 text-left transition ${
+                          className={clsx(
+                            'group flex items-start gap-3 rounded-2xl border px-4 py-4 text-left transition-all duration-200',
                             accountType === 'enterprise'
-                              ? 'border-indigo-500 bg-indigo-500/10 text-indigo-600 dark:border-indigo-400 dark:bg-indigo-500/10 dark:text-indigo-200'
-                              : 'border-slate-200 text-slate-600 hover:border-slate-300 dark:border-slate-700 dark:text-slate-300 dark:hover:border-slate-600'
-                          }`}
+                              ? 'border-transparent brand-gradient text-white shadow-xl shadow-indigo-500/30'
+                              : 'border-slate-200 bg-white/70 text-slate-600 hover:border-slate-400 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-300 dark:hover:border-slate-500 dark:hover:text-white'
+                          )}
                         >
-                          <BuildingOffice2Icon className="h-5 w-5" />
-                          <div>
-                            <p className="text-sm font-semibold">Enterprise</p>
-                            <p className="text-xs text-slate-500 dark:text-slate-400">Multi-team fleet management</p>
-                          </div>
+                          <span
+                            className={clsx(
+                              'flex h-10 w-10 items-center justify-center rounded-xl text-base transition-colors',
+                              accountType === 'enterprise'
+                                ? 'bg-white/15 text-white'
+                                : 'bg-slate-200/60 text-slate-600 dark:bg-slate-800 dark:text-slate-200'
+                            )}
+                          >
+                            <BuildingOffice2Icon className="h-5 w-5" />
+                          </span>
+                          <span className="flex flex-col">
+                            <span className="text-sm font-semibold">Enterprise</span>
+                            <span className="text-xs opacity-80">Team-wide orchestration with audit controls.</span>
+                          </span>
                         </button>
                       </div>
 
-                      {accountType === 'enterprise' && (
-                        <label className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 transition hover:border-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
-                          <div className="flex flex-col">
-                            <span className="font-semibold text-slate-800 dark:text-white">Administrator privileges</span>
-                            <span className="text-xs text-slate-500 dark:text-slate-400">Full access to agent registry, tools, telemetry</span>
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <label className="text-xs font-semibold uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">
+                            Work Email
+                          </label>
+                          <div className="brand-field flex items-center gap-3 rounded-2xl px-4 py-3">
+                            <EnvelopeIcon className="h-5 w-5 text-indigo-400 dark:text-indigo-300" />
+                            <input
+                              type="email"
+                              required
+                              autoComplete="email"
+                              value={email}
+                              onChange={(event) => setEmail(event.target.value)}
+                              placeholder="you@company.com"
+                              className="flex-1 bg-transparent text-sm font-medium text-slate-700 placeholder:text-slate-400/70 outline-none dark:text-slate-100"
+                            />
                           </div>
-                          <input
-                            type="checkbox"
-                            checked={isAdmin}
-                            onChange={(event) => setIsAdmin(event.target.checked)}
-                            className="h-4 w-4 rounded border-slate-300 text-indigo-500 focus:ring-indigo-500 dark:border-slate-600 dark:bg-slate-800"
-                          />
-                        </label>
-                      )}
-                    </div>
+                        </div>
 
-                    <button
-                      type="submit"
-                      className="group relative flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-500/30 transition hover:shadow-indigo-500/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-indigo-500"
-                    >
-                      {mode === 'login' ? 'Enter command center' : 'Request activation'}
-                      <span aria-hidden="true" className="transition-transform group-hover:translate-x-1">
-                        →
-                      </span>
-                    </button>
-                  </form>
+                        <div className="space-y-2">
+                          <label className="text-xs font-semibold uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">
+                            Secure Passkey
+                          </label>
+                          <div className="brand-field flex items-center gap-3 rounded-2xl px-4 py-3">
+                            <LockClosedIcon className="h-5 w-5 text-indigo-400 dark:text-indigo-300" />
+                            <input
+                              type="password"
+                              required
+                              autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                              value={password}
+                              onChange={(event) => setPassword(event.target.value)}
+                              placeholder="••••••••"
+                              className="flex-1 bg-transparent text-sm font-medium text-slate-700 placeholder:text-slate-400/70 outline-none dark:text-slate-100"
+                            />
+                          </div>
+                        </div>
+
+                        {accountType === 'enterprise' && (
+                          <label className="flex items-center justify-between rounded-2xl border border-slate-200/70 bg-white/70 px-4 py-3 text-xs font-medium text-slate-600 transition hover:border-slate-300 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-300 dark:hover:border-slate-500 dark:hover:text-white">
+                            <span>Enable admin console</span>
+                            <input
+                              type="checkbox"
+                              checked={isAdmin}
+                              onChange={(event) => setIsAdmin(event.target.checked)}
+                              className="h-4 w-4 rounded border-slate-300 text-indigo-500 focus:ring-indigo-500 dark:border-slate-600 dark:bg-slate-800"
+                            />
+                          </label>
+                        )}
+                      </div>
+
+                      <button
+                        type="submit"
+                        className="brand-cta group relative flex w-full items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-semibold shadow-2xl transition-all duration-200 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-indigo-500"
+                      >
+                        {mode === 'login' ? 'Enter command center' : 'Request activation'}
+                        <span aria-hidden="true" className="text-base transition-transform duration-200 group-hover:translate-x-1">
+                          →
+                        </span>
+                      </button>
+                    </form>
+
+                    <p className="text-center text-xs text-slate-500 dark:text-slate-400">
+                      By continuing you acknowledge AgentVerse confidentiality protocols.
+                    </p>
+                  </div>
                 </div>
-
-                <p className="mt-10 text-xs text-slate-500 dark:text-slate-400 text-center">
-                  By continuing you acknowledge AgentVerse confidentiality protocols.
-                </p>
               </div>
             </div>
           </motion.div>

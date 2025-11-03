@@ -1,6 +1,7 @@
 import React, { Component, ReactNode } from 'react';
 import { ExclamationTriangleIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 import { toast } from 'react-hot-toast';
+import { BrandedButton } from './BrandedComponents';
 
 interface ErrorBoundaryState {
   hasError: boolean;
@@ -224,34 +225,36 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
       }
 
       return (
-        <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+        <div className="min-h-screen brand-app flex flex-col justify-center py-12 sm:px-6 lg:px-8">
           <div className="sm:mx-auto sm:w-full sm:max-w-md">
-            <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
-              <div className="text-center">
-                <ExclamationTriangleIcon className="mx-auto h-12 w-12 text-red-500" />
-                <h2 className="mt-4 text-lg font-medium text-gray-900">
+            <div className="brand-surface-strong py-8 px-6 shadow-2xl rounded-3xl border border-transparent">
+              <div className="text-center space-y-4">
+                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 to-orange-500 shadow-[0_12px_35px_rgba(249,115,22,0.35)]">
+                  <ExclamationTriangleIcon className="h-7 w-7 text-white" />
+                </div>
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
                   Something went wrong
                 </h2>
-                <p className="mt-2 text-sm text-gray-600">
+                <p className="text-sm text-slate-600 dark:text-slate-400">
                   We're sorry, but something unexpected happened. Our team has been notified and is working on a fix.
                 </p>
 
                 {import.meta.env.DEV && this.state.error && (
-                  <div className="mt-4 p-3 bg-red-50 rounded-md">
-                    <h3 className="text-sm font-medium text-red-800 mb-2">
+                  <div className="mt-4 p-4 rounded-2xl bg-rose-50 dark:bg-rose-900/20 border border-rose-200/60 dark:border-rose-700/40 text-left">
+                    <h3 className="text-sm font-semibold text-rose-600 dark:text-rose-300 mb-2">
                       Error Details (Development Mode)
                     </h3>
-                    <div className="text-xs text-red-700 font-mono text-left overflow-auto max-h-32">
-                      <div className="mb-2">
+                    <div className="text-xs text-rose-700 dark:text-rose-200 font-mono overflow-auto max-h-32 space-y-2">
+                      <div>
                         <strong>Error ID:</strong> {this.state.errorId}
                       </div>
-                      <div className="mb-2">
+                      <div>
                         <strong>Message:</strong> {this.state.error.message}
                       </div>
                       {this.state.error.stack && (
                         <div>
                           <strong>Stack:</strong>
-                          <pre className="mt-1 whitespace-pre-wrap">
+                          <pre className="mt-1 whitespace-pre-wrap text-[11px]">
                             {this.state.error.stack}
                           </pre>
                         </div>
@@ -261,23 +264,24 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
                 )}
 
                 <div className="mt-6 space-y-3">
-                  <button
+                  <BrandedButton
                     onClick={this.handleRetry}
-                    className="w-full flex justify-center items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                    className="w-full flex items-center justify-center"
                   >
                     <ArrowPathIcon className="h-4 w-4 mr-2" />
                     Try Again
-                  </button>
+                  </BrandedButton>
 
-                  <button
+                  <BrandedButton
+                    variant="secondary"
                     onClick={this.handleReload}
-                    className="w-full flex justify-center items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                    className="w-full"
                   >
                     Reload Page
-                  </button>
+                  </BrandedButton>
                 </div>
 
-                <p className="mt-4 text-xs text-gray-500">
+                <p className="pt-4 text-xs text-slate-500 dark:text-slate-400">
                   Error ID: {this.state.errorId}
                 </p>
               </div>

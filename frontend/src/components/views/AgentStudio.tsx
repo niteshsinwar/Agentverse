@@ -89,7 +89,7 @@ export const AgentStudio: React.FC<AgentStudioProps> = ({
 
           {loading ? (
             <BrandedCard variant="glass" className="text-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-2 border-transparent border-t-violet-500 border-r-indigo-600 mx-auto"></div>
+              <div className="animate-spin rounded-full h-8 w-8 border-2 border-transparent border-t-sky-500 border-r-cyan-500 mx-auto"></div>
               <p className="text-slate-600 dark:text-slate-400 font-medium mt-3">Loading agents...</p>
             </BrandedCard>
           ) : agents.length === 0 ? (
@@ -119,16 +119,16 @@ export const AgentStudio: React.FC<AgentStudioProps> = ({
                   key={agent.key}
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg border border-gray-200 dark:border-gray-700 h-[200px] flex flex-col"
+                  className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-lg border border-slate-200 dark:border-slate-700 h-[200px] flex flex-col"
                 >
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center space-x-3 min-w-0 flex-1">
                       <span className="text-2xl flex-shrink-0">{agent.emoji}</span>
                       <div className="min-w-0 flex-1">
-                        <h3 className="font-semibold text-gray-900 dark:text-white truncate">
+                        <h3 className="font-semibold text-slate-900 dark:text-white truncate">
                           {agent.name}
                         </h3>
-                        <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
+                        <p className="text-sm text-slate-500 dark:text-slate-400 truncate">
                           {agent.key}
                         </p>
                       </div>
@@ -136,7 +136,7 @@ export const AgentStudio: React.FC<AgentStudioProps> = ({
                     <div className="flex space-x-1 flex-shrink-0 ml-2">
                       <button
                         onClick={() => onEditAgent(agent)}
-                        className="p-2 text-gray-400 hover:text-blue-600 transition-colors"
+                        className="p-2 text-slate-400 hover:text-sky-600 transition-colors"
                       >
                         <PencilIcon className="w-4 h-4" />
                       </button>
@@ -145,8 +145,8 @@ export const AgentStudio: React.FC<AgentStudioProps> = ({
                         disabled={agent.key === 'TEMPLATE'}
                         className={`p-2 transition-colors ${
                           agent.key === 'TEMPLATE'
-                            ? 'text-gray-300 cursor-not-allowed'
-                            : 'text-gray-400 hover:text-red-600'
+                            ? 'text-slate-300 cursor-not-allowed'
+                            : 'text-slate-400 hover:text-red-600'
                         }`}
                         title={agent.key === 'TEMPLATE' ? 'Cannot delete TEMPLATE agent' : 'Delete agent'}
                       >
@@ -154,14 +154,14 @@ export const AgentStudio: React.FC<AgentStudioProps> = ({
                       </button>
                     </div>
                   </div>
-                  <p className="text-sm text-gray-600 dark:text-gray-300 mb-4 flex-1 line-clamp-3 overflow-hidden">
+                  <p className="text-sm text-slate-600 dark:text-slate-300 mb-4 flex-1 line-clamp-3 overflow-hidden">
                     {agent.description}
                   </p>
-                  <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 mt-auto">
+                  <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mt-auto">
                     <span>Agent • Ready</span>
                     <button
                       onClick={() => onEditAgent(agent)}
-                      className="text-blue-600 hover:text-blue-800 font-medium"
+                      className="text-sky-600 hover:text-sky-800 font-medium"
                     >
                       Edit
                     </button>

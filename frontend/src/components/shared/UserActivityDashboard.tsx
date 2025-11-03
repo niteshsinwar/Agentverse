@@ -168,23 +168,23 @@ export const UserActivityDashboard: React.FC<UserActivityDashboardProps> = ({
     if (!success) return <ExclamationTriangleIcon className="h-5 w-5 text-red-500" />;
 
     if (actionType.includes('create')) return <FolderPlusIcon className="h-5 w-5 text-green-500" />;
-    if (actionType.includes('update')) return <PencilIcon className="h-5 w-5 text-blue-500" />;
+    if (actionType.includes('update')) return <PencilIcon className="h-5 w-5 text-indigo-500" />;
     if (actionType.includes('delete')) return <TrashIcon className="h-5 w-5 text-red-500" />;
-    if (actionType.includes('view')) return <EyeIcon className="h-5 w-5 text-gray-500" />;
+    if (actionType.includes('view')) return <EyeIcon className="h-5 w-5 text-slate-500" />;
     if (actionType.includes('tool')) return <WrenchScrewdriverIcon className="h-5 w-5 text-purple-500" />;
     if (actionType.includes('mcp')) return <ServerIcon className="h-5 w-5 text-indigo-500" />;
-    if (actionType.includes('agent')) return <UserIcon className="h-5 w-5 text-blue-500" />;
+    if (actionType.includes('agent')) return <UserIcon className="h-5 w-5 text-indigo-500" />;
 
-    return <CogIcon className="h-5 w-5 text-gray-500" />;
+    return <CogIcon className="h-5 w-5 text-slate-500" />;
   };
 
   // Get action type color
   const getActionTypeColor = (actionType: string) => {
     if (actionType.includes('create')) return 'bg-green-100 text-green-800 border-green-200';
-    if (actionType.includes('update')) return 'bg-blue-100 text-blue-800 border-blue-200';
+    if (actionType.includes('update')) return 'bg-indigo-100 text-indigo-800 border-indigo-200';
     if (actionType.includes('delete')) return 'bg-red-100 text-red-800 border-red-200';
     if (actionType.includes('error')) return 'bg-red-100 text-red-800 border-red-200';
-    return 'bg-gray-100 text-gray-800 border-gray-200';
+    return 'bg-slate-100 text-slate-800 border-slate-200';
   };
 
   // Format action description
@@ -216,14 +216,14 @@ export const UserActivityDashboard: React.FC<UserActivityDashboardProps> = ({
   return (
     <div className={`bg-white rounded-lg shadow-lg ${className}`}>
       {/* Header */}
-      <div className="px-6 py-4 border-b border-gray-200">
+      <div className="px-6 py-4 border-b border-slate-200">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <ChartBarIcon className="h-6 w-6 text-gray-600" />
-            <h2 className="text-xl font-semibold text-gray-900">
+            <ChartBarIcon className="h-6 w-6 text-slate-600" />
+            <h2 className="text-xl font-semibold text-slate-900">
               User Activity Dashboard
               {sessionId && (
-                <span className="ml-2 text-sm font-normal text-gray-500">
+                <span className="ml-2 text-sm font-normal text-slate-500">
                   Session: {sessionId}
                 </span>
               )}
@@ -233,7 +233,7 @@ export const UserActivityDashboard: React.FC<UserActivityDashboardProps> = ({
             <select
               value={timeRange}
               onChange={(e) => setTimeRange(e.target.value as any)}
-              className="px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+              className="px-3 py-2 text-sm border border-slate-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
             >
               <option value="1h">Last Hour</option>
               <option value="24h">Last 24 Hours</option>
@@ -245,40 +245,40 @@ export const UserActivityDashboard: React.FC<UserActivityDashboardProps> = ({
       </div>
 
       {/* Metrics Overview */}
-      <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
+      <div className="px-6 py-4 bg-slate-50 border-b border-slate-200">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="text-center">
-            <div className="text-2xl font-bold text-blue-600">{metrics.totalActions}</div>
-            <div className="text-sm text-gray-500">Total Actions</div>
+            <div className="text-2xl font-bold text-indigo-600">{metrics.totalActions}</div>
+            <div className="text-sm text-slate-500">Total Actions</div>
           </div>
           <div className="text-center">
             <div className={`text-2xl font-bold ${metrics.successRate >= 90 ? 'text-green-600' : metrics.successRate >= 70 ? 'text-yellow-600' : 'text-red-600'}`}>
               {metrics.successRate}%
             </div>
-            <div className="text-sm text-gray-500">Success Rate</div>
+            <div className="text-sm text-slate-500">Success Rate</div>
           </div>
           <div className="text-center">
             <div className="text-2xl font-bold text-purple-600">{metrics.avgDuration}ms</div>
-            <div className="text-sm text-gray-500">Avg Duration</div>
+            <div className="text-sm text-slate-500">Avg Duration</div>
           </div>
           <div className="text-center">
             <div className={`text-2xl font-bold ${metrics.errorCount === 0 ? 'text-green-600' : 'text-red-600'}`}>
               {metrics.errorCount}
             </div>
-            <div className="text-sm text-gray-500">Errors</div>
+            <div className="text-sm text-slate-500">Errors</div>
           </div>
         </div>
       </div>
 
       {/* Filters */}
-      <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
+      <div className="px-6 py-4 bg-slate-50 border-b border-slate-200">
         <div className="flex items-center space-x-4">
           <div className="flex items-center">
-            <FunnelIcon className="h-4 w-4 text-gray-400 mr-2" />
+            <FunnelIcon className="h-4 w-4 text-slate-400 mr-2" />
             <select
               value={actionTypeFilter}
               onChange={(e) => setActionTypeFilter(e.target.value)}
-              className="px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+              className="px-3 py-2 text-sm border border-slate-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
             >
               <option value="ALL">All Actions</option>
               <option value="create">Create Actions</option>
@@ -292,30 +292,30 @@ export const UserActivityDashboard: React.FC<UserActivityDashboardProps> = ({
               type="checkbox"
               checked={showSuccessOnly}
               onChange={(e) => setShowSuccessOnly(e.target.checked)}
-              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
             />
-            <span className="ml-2 text-sm text-gray-700">Success only</span>
+            <span className="ml-2 text-sm text-slate-700">Success only</span>
           </label>
         </div>
       </div>
 
       {/* Feature Usage & Complexity Analysis */}
-      <div className="px-6 py-4 border-b border-gray-200">
+      <div className="px-6 py-4 border-b border-slate-200">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <h3 className="text-lg font-medium text-gray-900 mb-3">Most Used Features</h3>
+            <h3 className="text-lg font-medium text-slate-900 mb-3">Most Used Features</h3>
             <div className="space-y-2">
               {metrics.mostUsedFeatures.map((feature, _index) => (
                 <div key={feature.feature} className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600 capitalize">{feature.feature}</span>
+                  <span className="text-sm text-slate-600 capitalize">{feature.feature}</span>
                   <div className="flex items-center space-x-2">
-                    <div className="w-16 bg-gray-200 rounded-full h-2">
+                    <div className="w-16 bg-slate-200 rounded-full h-2">
                       <div
-                        className="bg-blue-500 h-2 rounded-full"
+                        className="bg-indigo-500 h-2 rounded-full"
                         style={{ width: `${(feature.count / metrics.totalActions) * 100}%` }}
                       ></div>
                     </div>
-                    <span className="text-sm font-medium text-gray-900">{feature.count}</span>
+                    <span className="text-sm font-medium text-slate-900">{feature.count}</span>
                   </div>
                 </div>
               ))}
@@ -323,13 +323,13 @@ export const UserActivityDashboard: React.FC<UserActivityDashboardProps> = ({
           </div>
 
           <div>
-            <h3 className="text-lg font-medium text-gray-900 mb-3">Task Complexity</h3>
+            <h3 className="text-lg font-medium text-slate-900 mb-3">Task Complexity</h3>
             <div className="space-y-2">
               {Object.entries(metrics.complexityDistribution).map(([complexity, count]) => (
                 <div key={complexity} className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">{complexity}</span>
+                  <span className="text-sm text-slate-600">{complexity}</span>
                   <div className="flex items-center space-x-2">
-                    <div className="w-16 bg-gray-200 rounded-full h-2">
+                    <div className="w-16 bg-slate-200 rounded-full h-2">
                       <div
                         className={`h-2 rounded-full ${
                           complexity === 'Simple' ? 'bg-green-500' :
@@ -338,7 +338,7 @@ export const UserActivityDashboard: React.FC<UserActivityDashboardProps> = ({
                         style={{ width: `${(count / metrics.totalActions) * 100}%` }}
                       ></div>
                     </div>
-                    <span className="text-sm font-medium text-gray-900">{count}</span>
+                    <span className="text-sm font-medium text-slate-900">{count}</span>
                   </div>
                 </div>
               ))}
@@ -349,18 +349,18 @@ export const UserActivityDashboard: React.FC<UserActivityDashboardProps> = ({
 
       {/* Recent Activity */}
       <div className="px-6 py-4">
-        <h3 className="text-lg font-medium text-gray-900 mb-4">Recent Activity</h3>
+        <h3 className="text-lg font-medium text-slate-900 mb-4">Recent Activity</h3>
 
         {loading ? (
           <div className="flex items-center justify-center p-8">
-            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
-            <span className="ml-2 text-gray-500">Loading activity...</span>
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-500"></div>
+            <span className="ml-2 text-slate-500">Loading activity...</span>
           </div>
         ) : userActions.length === 0 ? (
           <div className="text-center py-8">
-            <UserIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-sm font-medium text-gray-900 mb-1">No activity found</h3>
-            <p className="text-sm text-gray-500">User actions will appear here once they start using the system.</p>
+            <UserIcon className="h-12 w-12 text-slate-400 mx-auto mb-4" />
+            <h3 className="text-sm font-medium text-slate-900 mb-1">No activity found</h3>
+            <p className="text-sm text-slate-500">User actions will appear here once they start using the system.</p>
           </div>
         ) : (
           <div className="space-y-3 max-h-64 overflow-y-auto">
@@ -370,7 +370,7 @@ export const UserActivityDashboard: React.FC<UserActivityDashboardProps> = ({
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.05 }}
-                className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                className="flex items-center space-x-3 p-3 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors"
               >
                 <div className="flex-shrink-0">
                   {getActionIcon(action.action_type, action.success)}
@@ -378,7 +378,7 @@ export const UserActivityDashboard: React.FC<UserActivityDashboardProps> = ({
 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between">
-                    <p className="text-sm text-gray-900 truncate">
+                    <p className="text-sm text-slate-900 truncate">
                       {formatActionDescription(action)}
                     </p>
                     <div className="flex items-center space-x-2">
@@ -386,7 +386,7 @@ export const UserActivityDashboard: React.FC<UserActivityDashboardProps> = ({
                         {action.action_type.replace(/_/g, ' ')}
                       </span>
                       {action.duration_ms && (
-                        <span className="text-xs text-gray-500">
+                        <span className="text-xs text-slate-500">
                           {action.duration_ms.toFixed(0)}ms
                         </span>
                       )}
@@ -394,7 +394,7 @@ export const UserActivityDashboard: React.FC<UserActivityDashboardProps> = ({
                   </div>
 
                   <div className="flex items-center justify-between mt-1">
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-slate-500">
                       {new Date(action.timestamp).toLocaleString()}
                     </p>
                     {action.error_message && (

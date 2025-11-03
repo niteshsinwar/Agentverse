@@ -74,8 +74,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   return (
     <div className="flex flex-col h-full">
       {/* Premium Header with Brand Logo */}
-      <div className="relative p-4 border-b border-violet-200/30 dark:border-violet-800/30">
-        <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/5 via-purple-500/5 to-pink-500/5" />
+      <div className="relative p-4 border-b border-transparent">
+        <div className="pointer-events-none absolute inset-0 brand-gradient-soft opacity-30" />
         <div className="relative flex items-center justify-between">
           <motion.div
             initial={{ opacity: expanded ? 1 : 0 }}
@@ -94,7 +94,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={onToggleExpanded}
-            className="p-2 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-violet-100/50 dark:hover:bg-violet-900/30 transition-all duration-200"
+            className="brand-glass p-2 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-all duration-200 hover:-translate-y-0.5"
           >
             {expanded ? (
               <ChevronLeftIcon className="w-4 h-4" />
@@ -107,18 +107,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Premium Navigation Tabs */}
       {expanded && (
-        <div className="relative px-4 py-3 border-b border-violet-200/30 dark:border-violet-800/30">
-          <div className="absolute inset-0 bg-gradient-to-r from-violet-50/30 to-cyan-50/20 dark:from-violet-950/30 dark:to-cyan-950/20" />
+        <div className="relative px-4 py-3 border-b border-transparent">
+          <div className="pointer-events-none absolute inset-0 brand-gradient-soft opacity-25" />
           <div className="relative overflow-x-auto scrollbar-hide">
-            <div className="flex space-x-1 p-1 bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm rounded-xl border border-violet-200/20 dark:border-violet-800/20 min-w-max">
+            <div className="flex space-x-1 p-1 brand-glass rounded-xl min-w-max">
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => onViewChange('chat')}
                 className={`flex items-center justify-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 whitespace-nowrap ${
                   currentView === 'chat'
-                    ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg shadow-indigo-500/25'
-                    : 'text-slate-600 dark:text-slate-300 hover:bg-violet-100/60 dark:hover:bg-violet-900/40 hover:text-slate-800 dark:hover:text-slate-100'
+                    ? 'brand-gradient text-white shadow-lg shadow-indigo-500/25'
+                    : 'text-slate-600 dark:text-slate-300 hover:bg-white/60 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
                 <UserGroupIcon className="w-4 h-4 mr-2" />
@@ -130,8 +130,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 onClick={() => onViewChange('agent-management')}
                 className={`flex items-center justify-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 whitespace-nowrap ${
                   currentView === 'agent-management'
-                    ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg shadow-indigo-500/25'
-                    : 'text-slate-600 dark:text-slate-300 hover:bg-violet-100/60 dark:hover:bg-violet-900/40 hover:text-slate-800 dark:hover:text-slate-100'
+                    ? 'brand-gradient text-white shadow-lg shadow-indigo-500/25'
+                    : 'text-slate-600 dark:text-slate-300 hover:bg-white/60 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
                 <CpuChipIcon className="w-4 h-4 mr-2" />
@@ -144,8 +144,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   onClick={() => onViewChange('admin')}
                   className={`flex items-center justify-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 whitespace-nowrap ${
                     currentView === 'admin'
-                      ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg shadow-indigo-500/25'
-                      : 'text-slate-600 dark:text-slate-300 hover:bg-violet-100/60 dark:hover:bg-violet-900/40 hover:text-slate-800 dark:hover:text-slate-100'
+                      ? 'brand-gradient text-white shadow-lg shadow-indigo-500/25'
+                      : 'text-slate-600 dark:text-slate-300 hover:bg-white/60 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-white'
                   }`}
                 >
                   <ShieldCheckIcon className="w-4 h-4 mr-2" />
@@ -159,7 +159,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Admin Sub-Navigation - Only show in admin view */}
       {currentView === 'admin' && expanded && onAdminTabChange && (
-        <div className="p-4 border-b border-violet-200/30 dark:border-violet-800/30">
+        <div className="p-4 border-b border-transparent">
           <div className="space-y-1">
             <motion.button
               whileHover={{ scale: 1.02 }}
@@ -167,8 +167,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
               onClick={() => onAdminTabChange('overview')}
               className={`w-full flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 ${
                 adminTab === 'overview'
-                  ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg shadow-indigo-500/25'
-                  : 'text-slate-600 dark:text-slate-300 hover:bg-violet-100/60 dark:hover:bg-violet-900/40 hover:text-slate-800 dark:hover:text-slate-100'
+                  ? 'brand-gradient text-white shadow-lg shadow-indigo-500/25'
+                  : 'text-slate-600 dark:text-slate-300 hover:bg-white/60 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
               <ChartBarIcon className="w-4 h-4 mr-3" />
@@ -180,8 +180,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
               onClick={() => onAdminTabChange('users')}
               className={`w-full flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 ${
                 adminTab === 'users'
-                  ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg shadow-indigo-500/25'
-                  : 'text-slate-600 dark:text-slate-300 hover:bg-violet-100/60 dark:hover:bg-violet-900/40 hover:text-slate-800 dark:hover:text-slate-100'
+                  ? 'brand-gradient text-white shadow-lg shadow-indigo-500/25'
+                  : 'text-slate-600 dark:text-slate-300 hover:bg-white/60 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
               <UsersIcon className="w-4 h-4 mr-3" />
@@ -193,8 +193,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
               onClick={() => onAdminTabChange('groups')}
               className={`w-full flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 ${
                 adminTab === 'groups'
-                  ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg shadow-indigo-500/25'
-                  : 'text-slate-600 dark:text-slate-300 hover:bg-violet-100/60 dark:hover:bg-violet-900/40 hover:text-slate-800 dark:hover:text-slate-100'
+                  ? 'brand-gradient text-white shadow-lg shadow-indigo-500/25'
+                  : 'text-slate-600 dark:text-slate-300 hover:bg-white/60 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
               <UserGroupIcon className="w-4 h-4 mr-3" />
@@ -206,8 +206,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
               onClick={() => onAdminTabChange('resources')}
               className={`w-full flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 ${
                 adminTab === 'resources'
-                  ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg shadow-indigo-500/25'
-                  : 'text-slate-600 dark:text-slate-300 hover:bg-violet-100/60 dark:hover:bg-violet-900/40 hover:text-slate-800 dark:hover:text-slate-100'
+                  ? 'brand-gradient text-white shadow-lg shadow-indigo-500/25'
+                  : 'text-slate-600 dark:text-slate-300 hover:bg-white/60 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
               <CubeIcon className="w-4 h-4 mr-3" />
@@ -219,8 +219,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
               onClick={() => onAdminTabChange('settings')}
               className={`w-full flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 ${
                 adminTab === 'settings'
-                  ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg shadow-indigo-500/25'
-                  : 'text-slate-600 dark:text-slate-300 hover:bg-violet-100/60 dark:hover:bg-violet-900/40 hover:text-slate-800 dark:hover:text-slate-100'
+                  ? 'brand-gradient text-white shadow-lg shadow-indigo-500/25'
+                  : 'text-slate-600 dark:text-slate-300 hover:bg-white/60 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
               <Cog6ToothIcon className="w-4 h-4 mr-3" />
@@ -238,7 +238,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <div className="flex items-center justify-between">
               {expanded && (
                 <div className="flex items-center space-x-2">
-                  <div className="w-2 h-2 rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 animate-pulse" />
+                  <div className="w-2 h-2 rounded-full brand-gradient animate-pulse" />
                   <h2 className="text-sm font-bold bg-gradient-to-r from-slate-700 to-slate-500 dark:from-slate-200 dark:to-slate-400 bg-clip-text text-transparent uppercase tracking-wider">
                     Conversations
                   </h2>
@@ -249,7 +249,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
                 onClick={() => setShowCreateGroup(true)}
-                className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-gradient-to-r hover:from-indigo-50 hover:to-purple-50 dark:hover:from-indigo-950/50 dark:hover:to-purple-950/50 rounded-lg transition-all duration-200 shadow-sm hover:shadow-lg hover:shadow-indigo-500/20"
+                className="p-2 text-slate-400 hover:text-sky-600 hover:bg-sky-50 dark:hover:bg-slate-900/40 rounded-lg transition-all duration-200 shadow-sm hover:shadow-lg"
                 title="Create new conversation"
               >
                 <PlusIcon className="w-4 h-4" />
@@ -267,7 +267,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   onSubmit={handleCreateGroup}
                   className="relative mt-4"
                 >
-                  <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/5 via-purple-500/5 to-pink-500/5 rounded-xl" />
+                    <div className="absolute inset-0 brand-gradient-soft rounded-xl opacity-80" />
                   <div className="relative space-y-3 p-4 bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm rounded-xl border border-violet-200/20 dark:border-violet-800/20">
                     <input
                       type="text"
@@ -282,7 +282,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
                         type="submit"
-                        className="flex-1 px-4 py-2.5 text-sm font-medium bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-lg hover:from-indigo-600 hover:to-purple-700 transition-all duration-200 shadow-lg shadow-indigo-500/25"
+                        className="flex-1 px-4 py-2.5 text-sm font-medium brand-gradient text-white rounded-lg hover:opacity-90 transition-all duration-200 shadow-lg"
                       >
                         Create
                       </motion.button>
@@ -314,7 +314,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 whileTap={{ scale: 0.98 }}
                 className={`group relative flex items-center space-x-3 p-3 rounded-xl cursor-pointer transition-all duration-200 ${
                   selectedGroup?.id === group.id
-                    ? 'bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-950/50 dark:to-purple-950/50 border border-indigo-200/50 dark:border-indigo-800/50 shadow-lg shadow-indigo-500/10'
+                    ? 'bg-gradient-to-r from-slate-50 to-sky-50 dark:from-slate-900/40 dark:to-sky-900/30 border border-slate-200/50 dark:border-slate-700/50 shadow-lg'
                     : 'bg-white/40 dark:bg-slate-800/40 hover:bg-white/70 dark:hover:bg-slate-800/70 hover:shadow-lg hover:shadow-violet-500/10 border border-violet-200/20 dark:border-violet-800/20'
                 }`}
                 onClick={() => onSelectGroup(group)}
@@ -322,22 +322,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <div className={`w-3 h-3 rounded-full ${
                   selectedGroup?.id === group.id
                     ? 'bg-green-500'
-                    : 'bg-gray-300 dark:bg-gray-600'
+                    : 'bg-slate-300 dark:bg-slate-600'
                 }`} />
 
                 {expanded && (
                   <>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                      <p className="text-sm font-medium text-slate-900 dark:text-white truncate">
                         {group.name}
                       </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
                         {new Date(group.created_at * 1000).toLocaleDateString()}
                       </p>
                     </div>
 
                     <Menu as="div" className="relative opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Menu.Button className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                      <Menu.Button className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
                         <EllipsisVerticalIcon className="w-4 h-4" />
                       </Menu.Button>
                       <Transition
@@ -348,7 +348,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         leaveFrom="transform scale-100 opacity-100"
                         leaveTo="transform scale-95 opacity-0"
                       >
-                        <Menu.Items static className="absolute right-0 top-full mt-1 w-32 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50">
+                        <Menu.Items static className="absolute right-0 top-full mt-1 w-32 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 z-50">
                           <Menu.Item>
                             {({ active }) => (
                               <button
@@ -375,7 +375,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             ))}
 
             {groups.length === 0 && expanded && (
-              <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+              <div className="text-center py-8 text-slate-500 dark:text-slate-400">
                 <UserGroupIcon className="w-8 h-8 mx-auto mb-2 opacity-50" />
                 <p className="text-sm">No universes yet</p>
                 <p className="text-xs">Create your first agent universe 🌌</p>
@@ -385,16 +385,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
           {/* Agents Section - Fixed at bottom */}
           {selectedGroup && expanded && (
-            <div className="flex-shrink-0 border-t border-gray-200 dark:border-gray-700 flex flex-col">
+            <div className="flex-shrink-0 border-t border-slate-200 dark:border-slate-700 flex flex-col">
               {/* Agents Header */}
-              <div className="flex-shrink-0 p-4 border-b border-gray-200 dark:border-gray-700">
+              <div className="flex-shrink-0 p-4 border-b border-slate-200 dark:border-slate-700">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                  <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
                     Agents ({groupAgents.length})
                   </h3>
                   <button
                     onClick={() => setShowAgentsPanel(!showAgentsPanel)}
-                    className="p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-colors"
+                    className="p-2 text-slate-400 hover:text-sky-500 hover:bg-sky-50 dark:hover:bg-sky-900/20 rounded-lg transition-colors"
                     title="Manage agents"
                   >
                     <CpuChipIcon className="w-4 h-4" />
@@ -413,10 +413,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   >
                     <span className="text-lg">{agent.emoji}</span>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                      <p className="text-sm font-medium text-slate-900 dark:text-white truncate">
                         {agent.name}
                       </p>
-                      <p className="text-xs text-gray-600 dark:text-gray-400 truncate">
+                      <p className="text-xs text-slate-600 dark:text-slate-400 truncate">
                         {agent.description}
                       </p>
                     </div>
@@ -439,10 +439,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     animate={{ opacity: 1, maxHeight: 300 }}
                     exit={{ opacity: 0, maxHeight: 0 }}
                     transition={{ duration: 0.2 }}
-                    className="flex-shrink-0 border-t border-gray-200 dark:border-gray-700 flex flex-col overflow-hidden"
+                    className="flex-shrink-0 border-t border-slate-200 dark:border-slate-700 flex flex-col overflow-hidden"
                   >
                     <div className="flex-shrink-0 p-4 pb-2">
-                      <h4 className="text-xs font-semibold text-gray-600 dark:text-gray-400">
+                      <h4 className="text-xs font-semibold text-slate-600 dark:text-slate-400">
                         AVAILABLE AGENTS
                       </h4>
                     </div>
@@ -451,15 +451,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         <motion.div
                           key={agent.key}
                           whileHover={{ x: 2 }}
-                          className="flex items-center space-x-2 p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg cursor-pointer"
+                          className="flex items-center space-x-2 p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg cursor-pointer"
                           onClick={() => onAddAgent(agent.key)}
                         >
                           <span className="text-lg">{agent.emoji}</span>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                            <p className="text-sm font-medium text-slate-900 dark:text-white truncate">
                               {agent.name}
                             </p>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                            <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
                               {agent.description}
                             </p>
                           </div>
