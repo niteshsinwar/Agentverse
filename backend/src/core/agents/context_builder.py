@@ -100,6 +100,7 @@ Result sent to user/other agents
 ═══════════════════════════════════════════════════════════════════════════════
 """
 from typing import Dict, Any, List, Tuple, Optional
+from datetime import datetime, timezone
 from src.core.memory import session_store
 
 
@@ -365,6 +366,9 @@ class AgentContextBuilder:
         # This tells agents WHO can help and WHAT they specialize in
         roster_lines = self._format_roster(roster)
 
+        now = datetime.now(timezone.utc).astimezone()
+        formatted_now = now.strftime("%Y-%m-%d %H:%M:%S %Z")
+
         identity = (
             # 1. AGENT IDENTITY: WHO am I?
             f"AGENT IDENTITY:\n"
@@ -372,7 +376,8 @@ class AgentContextBuilder:
             # Specialty from agent.yaml - defines agent's domain
             f"Specialty: {agent_metadata.get('description', 'General purpose')}\n"
             # Tools summary - lets agent know if it CAN solve a task
-            f"Capabilities: {tools_summary}\n\n"
+            f"Capabilities: {tools_summary}\n"
+            f"Current Date & Time: {formatted_now}\n\n"
 
             # 2. GROUP ROSTER: WHO can I work with?
             # ⚠️ CRITICAL: Agents use this to decide who to @mention for delegation
