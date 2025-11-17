@@ -4,635 +4,218 @@
 
 ![AgentVerse Logo](frontend/public/logo.svg)
 
-**Enterprise-Grade AI Agent Orchestration Platform**
+**Where AI Agents Collaborate**
 
-*Multiverse of Agents*
-
-</div>
-
-A professional, production-ready platform for creating, managing, and deploying intelligent AI agents with advanced tooling, real-time collaboration, and MCP (Model Context Protocol) integration. Welcome to the AgentVerse - where AI agents collaborate, evolve, and thrive in a unified ecosystem! 🌌
+A desktop application that lets you create AI agents, give them capabilities, and watch them work together to solve complex problems.
 
 [![Python](https://img.shields.io/badge/Python-3.10--3.12-blue.svg)](https://python.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)](https://typescriptlang.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.104+-green.svg)](https://fastapi.tiangolo.com)
 [![React](https://img.shields.io/badge/React-18.2+-cyan.svg)](https://react.dev)
 [![Tauri](https://img.shields.io/badge/Tauri-1.5+-orange.svg)](https://tauri.app)
-[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-## 🎯 Platform Overview
+</div>
 
-AgentVerse is a comprehensive B2B SaaS platform designed for enterprises seeking to integrate AI agents into their workflows. Built with production-grade architecture and modern technologies, it provides:
+## 💡 The Big Idea
 
-### 🏢 **Enterprise Features**
-- **Professional Backend**: FastAPI-based Python backend with clean architecture and enterprise patterns
-- **Desktop Application**: Cross-platform Tauri + React/TypeScript app with native performance
-- **Agent Orchestration**: Advanced multi-agent collaboration using LangGraph and LangChain
-- **Real-time Communication**: WebSocket-based messaging with live streaming responses
-- **Document Intelligence**: AI-powered document processing and analysis
-- **MCP Integration**: Cutting-edge Model Context Protocol support for extensibility
-- **Analytics & Monitoring**: Comprehensive session logging, performance metrics, and user analytics
-- **Multi-LLM Support**: OpenAI, Anthropic Claude, Google Gemini integration
+**Think Slack or Microsoft Teams, but your teammates are AI agents** with tools and knowledge you define.
 
-### 🚀 **Core Capabilities**
-- **Agent Lifecycle Management**: Create, configure, deploy, and monitor AI agents
-- **Tool Ecosystem**: 15+ pre-built tools (file ops, web scraping, data processing, API calls)
-- **Workflow Automation**: Chain multiple agents for complex business processes
-- **Document Processing**: Support for 20+ file formats with AI analysis
-- **Custom Integrations**: Extensible architecture for custom tools and MCP servers
-- **Enterprise Security**: Secure API key management, session control, and audit logging
-- **Reflective Planning Loop**: Agents can pause, self-reflect, and adapt plans before executing tools or replying
+Instead of managing isolated AI chatbots, you orchestrate a team of specialized agents that collaborate, delegate tasks to each other, and access shared knowledge - all running locally on your machine.
 
-## 🏗️ Architecture & Technology Stack
+## ⚡ Why AgentVerse?
 
-### **System Architecture**
-```
-AgentVerse/ (Enterprise-Grade Platform)
-├── 🖥️  Frontend (Tauri Desktop App)           # Cross-platform native performance
-│   ├── React 18 + TypeScript 5.0             # Modern reactive UI framework
-│   ├── TailwindCSS + Framer Motion           # Professional styling & animations
-│   ├── Real-time WebSocket client            # Live messaging & updates
-│   └── 14 specialized components             # Modular, reusable UI components
-│
-├── 🔧 Backend (FastAPI Python)               # Production-ready API server
-│   ├── src/api/v1/                          # RESTful API endpoints (6 modules)
-│   │   ├── agents/     # Agent CRUD operations
-│   │   ├── groups/     # Conversation management
-│   │   ├── chat/       # Real-time messaging
-│   │   ├── analytics/  # Performance metrics
-│   │   ├── config/     # System configuration
-│   │   └── logs/       # Session & event logging
-│   │
-│   ├── src/core/                           # Business logic & services
-│   │   ├── agents/     # Agent orchestration with reflective planning
-│   │   ├── llm/        # Multi-provider LLM integration
-│   │   ├── memory/     # Session & knowledge management
-│   │   ├── mcp/        # Model Context Protocol client
-│   │   ├── document_processing/ # AI document analysis
-│   │   ├── telemetry/  # Analytics & monitoring
-│   │   └── validation/ # Input validation & security
-│   │
-│   └── src/services/                       # Application services
-│       └── orchestrator_service.py        # Main business logic layer
-│
-├── 📁 Configuration & Data
-│   ├── config/         # JSON configuration files
-│   │   ├── tools.json  # Pre-built tool definitions
-│   │   ├── mcp.json    # MCP server configurations
-│   │   └── settings.json # Application settings
-│   ├── agent_store/    # Runtime agent instances
-│   ├── documents/      # Uploaded file storage
-│   ├── data/          # SQLite databases
-│   └── logs/          # Session & event logs
-│
-└── 🛠️  DevOps & Setup
-    ├── setup.sh/bat    # Automated platform setup
-    ├── start.sh/bat    # Development server launcher
-    └── .env.example    # Environment configuration template
-```
+**For Developers:**
+- Build once, use everywhere - agents persist and improve with context
+- Chain complex workflows through agent collaboration
+- Give agents real capabilities through tools and MCP servers
+- Full conversation memory and document understanding
 
-### **Technology Stack**
+**For Teams:**
+- Local-first - your data never leaves your machine
+- Share agent configurations and workflows
+- Collaborative problem-solving with AI assistance
+- Extensible through custom tools and integrations
 
-| Layer | Technology | Purpose |
-|-------|-----------|---------|
-| **Frontend** | Tauri + React 18 + TypeScript | Cross-platform desktop app with web technologies |
-| **Backend** | FastAPI + Python 3.10-3.12 | High-performance async API server |
-| **Agent Framework** | LangChain 0.3+ + LangGraph | Multi-agent orchestration & workflows |
-| **MCP Integration** | Official Anthropic MCP SDK | Model Context Protocol for extensibility |
-| **LLM Providers** | OpenAI, Anthropic, Gemini (Official SDKs) | Multi-model AI capabilities |
-| **UI Framework** | TailwindCSS + Framer Motion | Professional design system |
-| **Real-time** | WebSocket + Server-Sent Events | Live messaging & updates |
-| **Data Storage** | SQLite + JSON configs | Lightweight data persistence |
-| **Cross-Platform** | Unified Windows/macOS utilities | Native command/env resolution |
-| **Documentation** | Pydantic + FastAPI auto-docs | Type-safe API documentation |
+**For Power Users:**
+- Multi-agent orchestration made simple
+- Rich document intelligence (40+ formats)
+- Real-time streaming responses
+- Beautiful native desktop experience
 
-## 🚀 Quick Start
+## 🎯 What Can You Build?
 
-### Option 1: Automated Setup (Recommended)
+**Research Assistants**
+- Upload papers → Agents analyze, summarize, extract insights
+- Multi-document synthesis across formats
+- Automatic citation and reference tracking
 
-**Windows:**
-```cmd
-# Run setup script
-setup.bat
+**Development Teams**
+- Code review agent + testing agent + documentation agent
+- Automated workflow pipelines
+- Access to GitHub, filesystems, databases via MCP
 
-# Verify installation
-python verify-setup.py
+**Content Creation**
+- Research → Draft → Edit → Publish pipeline
+- Multi-agent brainstorming sessions
+- Style consistency across deliverables
 
-# Start the application
-start.bat
-```
+**Data Analysis**
+- Upload spreadsheets → Statistical analysis + visualization recommendations
+- Cross-reference multiple data sources
+- Natural language queries on your data
 
-**macOS/Linux:**
-```bash
-# Run setup script
-./setup.sh
-
-# Verify installation
-python3 verify-setup.py
-
-# Start the application
-./start.sh
-```
-
-### Option 2: Manual Setup
-
-### Prerequisites
-
-**Windows:**
-- **Python 3.10-3.12** (Download from [python.org](https://python.org) - ensure "Add to PATH" is checked)
-- **Node.js 18+** (Download from [nodejs.org](https://nodejs.org))
-- **Rust** (Download from [rustup.rs](https://rustup.rs/) - run `rustup-init.exe`)
-- **Visual Studio Build Tools** (for Tauri): Download from [Microsoft](https://visualstudio.microsoft.com/visual-cpp-build-tools/)
-
-**macOS:**
-- **Python 3.10-3.12** (Install via Homebrew: `brew install python` or download from [python.org](https://python.org))
-- **Node.js 18+** (Install via Homebrew: `brew install node` or download from [nodejs.org](https://nodejs.org))
-- **Rust** (Install via Homebrew: `brew install rust` or from [rustup.rs](https://rustup.rs/))
-- **Xcode Command Line Tools**: `xcode-select --install`
-
-### Installation
-
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd agentverse
-   ```
-
-2. **Set up Backend**
-
-   **Windows (Command Prompt/PowerShell):**
-   ```cmd
-   cd backend
-
-   :: Create virtual environment (recommended)
-   python -m venv venv
-   venv\Scripts\activate
-
-   :: Install Python dependencies
-   pip install -r requirements.txt
-
-   :: Create environment file
-   copy ..\.env.example .env
-
-   :: Edit .env with your API keys using notepad or your preferred editor
-   notepad .env
-   ```
-
-   **Windows (Git Bash):**
-   ```bash
-   cd backend
-
-   # Create virtual environment (recommended)
-   python -m venv venv
-   source venv/Scripts/activate
-
-   # Install Python dependencies
-   pip install -r requirements.txt
-
-   # Create environment file
-   cp ../.env.example .env
-
-   # Edit .env with your API keys
-   nano .env
-   ```
-
-   **macOS/Linux:**
-   ```bash
-   cd backend
-
-   # Create virtual environment (recommended)
-   python3 -m venv venv
-   source venv/bin/activate
-
-   # Install Python dependencies
-   pip install -r requirements.txt
-
-   # Create environment file
-   cp ../.env.example .env
-
-   # Edit .env with your API keys
-   nano .env
-   ```
-idv
-   **Required API Keys in .env:**
-   ```env
-   OPENAI_API_KEY=sk-your-openai-key-here
-   GITHUB_TOKEN=ghp_your-github-token-here
-   # Optional:
-   ANTHROPIC_API_KEY=sk-ant-your-anthropic-key-here
-   GEMINI_API_KEY=your-gemini-key-here
-   ```
-
-3. **Set up Frontend**
-
-   **Windows:**
-   ```cmd
-   cd frontend
-
-   :: Install dependencies
-   npm install
-   ```
-
-   **macOS/Linux:**
-   ```bash
-   cd frontend
-
-   # Install dependencies
-   npm install
-   ```
-
-4. **Start the Applications**
-
-   **Terminal 1 - Backend:**
-
-   **Windows:**
-   ```cmd
-   cd backend
-   venv\Scripts\activate
-   python server.py
-   ```
-
-   **macOS/Linux:**
-   ```bash
-   cd backend
-   source venv/bin/activate
-   python3 server.py
-   ```
-   Backend will start on `http://localhost:8000`
-
-   **Terminal 2 - Frontend:**
-
-   **Windows/macOS/Linux:**
-   ```bash
-   cd frontend
-   npm run dev
-   ```
-   Frontend will start on `http://localhost:1420`
-
-## ✅ Verification
-
-After starting both services, verify everything is working:
-
-1. **Backend Health Check**: Visit `http://localhost:8000/health`
-   - Should return: `{"status": "healthy", "service": "Agentverse Backend"}`
-
-2. **API Documentation**: Visit `http://localhost:8000/docs`
-   - Should show the Swagger UI with all API endpoints
-
-3. **Frontend**: Visit `http://localhost:1420`
-   - Should show the agent collaboration interface
-
-4. **Agent Creation**: Try creating a test agent through the UI
-   - Click "Agent Management" → "Create Agent"
-
-## 🔧 Configuration
-
-### Backend Configuration
-
-The backend uses a professional Pydantic-based settings system. Configuration files are now located in `backend/config/`:
-
-- `backend/config/tools.json` - Pre-built tools configuration
-- `backend/config/mcp.json` - MCP servers configuration
-- `backend/config/settings.json` - Application settings
-
-Key configurations:
-
-```python
-# Core Settings
-app_name = "Agentverse Backend"
-environment = "development"  # development, staging, production
-host = "0.0.0.0"
-port = 8000
-
-# LLM Configuration
-llm_provider = "openai"  # openai, anthropic, gemini
-llm_temperature = 0.2
-llm_max_tokens = 4096
-
-# Security
-secret_key = "your-secret-key"
-session_timeout_hours = 24
-
-# File Processing
-max_upload_size_mb = 10
-supported_file_formats = ["txt", "csv", "json", "pdf", "docx", "md"]
-```
-
-### Frontend Configuration
-
-The frontend stores UI-specific settings in localStorage and syncs with backend settings via the Settings panel (⚙️ icon).
-
-## 🤖 Agent Management
-
-### Creating Agents
-
-1. **Via UI**: Click "Agent Management" → "Create Agent"
-2. **Choose Pre-built Tools**: Select from file operations, web scraping, data processing, etc.
-3. **Configure MCP**: Add Model Context Protocol servers
-4. **Custom Code**: Write custom Python tools and MCP configurations
-
-### Pre-built Tools Available
-
-- **File Operations**: Read, write, list, search files
-- **Web Scraping**: Extract content from web pages
-- **Data Processing**: CSV, JSON, pandas operations
-- **Database Operations**: SQLite, PostgreSQL connections
-- **Email Automation**: Send emails with attachments
-- **Image Processing**: Resize, crop, convert images
-
-### Pre-built MCP Servers
-
-- **Filesystem**: File system operations with security controls
-- **Brave Search**: Web search capabilities
-- **GitHub**: Repository access and management
-- **PostgreSQL/SQLite**: Database operations
-- **Puppeteer**: Browser automation
-- **Memory**: Persistent knowledge management
-
-## 🔨 Adding New Tools/MCPs
-
-To add new tools or MCP servers, edit the JSON configuration files in `backend/config/`:
-
-### Adding Tools
-Edit `backend/config/tools.json`:
-
-```json
-{
-  "my_new_tool": {
-    "name": "My New Tool",
-    "description": "Description of what this tool does",
-    "category": "category_name",
-    "code": "def my_function():\n    # Your Python code here\n    pass",
-    "functions": ["my_function"]
-  }
-}
-```
-
-### Adding MCP Servers
-Edit `backend/config/mcp.json`:
-
-```json
-{
-  "my_mcp_server": {
-    "name": "My MCP Server",
-    "description": "Description of MCP server capabilities",
-    "category": "category_name",
-    "config": {
-      "command": "npx",
-      "args": ["my-mcp-server"],
-      "env": {
-        "API_KEY": "${MY_API_KEY}"
-      },
-      "capabilities": ["capability1", "capability2"]
-    }
-  }
-}
-```
-
-## 📝 API Documentation
-
-The backend provides comprehensive API documentation:
-
-- **Swagger UI**: http://localhost:8000/docs
-- **ReDoc**: http://localhost:8000/redoc
-
-### Key Endpoints
-
-- `GET /api/v1/agents/` - List all agents
-- `POST /api/v1/agents/create/` - Create new agent
-- `PUT /api/v1/agents/{key}/` - Update agent
-- `DELETE /api/v1/agents/{key}/` - Delete agent
-- `GET /api/v1/groups/` - List conversation groups
-- `POST /api/v1/groups/{id}/messages/` - Send message to agent
-- `GET /api/v1/config/tools/` - Get tools configuration
-- `GET /api/v1/config/mcp/` - Get MCP configuration
-
-## 🛡️ Security Features
-
-- **API Key Management**: Secure storage and rotation
-- **File Upload Validation**: Size limits and format restrictions
-- **Session Management**: Configurable timeouts
-- **CORS Protection**: Configurable allowed origins
-- **Input Validation**: Pydantic-based request validation
-
-## 🎨 UI Features
-
-- **Professional Design**: Modern Tailwind CSS styling
-- **Dark/Light Mode**: System-aware theme switching
-- **Responsive Layout**: Adaptive to different screen sizes
-- **Animations**: Smooth Framer Motion transitions
-- **Keyboard Shortcuts**: Command palette (⌘K / Ctrl+K)
-- **Real-time Updates**: Live message streaming
-- **File Drag & Drop**: Easy document uploads
-
-## 📊 Development
-
-### Backend Development
-
-**Windows:**
-```cmd
-cd backend
-venv\Scripts\activate
-
-:: Run with auto-reload
-python server.py
-
-:: Format code (if installed)
-black src\
-flake8 src\
-```
-
-**macOS/Linux:**
-```bash
-cd backend
-source venv/bin/activate
-
-# Run with auto-reload
-python3 server.py
-
-# Format code (if installed)
-black src/
-flake8 src/
-```
-
-### Frontend Development
-
-**Windows/macOS/Linux:**
-```bash
-cd frontend
-
-# Development server
-npm run dev
-
-# Build for production
-npm run build
-
-# Lint code
-npm run lint
-
-# Build Tauri app
-npm run tauri build
-```
-
-## 🐳 Deployment
-
-### Backend Deployment
-
-1. **Production Settings**:
-   **Windows:**
-   ```cmd
-   set ENVIRONMENT=production
-   set SECRET_KEY=your-production-secret-key
-   ```
-
-   **macOS/Linux:**
-   ```bash
-   export ENVIRONMENT=production
-   export SECRET_KEY=your-production-secret-key
-   ```
-
-2. **Using Gunicorn** (macOS/Linux):
-   ```bash
-   pip install gunicorn
-   gunicorn -w 4 -k uvicorn.workers.UvicornWorker server:app
-   ```
-
-   **Windows alternative** (using uvicorn directly):
-   ```cmd
-   pip install uvicorn[standard]
-   uvicorn server:app --host 0.0.0.0 --port 8000 --workers 4
-   ```
-
-### Frontend Deployment
-
-The frontend is a Tauri desktop application that can be built for multiple platforms:
+## 🚀 Get Started in 2 Minutes
 
 ```bash
-cd frontend
-npm run tauri build
+# Automated setup (recommended)
+./setup.sh && ./start.sh   # macOS/Linux
+setup.bat && start.bat      # Windows
+
+# Manual setup
+cd backend && pip install -r requirements.txt && python server.py
+cd frontend && npm install && npm run dev
 ```
 
-## 🛠️ Troubleshooting
+**Add your LLM API key** to `backend/.env` and you're ready to go!
 
-### Common Issues
+## 🎬 How It Works
 
-**Windows:**
-- **Python not found**: Ensure Python is added to PATH during installation
-- **npm not found**: Restart terminal after Node.js installation
-- **Rust compiler errors**: Install Visual Studio Build Tools
-- **Permission errors**: Run terminal as Administrator if needed
+**1. Create Agents**
+Define what each agent does - their specialty, personality, and capabilities.
 
-**macOS:**
-- **Command not found**: Install Xcode Command Line Tools: `xcode-select --install`
-- **Permission errors**: Use `sudo` for global npm packages if needed
-- **Python version issues**: Use `python3` instead of `python`
+**2. Give Them Tools**
+- Custom Python functions
+- MCP servers (GitHub, databases, filesystems)
+- Access to documents you upload
 
-**Both Platforms:**
-- **Port already in use**: Kill processes using ports 8000 or 1420
-- **Module not found**: Ensure virtual environment is activated for backend
-- **API key errors**: Double-check .env file formatting and key validity
+**3. Start a Conversation**
+Create groups, add agents, and @mention them. Watch them collaborate with:
+- Real-time streaming responses
+- Tool usage (they can code, search, analyze)
+- Cross-agent delegation
+- Full context awareness
 
-### Port Conflicts
+**4. Share Knowledge**
+Upload documents (PDFs, code, spreadsheets) - agents automatically get context through semantic search.
 
-**Windows:**
-```cmd
-:: Find process using port 8000
-netstat -ano | findstr :8000
+## ✨ Key Capabilities
 
-:: Kill process by PID
-taskkill /PID <PID> /F
+🧠 **Multi-Agent Orchestration** - Agents delegate and collaborate via @mentions
+
+📚 **Document Intelligence** - Upload 40+ formats, agents retrieve relevant context automatically
+
+🔧 **Tool Ecosystem** - Custom Python tools + MCP protocol for infinite extensibility
+
+💬 **Conversation Memory** - Full history with automatic summarization to stay focused
+
+⚡ **Real-time Streaming** - Watch agents think, reason, and execute live
+
+🎨 **Native Desktop** - Beautiful Tauri app, no browser needed
+
+🔒 **Local-First** - Your data stays on your machine, no cloud required
+
+## 🏗️ Under the Hood
+
+**Frontend**: Tauri desktop app (React + TypeScript) on port 1420
+
+**Backend**: FastAPI server (Python) on port 8000
+
+**Storage**: SQLite (conversations) + ChromaDB (documents)
+
+**AI**: LangChain 0.3+ with official tool calling
+
+**Extensibility**: Official Anthropic MCP SDK
+
+**LLM Support**: OpenAI, Anthropic Claude, Google Gemini
+
+> **For Technical Details**: See [frontend/README.md](frontend/README.md) and [backend/README.md](backend/README.md)
+
+## 🎓 Example Workflows
+
+**Code Review Pipeline**
+```
+1. Upload codebase → Document RAG
+2. @code_analyzer review for bugs
+3. @security_agent check vulnerabilities
+4. @documentation_agent update README
 ```
 
-**macOS/Linux:**
-```bash
-# Find and kill process using port 8000
-lsof -ti:8000 | xargs kill -9
-
-# Find and kill process using port 1420
-lsof -ti:1420 | xargs kill -9
+**Research Assistant**
+```
+1. Upload 10 papers (PDFs)
+2. @research_agent summarize key findings
+3. @synthesis_agent find common themes
+4. @writing_agent draft literature review
 ```
 
-## 📚 Documentation
+**Content Creation**
+```
+1. @research_agent gather sources on topic
+2. @writer_agent create first draft
+3. @editor_agent refine and polish
+4. @fact_checker_agent verify claims
+```
 
-- **API Reference**: http://localhost:8000/docs
-- **Frontend Components**: Documented with TypeScript interfaces
-- **Configuration**: All config files in `backend/config/`
+## 🔧 Configuration Made Simple
 
-## 🤝 Contributing
+**LLM Providers** → Choose OpenAI, Anthropic, or Gemini in settings
 
-1. Fork the repository
-2. Create feature branch: `git checkout -b feature/amazing-feature`
-3. Commit changes: `git commit -m 'Add amazing feature'`
-4. Push to branch: `git push origin feature/amazing-feature`
-5. Open Pull Request
+**Agent Capabilities** → Drag-drop tools, connect MCP servers
+
+**Document Context** → Upload files, automatic RAG integration
+
+**Memory** → Automatic summarization keeps conversations focused
+
+## 🤝 Perfect For
+
+✅ Developers automating complex workflows
+
+✅ Researchers processing large document sets
+
+✅ Teams needing collaborative AI assistance
+
+✅ Power users wanting control over their AI tools
+
+✅ Anyone who values data privacy (local-first!)
+
+## 🚦 Quick Links
+
+- **Get Started**: Run `./setup.sh` or `setup.bat`
+- **API Docs**: http://localhost:8000/docs
+- **Frontend Tech**: [frontend/README.md](frontend/README.md)
+- **Backend Tech**: [backend/README.md](backend/README.md)
+
+## 🐛 Troubleshooting
+
+**Ports in use?** Kill 8000 (backend) or 1420 (frontend)
+
+**API key errors?** Check `backend/.env` has valid keys
+
+**Module errors?** Activate venv and reinstall: `pip install -r requirements.txt`
+
+**MCP not working?** Ensure Node.js is installed
+
+## 🎯 What's Next?
+
+Your agents improve as they:
+- Build conversation context
+- Access more documents
+- Gain new tools and capabilities
+- Learn from delegation patterns
+
+The more you use AgentVerse, the more powerful your agent team becomes.
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+MIT License - See LICENSE file for details.
 
-## 🆘 Support
+## 🤝 Contributing
 
-For support and questions:
-
-1. Check the troubleshooting section above
-2. Review API documentation at http://localhost:8000/docs
-3. Open an issue on GitHub
-
-## 🎯 Product Roadmap
-
-### **Current Status: Production Ready (v1.0)**
-✅ **Completed Features**
-- [x] Enterprise-grade backend with FastAPI
-- [x] Professional desktop app with Tauri + React
-- [x] Multi-agent orchestration system
-- [x] Real-time chat with streaming responses
-- [x] Document processing (20+ formats)
-- [x] Multi-LLM provider support
-- [x] MCP integration framework
-- [x] Advanced analytics & logging
-- [x] Pre-built tool ecosystem (15+ tools)
-- [x] Professional UI/UX design
-
-### **Phase 2: Enterprise Features (v1.1-1.2)**
-- [ ] **Authentication & Authorization** - User management, roles, permissions
-- [ ] **Team Collaboration** - Multi-user workspaces, shared agents
-- [ ] **Cloud Deployment** - Docker containers, Kubernetes manifests
-- [ ] **API Rate Limiting** - Enterprise-grade API controls
-- [ ] **Advanced Security** - Encryption, audit logs, compliance features
-
-### **Phase 3: Marketplace & Integrations (v1.3-1.4)**
-- [ ] **Agent Marketplace** - Community-driven agent sharing platform
-- [ ] **Plugin Ecosystem** - Third-party tool integration framework
-- [ ] **Enterprise Connectors** - Slack, Teams, Salesforce, Jira integrations
-- [ ] **Workflow Builder** - Visual drag-and-drop agent workflows
-- [ ] **Advanced Analytics** - Business intelligence dashboard
-
-### **Phase 4: Scale & Innovation (v2.0+)**
-- [ ] **Mobile Companion App** - iOS/Android companion for monitoring
-- [ ] **Cloud-Native SaaS** - Multi-tenant cloud platform
-- [ ] **Enterprise SSO** - SAML, OAuth, Active Directory integration
-- [ ] **AI Training Pipeline** - Custom model fine-tuning
-- [ ] **Advanced Orchestration** - Complex multi-step workflows
-
-### **Market Position**
-**Target Competitors**: CrewAI, AutoGen, LangFlow, n8n, Zapier
-**Differentiators**: Desktop performance, MCP integration, enterprise architecture, multi-LLM support
+We welcome contributions! Fork, branch, commit, and open a PR.
 
 ---
 
-## 📝 **Recent Updates (Jan 2025)**
+**Built with FastAPI, React, LangChain, and Tauri**
 
-### **Backend Modernization**
-- ✅ **MCP Integration**: Migrated to Official Anthropic MCP SDK (71% code reduction)
-- ✅ **LangChain 0.3+**: Upgraded to latest LangChain with official tool calling
-- ✅ **Cross-Platform**: Added Windows/macOS unified utilities for commands, env vars, event loops
-- ✅ **Code Quality**: Eliminated 425 lines through official library adoption and DRY refactoring
-- ✅ **Validation**: Refactored validators to delegate (Agent → Tool/MCP validators)
-- ✅ **Python**: Upgraded minimum version from 3.9 to 3.10
+*Local-first AI agent collaboration that scales with you* 🌌
 
-See [backend/README.md](backend/README.md) for detailed technical changes.
-
----
-
-**Built with ❤️ using FastAPI, React, TypeScript, and Tauri**
-
-*Welcome to the Agentverse - a multiverse where AI agents collaborate, evolve, and thrive! 🌌🤖✨*
