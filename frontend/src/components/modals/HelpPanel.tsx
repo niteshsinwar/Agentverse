@@ -72,7 +72,7 @@ export const HelpPanel: React.FC<HelpPanelProps> = ({ isOpen, onClose }) => {
               <CpuChipIcon className="h-8 w-8 text-sky-600 mb-3" />
               <h3 className="font-semibold text-slate-800 dark:text-slate-200 mb-2">Multi-Agent Orchestration</h3>
               <p className="text-sm text-slate-600 dark:text-slate-400">
-                Create sophisticated workflows with multiple AI agents working together using LangGraph and LangChain integration.
+                Create agents that collaborate using @mentions and tool delegation, powered by LangChain 0.3 ReAct pattern for intelligent reasoning.
               </p>
             </BrandedCard>
 
@@ -80,7 +80,7 @@ export const HelpPanel: React.FC<HelpPanelProps> = ({ isOpen, onClose }) => {
               <WrenchScrewdriverIcon className="h-8 w-8 text-sky-600 mb-3" />
               <h3 className="font-semibold text-slate-800 dark:text-slate-200 mb-2">Tool Integration</h3>
               <p className="text-sm text-slate-600 dark:text-slate-400">
-                Integrate custom tools and external APIs to extend agent capabilities with Python-based tool definitions.
+                Create custom Python tools with schemas and assign them to agents for extended capabilities like web search and file operations.
               </p>
             </BrandedCard>
 
@@ -88,15 +88,15 @@ export const HelpPanel: React.FC<HelpPanelProps> = ({ isOpen, onClose }) => {
               <ServerIcon className="h-8 w-8 text-pink-600 mb-3" />
               <h3 className="font-semibold text-slate-800 dark:text-slate-200 mb-2">MCP Integration</h3>
               <p className="text-sm text-slate-600 dark:text-slate-400">
-                Connect to Model Context Protocol (MCP) servers for enhanced capabilities and data sources.
+                Register local or remote MCP servers (Anthropic's protocol) to give agents access to databases, filesystems, GitHub, and more.
               </p>
             </BrandedCard>
 
             <BrandedCard variant="glass" className="p-6">
               <DocumentTextIcon className="h-8 w-8 text-sky-600 mb-3" />
-              <h3 className="font-semibold text-slate-800 dark:text-slate-200 mb-2">Document Intelligence</h3>
+              <h3 className="font-semibold text-slate-800 dark:text-slate-200 mb-2">Document Intelligence (RAG)</h3>
               <p className="text-sm text-slate-600 dark:text-slate-400">
-                Upload and analyze documents with AI-powered insights and multi-format support including PDFs, images, and more.
+                Upload 40+ formats (PDFs, images, code, Office docs) - ChromaDB vector search with semantic chunking retrieves relevant context automatically.
               </p>
             </BrandedCard>
           </div>
@@ -402,9 +402,9 @@ export const HelpPanel: React.FC<HelpPanelProps> = ({ isOpen, onClose }) => {
                 </p>
               </div>
               <div className="p-4 bg-slate-50 dark:bg-slate-700 rounded-lg">
-                <h4 className="font-medium text-slate-700 dark:text-slate-300 mb-2">Code Execution</h4>
+                <h4 className="font-medium text-slate-700 dark:text-slate-300 mb-2">Document RAG</h4>
                 <p className="text-sm text-slate-600 dark:text-slate-400">
-                  Execute Python code securely in a sandboxed environment.
+                  Agents automatically access uploaded documents via semantic search during conversations.
                 </p>
               </div>
             </div>
@@ -416,23 +416,24 @@ export const HelpPanel: React.FC<HelpPanelProps> = ({ isOpen, onClose }) => {
             </h3>
             <div className="space-y-4">
               <div>
-                <h4 className="font-medium text-slate-700 dark:text-slate-300 mb-2">Method 1: Via Tools Management Panel</h4>
+                <h4 className="font-medium text-slate-700 dark:text-slate-300 mb-2">Creating Tools via Interface</h4>
                 <ol className="text-sm text-slate-600 dark:text-slate-400 space-y-2 mb-4">
-                  <li>1. Open Settings → Tools Management</li>
-                  <li>2. Click "Create New Tool"</li>
-                  <li>3. Fill in tool details and Python code</li>
-                  <li>4. Save and test your tool</li>
+                  <li>1. Click ⚙️ Settings → Navigate to Tools Management</li>
+                  <li>2. Click "Create New Tool" or "+" button</li>
+                  <li>3. Enter tool name, description, and category</li>
+                  <li>4. Write Python function code with proper schema</li>
+                  <li>5. Test tool execution before assigning to agents</li>
                 </ol>
               </div>
 
               <div>
-                <h4 className="font-medium text-slate-700 dark:text-slate-300 mb-2">Editing Existing Tools</h4>
+                <h4 className="font-medium text-slate-700 dark:text-slate-300 mb-2">Managing Tools</h4>
                 <ol className="text-sm text-slate-600 dark:text-slate-400 space-y-2 mb-4">
-                  <li>1. Select any tool from the tools list</li>
-                  <li>2. Click the "Edit" button</li>
-                  <li>3. Modify the tool's name, description, or functionality</li>
-                  <li>4. Test your changes before saving</li>
-                  <li>5. Update the tool for all agents using it</li>
+                  <li>1. Find tools in the tools list (with search/filter)</li>
+                  <li>2. Click on a tool card to view details</li>
+                  <li>3. Use Edit icon to modify tool code or metadata</li>
+                  <li>4. Delete unused tools to keep workspace clean</li>
+                  <li>5. Tools are stored in backend/agent_store/tools/</li>
                 </ol>
               </div>
 
@@ -692,8 +693,8 @@ export const HelpPanel: React.FC<HelpPanelProps> = ({ isOpen, onClose }) => {
               What is MCP?
             </h3>
             <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
-              Model Context Protocol (MCP) is an open standard for connecting AI assistants to external data sources and tools.
-              It enables secure, standardized connections between AI agents and various services.
+              Model Context Protocol (MCP) by Anthropic lets you connect agents to external tools and data sources through standardized servers.
+              AgentVerse supports both local (stdio) and remote (HTTP/SSE) MCP servers with OAuth authentication.
             </p>
             <div className="grid md:grid-cols-2 gap-4">
               <div className="p-4 bg-sky-50 dark:bg-sky-900/20 rounded-lg">
@@ -733,13 +734,13 @@ export const HelpPanel: React.FC<HelpPanelProps> = ({ isOpen, onClose }) => {
               </div>
 
               <div>
-                <h4 className="font-medium text-slate-700 dark:text-slate-300 mb-2">2. Managing MCP Servers</h4>
+                <h4 className="font-medium text-slate-700 dark:text-slate-300 mb-2">2. Registering MCP Servers</h4>
                 <ol className="text-sm text-slate-600 dark:text-slate-400 space-y-2 mb-4">
-                  <li>1. Click "Create New Server" to add a server</li>
-                  <li>2. Fill in server name and description</li>
-                  <li>3. Configure server settings through the interface</li>
-                  <li>4. Test the connection to ensure it works</li>
-                  <li>5. Assign servers to specific agents during agent creation</li>
+                  <li>1. Click "Register New MCP Server" button</li>
+                  <li>2. Choose server type: Local (stdio) or Remote (HTTP)</li>
+                  <li>3. For local: Provide command and args (e.g., npx @modelcontextprotocol/server-filesystem)</li>
+                  <li>4. For remote: Enter server URL and complete OAuth flow if required</li>
+                  <li>5. Server appears in list - assign to agents during creation/editing</li>
                 </ol>
               </div>
             </div>
@@ -751,30 +752,30 @@ export const HelpPanel: React.FC<HelpPanelProps> = ({ isOpen, onClose }) => {
             </h3>
             <div className="grid md:grid-cols-2 gap-4">
               <div className="p-4 bg-sky-50 dark:bg-sky-900/20 rounded-lg">
-                <h4 className="font-medium text-sky-800 dark:text-sky-200 mb-2">File System Access</h4>
+                <h4 className="font-medium text-sky-800 dark:text-sky-200 mb-2">@modelcontextprotocol/server-filesystem</h4>
                 <p className="text-sm text-sky-700 dark:text-sky-300">
-                  Enables agents to read, write, and manage files securely within designated directories.
+                  Official MCP server for secure file read/write/search operations in designated directories.
                 </p>
               </div>
 
               <div className="p-4 bg-sky-50 dark:bg-sky-900/20 rounded-lg">
-                <h4 className="font-medium text-sky-800 dark:text-sky-200 mb-2">Database Connections</h4>
+                <h4 className="font-medium text-sky-800 dark:text-sky-200 mb-2">@modelcontextprotocol/server-github</h4>
                 <p className="text-sm text-sky-700 dark:text-sky-300">
-                  Connect agents to databases for data queries, analysis, and operations.
+                  Official MCP server for GitHub repository management, PRs, issues, and code search.
                 </p>
               </div>
 
               <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                <h4 className="font-medium text-green-800 dark:text-green-200 mb-2">GitHub Integration</h4>
+                <h4 className="font-medium text-green-800 dark:text-green-200 mb-2">Custom MCP Servers</h4>
                 <p className="text-sm text-green-700 dark:text-green-300">
-                  Manage repositories, code reviews, and GitHub operations through agents.
+                  Build your own using FastMCP or official SDK - expose databases, APIs, or any Python logic.
                 </p>
               </div>
 
               <div className="p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
-                <h4 className="font-medium text-orange-800 dark:text-orange-200 mb-2">Web Services</h4>
+                <h4 className="font-medium text-orange-800 dark:text-orange-200 mb-2">Remote MCP Servers</h4>
                 <p className="text-sm text-orange-700 dark:text-orange-300">
-                  Connect to various web APIs and services for extended functionality.
+                  Connect to cloud-hosted MCP servers via HTTP/SSE with OAuth for enterprise integrations.
                 </p>
               </div>
             </div>
