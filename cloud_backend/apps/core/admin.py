@@ -5,6 +5,7 @@ AgentVerse Cloud Admin Panel
 
 from django.contrib import admin
 from django.contrib.admin import AdminSite
+from django.db import connection
 
 
 class AgentVerseAdminSite(AdminSite):
@@ -71,3 +72,62 @@ class BaseModelAdmin(admin.ModelAdmin):
             del actions['delete_selected']
 
         return actions
+
+
+class TenantFilteredAdmin(admin.ModelAdmin):
+    """
+    Mixin for admin classes that need tenant filtering.
+
+    SECURITY: Prevents cross-tenant data access in Django admin.
+    Use this for all models that have a tenant ForeignKey field.
+
+    Usage:
+        @admin.register(Agent)
+        class AgentAdmin(TenantFilteredAdmin):
+            # Your custom admin configuration
+            pass
+    """
+
+    def get_queryset(self, request):
+        """
+        Filter queryset by current tenant.
+
+        CRITICAL SECURITY: Prevents viewing/editing cross-tenant data.
+        """
+        qs = super().get_queryset(request)
+        schema_name = connection.schema_name
+
+        # Superadmin in public schema can see all
+        if schema_name == 'public' and request.user.is_superuser:
+            return qs
+
+        # Filter by current tenant
+        if schema_name != 'public':
+            try:
+                from apps.tenants.models import Tenant
+                tenant = Tenant.objects.get(schema_name=schema_name)
+                return qs.filter(tenant=tenant)
+            except Tenant.DoesNotExist:
+                return qs.none()
+
+        return qs.none()
+
+    def save_model(self, request, obj, form, change):
+        """
+        Auto-set tenant on create.
+
+        Sets tenant from current schema context when creating new objects.
+        Also sets created_by if the field exists.
+        """
+        if not change:  # Creating new object
+            schema_name = connection.schema_name
+            if schema_name != 'public':
+                from apps.tenants.models import Tenant
+                tenant = Tenant.objects.get(schema_name=schema_name)
+                obj.tenant = tenant
+
+            # Auto-set created_by if field exists
+            if hasattr(obj, 'created_by') and not obj.created_by:
+                obj.created_by = request.user.id
+
+        super().save_model(request, obj, form, change)
