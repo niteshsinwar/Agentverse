@@ -39,6 +39,8 @@ from src.api.cloud_client import (
     CloudConfig, initialize_cloud_client, shutdown_cloud_client, get_cloud_client
 )
 from src.core.cache import initialize_cloud_cache, shutdown_cloud_cache, get_cloud_cache
+from src.api.cloud_websocket import initialize_cloud_websocket, get_cloud_websocket, shutdown_cloud_websocket
+from src.api.cloud_sync_handler import initialize_sync_handler
 
 # Global services (properly managed through dependency injection)
 orchestrator_service: OrchestratorService = None
@@ -116,6 +118,34 @@ async def lifespan(app: FastAPI):
                     # Sync data
                     await cloud_cache.sync_from_cloud(cloud_client)
                     print("✅ Cloud data synced successfully")
+
+                    # Initialize WebSocket for real-time sync
+                    print("🔌 Connecting to cloud WebSocket for real-time sync...")
+                    try:
+                        # Determine WebSocket URL
+                        ws_url = settings.cloud_base_url.replace('http://', 'ws://').replace('https://', 'wss://')
+
+                        # Initialize WebSocket client
+                        ws_client = initialize_cloud_websocket(ws_url, settings.cloud_token)
+
+                        # Initialize sync handler
+                        sync_handler = initialize_sync_handler(cloud_cache)
+
+                        # Register sync handler
+                        ws_client.on_sync(sync_handler.handle_sync_event)
+
+                        # Connect to WebSocket
+                        await ws_client.connect()
+
+                        if ws_client.is_connected():
+                            print("✅ Cloud WebSocket connected - real-time sync enabled")
+                        else:
+                            print("⚠️  WebSocket connection pending (will retry in background)")
+
+                    except Exception as ws_error:
+                        print(f"⚠️  WebSocket initialization failed: {ws_error}")
+                        print("   Continuing without real-time sync (polling fallback)")
+
                 else:
                     print("⚠️  No cloud token - skipping data sync (login required)")
 
@@ -189,8 +219,13 @@ async def lifespan(app: FastAPI):
     settings = get_settings()
     if settings.cloud_enabled:
         try:
+            # Shutdown WebSocket first
+            await shutdown_cloud_websocket()
+
+            # Then shutdown cache and client
             shutdown_cloud_cache()
             await shutdown_cloud_client()
+
             print("✅ Cloud integration shut down")
         except Exception as e:
             print(f"⚠️ Failed to shutdown cloud integration: {e}")
