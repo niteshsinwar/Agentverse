@@ -12,14 +12,12 @@ class ToolAdmin(admin.ModelAdmin):
 
     list_display = (
         'name',
-        'tool_type',
         'is_active',
         'created_at',
         'updated_at',
     )
 
     list_filter = (
-        'tool_type',
         'is_active',
         'created_at',
     )
@@ -37,15 +35,11 @@ class ToolAdmin(admin.ModelAdmin):
 
     fieldsets = (
         ('Basic Info', {
-            'fields': ('name', 'description', 'tool_type', 'is_active')
+            'fields': ('name', 'description', 'is_active')
         }),
         ('Code', {
-            'fields': ('code',),
+            'fields': ('code', 'dependencies'),
             'classes': ('wide',)
-        }),
-        ('Configuration', {
-            'fields': ('config',),
-            'classes': ('collapse',)
         }),
         ('Metadata', {
             'fields': ('created_by', 'id', 'created_at', 'updated_at'),
