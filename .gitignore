@@ -141,6 +141,8 @@ Thumbs.db
 # Additional local/dev/irrelevant folders
 .claude/
 documents/
+# EXCEPTION: Allow cloud_backend documents app
+!cloud_backend/apps/documents/
 loga/
 sessions/
 node_modules/
