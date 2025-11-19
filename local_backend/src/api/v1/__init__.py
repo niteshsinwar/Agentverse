@@ -5,7 +5,7 @@ Consolidates all API endpoints for version 1
 
 from fastapi import APIRouter
 
-from .endpoints import groups, agents, chat, logs, tools, mcp, settings, validation
+from .endpoints import groups, agents, chat, logs, tools, mcp, settings, validation, cloud_proxy
 
 # Create the main API router
 router = APIRouter()
@@ -57,4 +57,10 @@ router.include_router(
     validation.router,
     prefix="/config/validate",
     tags=["validation"]
+)
+
+# Cloud Backend Proxy
+router.include_router(
+    cloud_proxy.router,
+    tags=["cloud"]
 )
