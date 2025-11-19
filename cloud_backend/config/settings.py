@@ -60,6 +60,7 @@ SHARED_APPS += [
     # Shared apps (available to all tenants)
     'apps.core',  # Core utilities
     'apps.tenants',  # Tenant management
+    'apps.users',  # Users (shared across tenants) - MOVED FROM TENANT_APPS
 ]
 
 TENANT_APPS = [
@@ -68,7 +69,7 @@ TENANT_APPS = [
     'apps.tools',
     'apps.mcp',
     'apps.groups',
-    'apps.users',
+    # 'apps.users',  # MOVED TO SHARED_APPS - users are shared across tenants
     'apps.messages.apps.MessagesConfig',  # Custom label to avoid conflict with django.contrib.messages
     'apps.documents',
     'apps.analytics',

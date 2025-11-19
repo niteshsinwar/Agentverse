@@ -3,7 +3,7 @@ Django Admin for Tenants - Multi-tenancy Management
 """
 
 from django.contrib import admin
-from .models import Tenant, Domain, TenantSettings, TenantInvitation
+from .models import Tenant, Domain, TenantSettings, TenantMembership, TenantInvitation
 
 
 class DomainInline(admin.TabularInline):
@@ -216,6 +216,66 @@ class TenantSettingsAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
     )
+
+
+@admin.register(TenantMembership)
+class TenantMembershipAdmin(admin.ModelAdmin):
+    """Admin interface for Tenant Memberships"""
+
+    list_display = (
+        'user',
+        'tenant',
+        'role',
+        'is_active',
+        'joined_at',
+        'last_accessed_at',
+    )
+
+    list_filter = (
+        'role',
+        'is_active',
+        'joined_at',
+    )
+
+    search_fields = (
+        'user__email',
+        'user__name',
+        'tenant__name',
+    )
+
+    readonly_fields = (
+        'id',
+        'joined_at',
+        'last_accessed_at',
+    )
+
+    fieldsets = (
+        ('Membership', {
+            'fields': ('tenant', 'user', 'role', 'is_active')
+        }),
+        ('Metadata', {
+            'fields': ('id', 'joined_at', 'last_accessed_at'),
+            'classes': ('collapse',)
+        }),
+    )
+
+    ordering = ('-joined_at',)
+    date_hierarchy = 'joined_at'
+    list_per_page = 50
+
+    actions = ['activate_memberships', 'deactivate_memberships']
+
+    def activate_memberships(self, request, queryset):
+        """Activate selected memberships"""
+        count = queryset.update(is_active=True)
+        self.message_user(request, f"Activated {count} memberships")
+    activate_memberships.short_description = "Activate selected memberships"
+
+    def deactivate_memberships(self, request, queryset):
+        """Deactivate selected memberships"""
+        count = queryset.update(is_active=False)
+        self.message_user(request, f"Deactivated {count} memberships")
+    deactivate_memberships.short_description = "Deactivate selected memberships"
 
 
 @admin.register(TenantInvitation)

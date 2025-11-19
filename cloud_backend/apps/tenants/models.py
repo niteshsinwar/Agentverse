@@ -249,6 +249,59 @@ class TenantSettings(models.Model):
         return f"Settings for {self.tenant.name}"
 
 
+class TenantMembership(models.Model):
+    """
+    Tenant Membership - Links users to tenants.
+
+    Since users are now shared across all tenants (in SHARED_APPS),
+    this model tracks which tenants a user has access to and their role
+    within each tenant.
+
+    A user can belong to multiple tenants with different roles.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    tenant = models.ForeignKey(
+        Tenant,
+        on_delete=models.CASCADE,
+        related_name='memberships'
+    )
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='tenant_memberships'
+    )
+
+    role = models.CharField(
+        max_length=20,
+        choices=[
+            ('owner', 'Owner'),
+            ('admin', 'Admin'),
+            ('user', 'User'),
+            ('viewer', 'Viewer'),
+        ],
+        default='user',
+        help_text="User's role within this tenant"
+    )
+
+    is_active = models.BooleanField(default=True, help_text="Membership is active")
+    joined_at = models.DateTimeField(auto_now_add=True)
+    last_accessed_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-joined_at']
+        unique_together = [['tenant', 'user']]  # User can only have one role per tenant
+        indexes = [
+            models.Index(fields=['tenant', 'user']),
+            models.Index(fields=['user', 'is_active']),
+        ]
+
+    def __str__(self):
+        return f"{self.user.email} - {self.tenant.name} ({self.role})"
+
+
 class TenantInvitation(models.Model):
     """
     Tenant invitations - Invite users to join a tenant.
