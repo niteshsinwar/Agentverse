@@ -6,3 +6,7 @@ class MessagesConfig(AppConfig):
     name = 'apps.messages'
     label = 'chat_messages'  # Avoid conflict with django.contrib.messages
     verbose_name = 'Chat Messages'
+
+    def ready(self):
+        """Import signals when app is ready"""
+        import apps.messages.signals  # noqa: F401
