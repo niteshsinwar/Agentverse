@@ -34,6 +34,12 @@ from src.api.v1.dependencies import set_orchestrator_service
 from src.core.validation.startup_validator import validate_startup
 from src.core.telemetry.session_logger import session_logger, EventType, LogLevel
 
+# Cloud integration imports
+from src.api.cloud_client import (
+    CloudConfig, initialize_cloud_client, shutdown_cloud_client, get_cloud_client
+)
+from src.core.cache import initialize_cloud_cache, shutdown_cloud_cache, get_cloud_cache
+
 # Global services (properly managed through dependency injection)
 orchestrator_service: OrchestratorService = None
 config_watcher = None  # File watcher for hot-reload
@@ -68,6 +74,57 @@ async def lifespan(app: FastAPI):
             level=LogLevel.INFO,
             message="Startup validation completed successfully"
         )
+
+        # Initialize cloud integration (if enabled)
+        settings = get_settings()
+        if settings.cloud_enabled:
+            print("☁️  Cloud integration enabled - initializing...")
+
+            try:
+                # Initialize cloud API client
+                cloud_config = CloudConfig(
+                    base_url=settings.cloud_base_url,
+                    api_version=settings.cloud_api_version,
+                    timeout=settings.cloud_timeout,
+                    max_retries=settings.cloud_max_retries
+                )
+                initialize_cloud_client(cloud_config)
+                print(f"✅ Cloud client initialized: {settings.cloud_base_url}")
+
+                # Initialize local cache
+                await initialize_cloud_cache(
+                    cache_dir=settings.cache_dir,
+                    ttl=settings.cache_ttl
+                )
+                print(f"✅ Local cache initialized: {settings.cache_dir}")
+
+                # Sync tenant data from cloud (if token available)
+                if settings.cloud_token:
+                    print("🔄 Syncing tenant data from cloud...")
+                    cloud_client = get_cloud_client()
+                    cloud_cache = get_cloud_cache()
+
+                    # Set token
+                    from src.api.cloud_client import AuthToken
+                    from datetime import datetime, timedelta
+                    cloud_client.token = AuthToken(
+                        access_token=settings.cloud_token,
+                        refresh_token="",  # Will be set after login
+                        expires_at=datetime.utcnow() + timedelta(hours=24)
+                    )
+
+                    # Sync data
+                    await cloud_cache.sync_from_cloud(cloud_client)
+                    print("✅ Cloud data synced successfully")
+                else:
+                    print("⚠️  No cloud token - skipping data sync (login required)")
+
+            except Exception as e:
+                print(f"⚠️  Cloud initialization failed: {e}")
+                print("   Continuing without cloud integration...")
+                # Don't fail startup if cloud is unavailable
+        else:
+            print("ℹ️  Cloud integration disabled (cloud_enabled=False)")
 
         # Initialize core services
         orchestrator_service = OrchestratorService()
@@ -127,6 +184,16 @@ async def lifespan(app: FastAPI):
     if orchestrator_service:
         await orchestrator_service.cleanup()
     orchestrator_service = None
+
+    # Shutdown cloud integration
+    settings = get_settings()
+    if settings.cloud_enabled:
+        try:
+            shutdown_cloud_cache()
+            await shutdown_cloud_client()
+            print("✅ Cloud integration shut down")
+        except Exception as e:
+            print(f"⚠️ Failed to shutdown cloud integration: {e}")
 
 
 def create_app() -> FastAPI:

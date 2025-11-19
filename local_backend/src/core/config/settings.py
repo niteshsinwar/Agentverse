@@ -94,6 +94,18 @@ class Settings(BaseSettings):
     secret_key: str = "dev-key-change-in-production"
     session_timeout_hours: int = 24
 
+    # Cloud Backend Configuration (Django SaaS)
+    cloud_enabled: bool = False  # Enable cloud integration
+    cloud_base_url: str = "http://localhost:9000"  # Cloud backend URL
+    cloud_api_version: str = "v1"
+    cloud_timeout: int = 30  # Request timeout in seconds
+    cloud_max_retries: int = 3
+    cloud_token: Optional[str] = None  # JWT token (set after login)
+
+    # Local Cache Configuration
+    cache_dir: str = "./data/cache"  # Directory for local cache
+    cache_ttl: int = 300  # Cache TTL in seconds (5 minutes)
+
     # Logging Configuration
     log_level: str = "INFO"
     enable_file_logging: bool = True

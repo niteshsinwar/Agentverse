@@ -5,33 +5,92 @@
 # =========================================
 from __future__ import annotations
 from typing import Any, Dict, List, Optional, Tuple
+import asyncio
 
 from src.core.agents.registry import build_agent, discover_agents
 from src.core.document_processing.manager import document_manager
 from src.core.memory import session_store
 from src.core.telemetry.events import emit_agent_call
+from src.core.config.settings import get_settings
 
 
 class AgentOrchestrator:
     def __init__(self) -> None:
-        self.specs = discover_agents()  # key -> AgentSpec
+        """
+        Initialize agent orchestrator.
+
+        Loads agents from either:
+        - Cloud cache (if cloud_enabled=True)
+        - Local agent_store/ directory (if cloud_enabled=False)
+        """
+        self.settings = get_settings()
+        self.specs = {}  # Will be loaded asynchronously
         self._agents: Dict[str, Any] = {}
+        self._cloud_mode = self.settings.cloud_enabled
+
+        # Load agents synchronously for backward compatibility
+        if not self._cloud_mode:
+            self.specs = discover_agents()  # Local agent_store
+        else:
+            # Cloud mode - agents will be loaded asynchronously
+            print("☁️  Cloud mode: Agents will be loaded from cloud cache")
+
+    async def _load_cloud_agents(self) -> None:
+        """Load agents from cloud cache (async)"""
+        try:
+            from src.core.agents.cloud_agent_loader import discover_cloud_agents
+            self.specs = await discover_cloud_agents()
+            print(f"☁️  Loaded {len(self.specs)} agents from cloud cache")
+        except Exception as e:
+            print(f"⚠️  Failed to load agents from cloud cache: {e}")
+            self.specs = {}
 
     def refresh_agents(self) -> None:
-        """Refresh agent discovery after new agents are created"""
-        self.specs = discover_agents()
+        """
+        Refresh agent discovery after new agents are created.
+
+        For local mode: Re-scans agent_store/ directory
+        For cloud mode: Re-loads from cloud cache
+        """
+        if not self._cloud_mode:
+            # Local mode
+            self.specs = discover_agents()
+            print(f"🔄 Refreshed agent discovery (local): {list(self.specs.keys())}")
+        else:
+            # Cloud mode - refresh asynchronously
+            asyncio.create_task(self._refresh_cloud_agents())
+
         # Clear cached agents so they get rebuilt with new specs
         self._agents.clear()
-        print(f"🔄 Refreshed agent discovery: {list(self.specs.keys())}")
+
+    async def _refresh_cloud_agents(self) -> None:
+        """Refresh agents from cloud cache (async)"""
+        print("🔄 Refreshing agents from cloud cache...")
+        await self._load_cloud_agents()
+        print(f"✅ Cloud agents refreshed: {list(self.specs.keys())}")
 
     def list_available_agents(self) -> Dict[str, Any]:
         return self.specs
 
     async def get_agent(self, key: str) -> Any:
+        """
+        Get agent instance.
+
+        For local mode: Builds from agent_store/ directory
+        For cloud mode: Builds from cloud cache
+        """
         if key not in self.specs:
             raise ValueError(f"Unknown agent '{key}'")
+
         if key not in self._agents:
-            self._agents[key] = await build_agent(self.specs[key])
+            if not self._cloud_mode:
+                # Local mode
+                self._agents[key] = await build_agent(self.specs[key])
+            else:
+                # Cloud mode
+                from src.core.agents.cloud_agent_loader import build_cloud_agent
+                self._agents[key] = await build_cloud_agent(self.specs[key])
+
         return self._agents[key]
 
     def group_roster(self, group_id: str) -> List[Tuple[str, str, str]]:

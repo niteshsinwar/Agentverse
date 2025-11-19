@@ -45,6 +45,10 @@ class OrchestratorService:
             self.orchestrator = AgentOrchestrator()
             self.router = Router(self)
 
+            # Load cloud agents if cloud mode is enabled
+            if self.settings.cloud_enabled:
+                await self.orchestrator._load_cloud_agents()
+
             # Verify agents are loaded directly from orchestrator
             agents = self.orchestrator.list_available_agents()
             print(f"✅ OrchestratorService: Loaded {len(agents)} agents")
