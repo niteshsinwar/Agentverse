@@ -1,8 +1,9 @@
 """
-Core Views - Health check and system status
+Core Views - Health check, system status, and landing page
 """
 
 from django.http import JsonResponse
+from django.shortcuts import render
 from django.conf import settings
 from django.db import connection
 import redis
@@ -52,3 +53,22 @@ def system_status(request):
         status_data['redis'] = f'error: {str(e)}'
 
     return JsonResponse(status_data)
+
+
+def landing_page(request):
+    """
+    Landing page for AgentVerse Cloud Backend.
+
+    Shows system information and links to:
+    - Django Admin Interface
+    - API Documentation
+    - Health Check
+    - WebSocket Endpoints
+    """
+    context = {
+        'title': 'AgentVerse Cloud Backend',
+        'version': '1.0.0',
+        'admin_url': '/admin/',
+        'health_url': '/health/',
+    }
+    return render(request, 'landing.html', context)

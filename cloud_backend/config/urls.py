@@ -11,14 +11,18 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 from rest_framework import routers
+from apps.core import views as core_views
 
 # Public URLs (no tenant context required)
 urlpatterns = [
-    # Admin panel
+    # Landing page
+    path('', core_views.landing_page, name='landing'),
+
+    # Admin panel (Cloud Frontend)
     path('admin/', admin.site.urls),
 
     # Health check
-    path('health/', include('apps.core.urls')),
+    path('health/', core_views.health_check, name='health'),
 
     # Authentication (public)
     path('api/v1/auth/', include('apps.users.urls_auth')),

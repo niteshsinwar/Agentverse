@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 60px 40px;
+            max-width: 800px;
+            width: 100%;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .logo {
+            font-size: 60px;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            color: #2d3748;
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .version {
+            color: #718096;
+            font-size: 14px;
+        }
+
+        .description {
+            text-align: center;
+            color: #4a5568;
+            margin-bottom: 40px;
+            font-size: 18px;
+            line-height: 1.6;
+        }
+
+        .links {
+            display: grid;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .link-card {
+            display: flex;
+            align-items: center;
+            padding: 20px;
+            background: #f7fafc;
+            border-radius: 10px;
+            text-decoration: none;
+            color: #2d3748;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+        }
+
+        .link-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            border-color: #667eea;
+        }
+
+        .link-icon {
+            font-size: 32px;
+            margin-right: 20px;
+        }
+
+        .link-content {
+            flex: 1;
+        }
+
+        .link-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .link-description {
+            font-size: 14px;
+            color: #718096;
+        }
+
+        .status {
+            text-align: center;
+            padding: 15px;
+            background: #c6f6d5;
+            border-radius: 10px;
+            color: #22543d;
+            font-weight: 600;
+        }
+
+        .status::before {
+            content: '✅';
+            margin-right: 10px;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            color: #a0aec0;
+            font-size: 14px;
+        }
+
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .feature {
+            text-align: center;
+            padding: 20px;
+            background: #edf2f7;
+            border-radius: 10px;
+        }
+
+        .feature-icon {
+            font-size: 40px;
+            margin-bottom: 10px;
+        }
+
+        .feature-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #2d3748;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">🤖</div>
+            <h1>{{ title }}</h1>
+            <div class="version">Version {{ version }}</div>
+        </div>
+
+        <div class="description">
+            Multi-tenant AI Agent SaaS Platform<br>
+            Manage agents, tools, and MCP servers with real-time synchronization
+        </div>
+
+        <div class="status">
+            System Status: Operational
+        </div>
+
+        <div class="features">
+            <div class="feature">
+                <div class="feature-icon">🏢</div>
+                <div class="feature-title">Multi-Tenant</div>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">⚡</div>
+                <div class="feature-title">Real-Time Sync</div>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">🔒</div>
+                <div class="feature-title">Secure</div>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">📊</div>
+                <div class="feature-title">Analytics</div>
+            </div>
+        </div>
+
+        <div class="links">
+            <a href="{{ admin_url }}" class="link-card">
+                <div class="link-icon">👨‍💼</div>
+                <div class="link-content">
+                    <div class="link-title">Admin Interface</div>
+                    <div class="link-description">Manage tenants, users, agents, and platform settings</div>
+                </div>
+            </a>
+
+            <a href="/api/v1/agents/" class="link-card">
+                <div class="link-icon">🤖</div>
+                <div class="link-content">
+                    <div class="link-title">Agents API</div>
+                    <div class="link-description">REST API for agent configuration management</div>
+                </div>
+            </a>
+
+            <a href="{{ health_url }}" class="link-card">
+                <div class="link-icon">💚</div>
+                <div class="link-content">
+                    <div class="link-title">Health Check</div>
+                    <div class="link-description">System health and status monitoring</div>
+                </div>
+            </a>
+        </div>
+
+        <div class="footer">
+            <p>🔌 WebSocket Endpoints:</p>
+            <p><code>ws://&lt;host&gt;/ws/messages/&lt;group_id&gt;/</code> - Real-time chat</p>
+            <p><code>ws://&lt;host&gt;/ws/sync/</code> - Config synchronization</p>
+        </div>
+
+        <div class="footer" style="margin-top: 20px;">
+            <p>AgentVerse Cloud Backend &copy; 2025</p>
+            <p>Built with Django, Channels, and PostgreSQL</p>
+        </div>
+    </div>
+</body>
+</html>
