@@ -65,6 +65,24 @@ class User(AbstractBaseUser, PermissionsMixin, TimeStampedModel):
     last_login_ip = models.GenericIPAddressField(blank=True, null=True)
     last_login_at = models.DateTimeField(blank=True, null=True)
 
+    # Fix clash with default User model
+    groups = models.ManyToManyField(
+        'auth.Group',
+        verbose_name='groups',
+        blank=True,
+        help_text='The groups this user belongs to.',
+        related_name='custom_user_set',
+        related_query_name='custom_user',
+    )
+    user_permissions = models.ManyToManyField(
+        'auth.Permission',
+        verbose_name='user permissions',
+        blank=True,
+        help_text='Specific permissions for this user.',
+        related_name='custom_user_set',
+        related_query_name='custom_user',
+    )
+
     objects = UserManager()
 
     USERNAME_FIELD = 'email'
@@ -88,7 +106,17 @@ class User(AbstractBaseUser, PermissionsMixin, TimeStampedModel):
     def tenant(self):
         """Get current tenant from database connection"""
         from django.db import connection
+        from django.conf import settings
+
+        # SQLite mode - no multi-tenancy
+        if getattr(settings, 'USE_SQLITE', False):
+            return None
+
         from apps.tenants.models import Tenant
+
+        # Check if connection has schema_name (django-tenants)
+        if not hasattr(connection, 'schema_name'):
+            return None
 
         schema_name = connection.schema_name
         if schema_name == 'public':

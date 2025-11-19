@@ -32,8 +32,16 @@ DEBUG = os.getenv('DEBUG', 'False') == 'True'
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
 # Application definition
-SHARED_APPS = [
-    'django_tenants',  # Must be first
+# Check if we're using SQLite (for testing)
+USE_SQLITE = 'sqlite' in os.getenv('DATABASE_URL', '').lower()
+
+SHARED_APPS = []
+
+if not USE_SQLITE:
+    # Only use django-tenants with PostgreSQL
+    SHARED_APPS.append('django_tenants')
+
+SHARED_APPS += [
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -61,7 +69,7 @@ TENANT_APPS = [
     'apps.mcp',
     'apps.groups',
     'apps.users',
-    'apps.messages',
+    'apps.messages.apps.MessagesConfig',  # Custom label to avoid conflict with django.contrib.messages
     'apps.documents',
     'apps.analytics',
 ]
@@ -115,12 +123,24 @@ DATABASES = {
 }
 
 # Update database config for django-tenants
-DATABASES['default']['ENGINE'] = 'django_tenants.postgresql_backend'
+# For SQLite testing, we don't use django-tenants (no multi-tenancy support in SQLite)
+if USE_SQLITE:
+    # SQLite - for quick testing only (NO multi-tenancy)
+    DATABASES['default']['ENGINE'] = 'django.db.backends.sqlite3'
+    # Disable tenant middleware for SQLite
+    MIDDLEWARE = [m for m in MIDDLEWARE if 'TenantMainMiddleware' not in m]
+    # Disable tenant routers for SQLite
+    DATABASE_ROUTERS = ()
+else:
+    # PostgreSQL - production with multi-tenancy
+    DATABASES['default']['ENGINE'] = 'django_tenants.postgresql_backend'
+    # Database routing for multi-tenancy
+    DATABASE_ROUTERS = (
+        'django_tenants.routers.TenantSyncRouter',
+    )
 
-# Database routing for multi-tenancy
-DATABASE_ROUTERS = (
-    'django_tenants.routers.TenantSyncRouter',
-)
+# Custom User Model
+AUTH_USER_MODEL = 'users.User'
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
@@ -219,14 +239,21 @@ CORS_ALLOWED_ORIGINS = os.getenv(
 CORS_ALLOW_CREDENTIALS = True
 
 # Channels (WebSocket)
-CHANNEL_LAYERS = {
-    'default': {
-        'BACKEND': 'channels_redis.core.RedisChannelLayer',
-        'CONFIG': {
-            'hosts': [os.getenv('REDIS_URL', 'redis://localhost:6379/0')],
+if USE_SQLITE:
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels.layers.InMemoryChannelLayer',
         },
-    },
-}
+    }
+else:
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels_redis.core.RedisChannelLayer',
+            'CONFIG': {
+                'hosts': [os.getenv('REDIS_URL', 'redis://localhost:6379/0')],
+            },
+        },
+    }
 
 # Celery Configuration
 CELERY_BROKER_URL = os.getenv('REDIS_URL', 'redis://localhost:6379/1')
@@ -237,16 +264,24 @@ CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = TIME_ZONE
 CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
 
-# Redis Cache
-CACHES = {
-    'default': {
-        'BACKEND': 'django_redis.cache.RedisCache',
-        'LOCATION': os.getenv('REDIS_URL', 'redis://localhost:6379/2'),
-        'OPTIONS': {
-            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+# Cache Configuration
+if USE_SQLITE:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'agentverse-cache',
         }
     }
-}
+else:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django_redis.cache.RedisCache',
+            'LOCATION': os.getenv('REDIS_URL', 'redis://localhost:6379/2'),
+            'OPTIONS': {
+                'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+            }
+        }
+    }
 
 # Qdrant Vector Database
 QDRANT_HOST = os.getenv('QDRANT_HOST', 'localhost')

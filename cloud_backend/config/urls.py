@@ -15,7 +15,7 @@ from rest_framework import routers
 # Public URLs (no tenant context required)
 urlpatterns = [
     # Admin panel
-    path('admin/', admin.site.admin),
+    path('admin/', admin.site.urls),
 
     # Health check
     path('health/', include('apps.core.urls')),

@@ -2,70 +2,66 @@
 # Python 3.11+
 
 # Django Framework
-Django==5.0.1
-djangorestframework==3.14.0
-django-cors-headers==4.3.1
-django-environ==0.11.2
+Django>=5.0,<5.1
+djangorestframework>=3.14
+django-cors-headers>=4.3
+django-environ>=0.11
 
 # Multi-Tenancy
-django-tenants==3.6.1  # Schema-based multi-tenancy
+django-tenants>=3.6  # Schema-based multi-tenancy
 
 # Database
-psycopg2-binary==2.9.9  # PostgreSQL adapter
-dj-database-url==2.1.0
+psycopg2-binary>=2.9
+dj-database-url>=2.1
 
 # Authentication & Security
-djangorestframework-simplejwt==5.3.1
-django-allauth==0.57.0
-PyJWT==2.8.0
-cryptography==41.0.7
+djangorestframework-simplejwt>=5.3
+django-allauth>=0.57
+PyJWT>=2.8
+cryptography>=41.0
 
 # API & Documentation
-drf-spectacular==0.27.0  # OpenAPI schema generation
-django-filter==23.5
+drf-spectacular>=0.27  # OpenAPI schema generation
+django-filter>=23.5
 
 # Real-Time (WebSocket)
-channels==4.0.0
-channels-redis==4.1.0
-daphne==4.0.0
+channels>=4.0
+channels-redis>=4.1
+daphne>=4.0
 
 # Caching
-redis==5.0.1
-django-redis==5.4.0
+redis>=5.0
+django-redis>=5.4
 
 # Vector Database (Qdrant - Free & Self-Hosted)
-qdrant-client==1.7.0
+qdrant-client>=1.7
 
 # Storage (MinIO - Free & Self-Hosted S3-compatible)
-minio==7.2.0
-django-storages==1.14.2
+minio>=7.2
+django-storages>=1.14
 
 # Monitoring & Analytics
-sentry-sdk==1.39.2
-django-prometheus==2.3.1
-
-# License Management
-cryptography==41.0.7  # For license key generation
+sentry-sdk>=1.39
+django-prometheus>=2.3
 
 # Utilities
-python-dateutil==2.8.2
-pytz==2023.3
-celery==5.3.4  # Background tasks
-celery[redis]==5.3.4
-django-celery-beat==2.5.0  # Periodic tasks
-django-celery-results==2.5.1  # Task results in DB
+python-dateutil>=2.8
+pytz>=2023.3
+celery[redis]>=5.3  # Background tasks with Redis
+django-celery-beat>=2.5  # Periodic tasks
+django-celery-results>=2.5  # Task results in DB
 
 # Development
-django-extensions==3.2.3
-django-debug-toolbar==4.2.0
-ipython==8.18.1
+django-extensions>=3.2
+django-debug-toolbar>=4.2
+ipython>=8.18
 
 # Testing
-pytest==7.4.3
-pytest-django==4.7.0
-pytest-cov==4.1.0
-factory-boy==3.3.0
+pytest>=7.4
+pytest-django>=4.7
+pytest-cov>=4.1
+factory-boy>=3.3
 
 # Production
-gunicorn==21.2.0
-whitenoise==6.6.0
+gunicorn>=21.2
+whitenoise>=6.6
