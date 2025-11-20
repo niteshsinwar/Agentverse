@@ -70,19 +70,21 @@ class CloudDataCache:
         await cache.refresh_agent(agent_id, cloud_client)
     """
 
-    def __init__(self, cache_dir: str, ttl: int = 300):
+    def __init__(self, cache_dir: str, ttl: int = 300, tenant_id: Optional[str] = None):
         """
         Initialize cloud data cache.
 
         Args:
             cache_dir: Directory to store cache database
             ttl: Time-to-live for cache entries (seconds), default 5 minutes
+            tenant_id: Current tenant ID for tenant isolation
         """
         self.cache_dir = Path(cache_dir)
         self.cache_dir.mkdir(parents=True, exist_ok=True)
 
         self.db_path = self.cache_dir / "cloud_data.db"
         self.ttl = ttl
+        self.tenant_id = tenant_id  # CRITICAL: Tenant context for isolation
 
         # In-memory cache for fast access
         self._memory_cache: Dict[str, CacheEntry] = {}
@@ -109,7 +111,7 @@ class CloudDataCache:
         self._conn = sqlite3.connect(str(self.db_path), check_same_thread=False)
         self._conn.row_factory = sqlite3.Row  # Return dicts instead of tuples
 
-        # Create tables
+        # Create tables with tenant_id for multi-tenancy isolation
         self._conn.executescript("""
             CREATE TABLE IF NOT EXISTS tenant (
                 id TEXT PRIMARY KEY,
@@ -119,30 +121,35 @@ class CloudDataCache:
 
             CREATE TABLE IF NOT EXISTS agents (
                 id TEXT PRIMARY KEY,
+                tenant_id TEXT NOT NULL,
                 data TEXT NOT NULL,
                 cached_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
 
             CREATE TABLE IF NOT EXISTS tools (
                 id TEXT PRIMARY KEY,
+                tenant_id TEXT NOT NULL,
                 data TEXT NOT NULL,
                 cached_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
 
             CREATE TABLE IF NOT EXISTS mcp_servers (
                 id TEXT PRIMARY KEY,
+                tenant_id TEXT NOT NULL,
                 data TEXT NOT NULL,
                 cached_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
 
             CREATE TABLE IF NOT EXISTS groups (
                 id TEXT PRIMARY KEY,
+                tenant_id TEXT NOT NULL,
                 data TEXT NOT NULL,
                 cached_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
 
             CREATE TABLE IF NOT EXISTS users (
                 id TEXT PRIMARY KEY,
+                tenant_id TEXT NOT NULL,
                 data TEXT NOT NULL,
                 cached_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
@@ -153,9 +160,14 @@ class CloudDataCache:
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
 
+            CREATE INDEX IF NOT EXISTS idx_agents_tenant ON agents(tenant_id);
             CREATE INDEX IF NOT EXISTS idx_agents_cached_at ON agents(cached_at);
+            CREATE INDEX IF NOT EXISTS idx_tools_tenant ON tools(tenant_id);
             CREATE INDEX IF NOT EXISTS idx_tools_cached_at ON tools(cached_at);
+            CREATE INDEX IF NOT EXISTS idx_mcp_tenant ON mcp_servers(tenant_id);
             CREATE INDEX IF NOT EXISTS idx_mcp_cached_at ON mcp_servers(cached_at);
+            CREATE INDEX IF NOT EXISTS idx_groups_tenant ON groups(tenant_id);
+            CREATE INDEX IF NOT EXISTS idx_users_tenant ON users(tenant_id);
         """)
         self._conn.commit()
 
@@ -275,16 +287,21 @@ class CloudDataCache:
     # ============================================================================
 
     async def _cache_agent(self, agent_data: Dict[str, Any]):
-        """Cache single agent"""
+        """Cache single agent with tenant isolation"""
+        tenant_id = agent_data.get("tenant_id") or self.tenant_id
+        if not tenant_id:
+            raise ValueError("tenant_id required for caching agents")
+
         self._conn.execute(
-            "INSERT OR REPLACE INTO agents (id, data, cached_at) VALUES (?, ?, ?)",
-            (agent_data["id"], json.dumps(agent_data), datetime.utcnow())
+            "INSERT OR REPLACE INTO agents (id, tenant_id, data, cached_at) VALUES (?, ?, ?, ?)",
+            (agent_data["id"], tenant_id, json.dumps(agent_data), datetime.utcnow())
         )
         self._conn.commit()
 
-        # In-memory cache
-        self._memory_cache[f"agent:{agent_data['id']}"] = CacheEntry(
-            key=f"agent:{agent_data['id']}",
+        # In-memory cache with tenant isolation
+        cache_key = f"agent:{tenant_id}:{agent_data['id']}"
+        self._memory_cache[cache_key] = CacheEntry(
+            key=cache_key,
             value=agent_data,
             cached_at=datetime.utcnow(),
             ttl=self.ttl
@@ -292,7 +309,7 @@ class CloudDataCache:
 
     async def get_agent(self, agent_id: str) -> Optional[Dict[str, Any]]:
         """
-        Get cached agent config by ID.
+        Get cached agent config by ID with tenant isolation.
 
         Args:
             agent_id: Agent ID
@@ -304,15 +321,21 @@ class CloudDataCache:
             agent_config = await cache.get_agent("agent-uuid")
             print(agent_config["llm_model"])  # "claude-sonnet-4.5"
         """
+        if not self.tenant_id:
+            raise ValueError("tenant_id required - cache not initialized with tenant context")
+
         # Check memory cache first
-        cache_key = f"agent:{agent_id}"
+        cache_key = f"agent:{self.tenant_id}:{agent_id}"
         if cache_key in self._memory_cache:
             entry = self._memory_cache[cache_key]
             if not entry.is_expired():
                 return entry.value
 
-        # Check database
-        cursor = self._conn.execute("SELECT data FROM agents WHERE id = ?", (agent_id,))
+        # Check database with tenant filtering
+        cursor = self._conn.execute(
+            "SELECT data FROM agents WHERE id = ? AND tenant_id = ?",
+            (agent_id, self.tenant_id)
+        )
         row = cursor.fetchone()
         if row:
             agent_data = json.loads(row["data"])
@@ -331,17 +354,24 @@ class CloudDataCache:
 
     async def get_agents(self) -> List[Dict[str, Any]]:
         """
-        Get all cached agents.
+        Get all cached agents for current tenant (TENANT ISOLATED).
 
         Returns:
-            List of agent configs
+            List of agent configs for current tenant only
 
         Example:
             agents = await cache.get_agents()
             for agent in agents:
                 print(f"{agent['name']}: {agent['llm_model']}")
         """
-        cursor = self._conn.execute("SELECT data FROM agents")
+        if not self.tenant_id:
+            raise ValueError("tenant_id required - cache not initialized with tenant context")
+
+        # CRITICAL: Filter by tenant_id to prevent cross-tenant data leakage
+        cursor = self._conn.execute(
+            "SELECT data FROM agents WHERE tenant_id = ?",
+            (self.tenant_id,)
+        )
         rows = cursor.fetchall()
 
         agents = []
@@ -349,8 +379,8 @@ class CloudDataCache:
             agent_data = json.loads(row["data"])
             agents.append(agent_data)
 
-            # Update memory cache
-            cache_key = f"agent:{agent_data['id']}"
+            # Update memory cache with tenant-isolated key
+            cache_key = f"agent:{self.tenant_id}:{agent_data['id']}"
             self._memory_cache[cache_key] = CacheEntry(
                 key=cache_key,
                 value=agent_data,
@@ -375,48 +405,66 @@ class CloudDataCache:
         logger.info(f"Refreshed agent cache: {agent_id}")
 
     async def delete_agent_from_cache(self, agent_id: str):
-        """Delete agent from cache"""
-        self._conn.execute("DELETE FROM agents WHERE id = ?", (agent_id,))
+        """Delete agent from cache (tenant-isolated)"""
+        if not self.tenant_id:
+            raise ValueError("tenant_id required - cache not initialized with tenant context")
+
+        # CRITICAL: Delete only from current tenant
+        self._conn.execute(
+            "DELETE FROM agents WHERE id = ? AND tenant_id = ?",
+            (agent_id, self.tenant_id)
+        )
         self._conn.commit()
 
         # Remove from memory cache
-        cache_key = f"agent:{agent_id}"
+        cache_key = f"agent:{self.tenant_id}:{agent_id}"
         if cache_key in self._memory_cache:
             del self._memory_cache[cache_key]
 
-        logger.info(f"Deleted agent from cache: {agent_id}")
+        logger.info(f"Deleted agent from cache: {agent_id} (tenant: {self.tenant_id})")
 
     # ============================================================================
     # TOOLS
     # ============================================================================
 
     async def _cache_tool(self, tool_data: Dict[str, Any]):
-        """Cache single tool"""
+        """Cache single tool with tenant isolation"""
+        tenant_id = tool_data.get("tenant_id") or self.tenant_id
+        if not tenant_id:
+            raise ValueError("tenant_id required for caching tools")
+
         self._conn.execute(
-            "INSERT OR REPLACE INTO tools (id, data, cached_at) VALUES (?, ?, ?)",
-            (tool_data["id"], json.dumps(tool_data), datetime.utcnow())
+            "INSERT OR REPLACE INTO tools (id, tenant_id, data, cached_at) VALUES (?, ?, ?, ?)",
+            (tool_data["id"], tenant_id, json.dumps(tool_data), datetime.utcnow())
         )
         self._conn.commit()
 
-        # In-memory cache
-        self._memory_cache[f"tool:{tool_data['id']}"] = CacheEntry(
-            key=f"tool:{tool_data['id']}",
+        # In-memory cache with tenant isolation
+        cache_key = f"tool:{tenant_id}:{tool_data['id']}"
+        self._memory_cache[cache_key] = CacheEntry(
+            key=cache_key,
             value=tool_data,
             cached_at=datetime.utcnow(),
             ttl=self.ttl
         )
 
     async def get_tool(self, tool_id: str) -> Optional[Dict[str, Any]]:
-        """Get cached tool config by ID"""
+        """Get cached tool config by ID with tenant isolation"""
+        if not self.tenant_id:
+            raise ValueError("tenant_id required - cache not initialized with tenant context")
+
         # Check memory cache first
-        cache_key = f"tool:{tool_id}"
+        cache_key = f"tool:{self.tenant_id}:{tool_id}"
         if cache_key in self._memory_cache:
             entry = self._memory_cache[cache_key]
             if not entry.is_expired():
                 return entry.value
 
-        # Check database
-        cursor = self._conn.execute("SELECT data FROM tools WHERE id = ?", (tool_id,))
+        # Check database with tenant filtering
+        cursor = self._conn.execute(
+            "SELECT data FROM tools WHERE id = ? AND tenant_id = ?",
+            (tool_id, self.tenant_id)
+        )
         row = cursor.fetchone()
         if row:
             tool_data = json.loads(row["data"])
@@ -435,17 +483,24 @@ class CloudDataCache:
 
     async def get_tools(self) -> List[Dict[str, Any]]:
         """
-        Get all cached tools.
+        Get all cached tools for current tenant (TENANT ISOLATED).
 
         Returns:
-            List of tool configs with code and dependencies
+            List of tool configs for current tenant only
 
         Example:
             tools = await cache.get_tools()
             for tool in tools:
                 print(f"{tool['name']}: {tool['dependencies']}")
         """
-        cursor = self._conn.execute("SELECT data FROM tools")
+        if not self.tenant_id:
+            raise ValueError("tenant_id required - cache not initialized with tenant context")
+
+        # CRITICAL: Filter by tenant_id to prevent cross-tenant data leakage
+        cursor = self._conn.execute(
+            "SELECT data FROM tools WHERE tenant_id = ?",
+            (self.tenant_id,)
+        )
         rows = cursor.fetchall()
 
         tools = []
@@ -453,8 +508,8 @@ class CloudDataCache:
             tool_data = json.loads(row["data"])
             tools.append(tool_data)
 
-            # Update memory cache
-            cache_key = f"tool:{tool_data['id']}"
+            # Update memory cache with tenant-isolated key
+            cache_key = f"tool:{self.tenant_id}:{tool_data['id']}"
             self._memory_cache[cache_key] = CacheEntry(
                 key=cache_key,
                 value=tool_data,
@@ -471,45 +526,63 @@ class CloudDataCache:
         logger.info(f"Refreshed tool cache: {tool_id}")
 
     async def delete_tool_from_cache(self, tool_id: str):
-        """Delete tool from cache"""
-        self._conn.execute("DELETE FROM tools WHERE id = ?", (tool_id,))
+        """Delete tool from cache (tenant-isolated)"""
+        if not self.tenant_id:
+            raise ValueError("tenant_id required - cache not initialized with tenant context")
+
+        # CRITICAL: Delete only from current tenant
+        self._conn.execute(
+            "DELETE FROM tools WHERE id = ? AND tenant_id = ?",
+            (tool_id, self.tenant_id)
+        )
         self._conn.commit()
 
-        cache_key = f"tool:{tool_id}"
+        cache_key = f"tool:{self.tenant_id}:{tool_id}"
         if cache_key in self._memory_cache:
             del self._memory_cache[cache_key]
 
-        logger.info(f"Deleted tool from cache: {tool_id}")
+        logger.info(f"Deleted tool from cache: {tool_id} (tenant: {self.tenant_id})")
 
     # ============================================================================
     # MCP SERVERS
     # ============================================================================
 
     async def _cache_mcp_server(self, mcp_data: Dict[str, Any]):
-        """Cache single MCP server"""
+        """Cache single MCP server with tenant isolation"""
+        tenant_id = mcp_data.get("tenant_id") or self.tenant_id
+        if not tenant_id:
+            raise ValueError("tenant_id required for caching MCP servers")
+
         self._conn.execute(
-            "INSERT OR REPLACE INTO mcp_servers (id, data, cached_at) VALUES (?, ?, ?)",
-            (mcp_data["id"], json.dumps(mcp_data), datetime.utcnow())
+            "INSERT OR REPLACE INTO mcp_servers (id, tenant_id, data, cached_at) VALUES (?, ?, ?, ?)",
+            (mcp_data["id"], tenant_id, json.dumps(mcp_data), datetime.utcnow())
         )
         self._conn.commit()
 
-        # In-memory cache
-        self._memory_cache[f"mcp:{mcp_data['id']}"] = CacheEntry(
-            key=f"mcp:{mcp_data['id']}",
+        # In-memory cache with tenant isolation
+        cache_key = f"mcp:{tenant_id}:{mcp_data['id']}"
+        self._memory_cache[cache_key] = CacheEntry(
+            key=cache_key,
             value=mcp_data,
             cached_at=datetime.utcnow(),
             ttl=self.ttl
         )
 
     async def get_mcp_server(self, mcp_id: str) -> Optional[Dict[str, Any]]:
-        """Get cached MCP server config by ID"""
-        cache_key = f"mcp:{mcp_id}"
+        """Get cached MCP server config by ID with tenant isolation"""
+        if not self.tenant_id:
+            raise ValueError("tenant_id required - cache not initialized with tenant context")
+
+        cache_key = f"mcp:{self.tenant_id}:{mcp_id}"
         if cache_key in self._memory_cache:
             entry = self._memory_cache[cache_key]
             if not entry.is_expired():
                 return entry.value
 
-        cursor = self._conn.execute("SELECT data FROM mcp_servers WHERE id = ?", (mcp_id,))
+        cursor = self._conn.execute(
+            "SELECT data FROM mcp_servers WHERE id = ? AND tenant_id = ?",
+            (mcp_id, self.tenant_id)
+        )
         row = cursor.fetchone()
         if row:
             mcp_data = json.loads(row["data"])
@@ -527,17 +600,24 @@ class CloudDataCache:
 
     async def get_mcp_servers(self) -> List[Dict[str, Any]]:
         """
-        Get all cached MCP servers.
+        Get all cached MCP servers for current tenant (TENANT ISOLATED).
 
         Returns:
-            List of MCP server configs
+            List of MCP server configs for current tenant only
 
         Example:
             mcp_servers = await cache.get_mcp_servers()
             for mcp in mcp_servers:
                 print(f"{mcp['name']}: {mcp['command']} {mcp['args']}")
         """
-        cursor = self._conn.execute("SELECT data FROM mcp_servers")
+        if not self.tenant_id:
+            raise ValueError("tenant_id required - cache not initialized with tenant context")
+
+        # CRITICAL: Filter by tenant_id to prevent cross-tenant data leakage
+        cursor = self._conn.execute(
+            "SELECT data FROM mcp_servers WHERE tenant_id = ?",
+            (self.tenant_id,)
+        )
         rows = cursor.fetchall()
 
         mcp_servers = []
@@ -545,7 +625,7 @@ class CloudDataCache:
             mcp_data = json.loads(row["data"])
             mcp_servers.append(mcp_data)
 
-            cache_key = f"mcp:{mcp_data['id']}"
+            cache_key = f"mcp:{self.tenant_id}:{mcp_data['id']}"
             self._memory_cache[cache_key] = CacheEntry(
                 key=cache_key,
                 value=mcp_data,
@@ -562,44 +642,62 @@ class CloudDataCache:
         logger.info(f"Refreshed MCP server cache: {mcp_id}")
 
     async def delete_mcp_server_from_cache(self, mcp_id: str):
-        """Delete MCP server from cache"""
-        self._conn.execute("DELETE FROM mcp_servers WHERE id = ?", (mcp_id,))
+        """Delete MCP server from cache (tenant-isolated)"""
+        if not self.tenant_id:
+            raise ValueError("tenant_id required - cache not initialized with tenant context")
+
+        # CRITICAL: Delete only from current tenant
+        self._conn.execute(
+            "DELETE FROM mcp_servers WHERE id = ? AND tenant_id = ?",
+            (mcp_id, self.tenant_id)
+        )
         self._conn.commit()
 
-        cache_key = f"mcp:{mcp_id}"
+        cache_key = f"mcp:{self.tenant_id}:{mcp_id}"
         if cache_key in self._memory_cache:
             del self._memory_cache[cache_key]
 
-        logger.info(f"Deleted MCP server from cache: {mcp_id}")
+        logger.info(f"Deleted MCP server from cache: {mcp_id} (tenant: {self.tenant_id})")
 
     # ============================================================================
     # GROUPS
     # ============================================================================
 
     async def _cache_group(self, group_data: Dict[str, Any]):
-        """Cache single group"""
+        """Cache single group with tenant isolation"""
+        tenant_id = group_data.get("tenant_id") or self.tenant_id
+        if not tenant_id:
+            raise ValueError("tenant_id required for caching groups")
+
         self._conn.execute(
-            "INSERT OR REPLACE INTO groups (id, data, cached_at) VALUES (?, ?, ?)",
-            (group_data["id"], json.dumps(group_data), datetime.utcnow())
+            "INSERT OR REPLACE INTO groups (id, tenant_id, data, cached_at) VALUES (?, ?, ?, ?)",
+            (group_data["id"], tenant_id, json.dumps(group_data), datetime.utcnow())
         )
         self._conn.commit()
 
-        self._memory_cache[f"group:{group_data['id']}"] = CacheEntry(
-            key=f"group:{group_data['id']}",
+        cache_key = f"group:{tenant_id}:{group_data['id']}"
+        self._memory_cache[cache_key] = CacheEntry(
+            key=cache_key,
             value=group_data,
             cached_at=datetime.utcnow(),
             ttl=self.ttl
         )
 
     async def get_group(self, group_id: str) -> Optional[Dict[str, Any]]:
-        """Get cached group by ID"""
-        cache_key = f"group:{group_id}"
+        """Get cached group by ID with tenant isolation"""
+        if not self.tenant_id:
+            raise ValueError("tenant_id required - cache not initialized with tenant context")
+
+        cache_key = f"group:{self.tenant_id}:{group_id}"
         if cache_key in self._memory_cache:
             entry = self._memory_cache[cache_key]
             if not entry.is_expired():
                 return entry.value
 
-        cursor = self._conn.execute("SELECT data FROM groups WHERE id = ?", (group_id,))
+        cursor = self._conn.execute(
+            "SELECT data FROM groups WHERE id = ? AND tenant_id = ?",
+            (group_id, self.tenant_id)
+        )
         row = cursor.fetchone()
         if row:
             group_data = json.loads(row["data"])
@@ -616,8 +714,15 @@ class CloudDataCache:
         return None
 
     async def get_groups(self) -> List[Dict[str, Any]]:
-        """Get all cached groups"""
-        cursor = self._conn.execute("SELECT data FROM groups")
+        """Get all cached groups for current tenant (TENANT ISOLATED)"""
+        if not self.tenant_id:
+            raise ValueError("tenant_id required - cache not initialized with tenant context")
+
+        # CRITICAL: Filter by tenant_id to prevent cross-tenant data leakage
+        cursor = self._conn.execute(
+            "SELECT data FROM groups WHERE tenant_id = ?",
+            (self.tenant_id,)
+        )
         rows = cursor.fetchall()
 
         groups = []
@@ -625,7 +730,7 @@ class CloudDataCache:
             group_data = json.loads(row["data"])
             groups.append(group_data)
 
-            cache_key = f"group:{group_data['id']}"
+            cache_key = f"group:{self.tenant_id}:{group_data['id']}"
             self._memory_cache[cache_key] = CacheEntry(
                 key=cache_key,
                 value=group_data,
@@ -642,44 +747,62 @@ class CloudDataCache:
         logger.info(f"Refreshed group cache: {group_id}")
 
     async def delete_group_from_cache(self, group_id: str):
-        """Delete group from cache"""
-        self._conn.execute("DELETE FROM groups WHERE id = ?", (group_id,))
+        """Delete group from cache (tenant-isolated)"""
+        if not self.tenant_id:
+            raise ValueError("tenant_id required - cache not initialized with tenant context")
+
+        # CRITICAL: Delete only from current tenant
+        self._conn.execute(
+            "DELETE FROM groups WHERE id = ? AND tenant_id = ?",
+            (group_id, self.tenant_id)
+        )
         self._conn.commit()
 
-        cache_key = f"group:{group_id}"
+        cache_key = f"group:{self.tenant_id}:{group_id}"
         if cache_key in self._memory_cache:
             del self._memory_cache[cache_key]
 
-        logger.info(f"Deleted group from cache: {group_id}")
+        logger.info(f"Deleted group from cache: {group_id} (tenant: {self.tenant_id})")
 
     # ============================================================================
     # USERS
     # ============================================================================
 
     async def _cache_user(self, user_data: Dict[str, Any]):
-        """Cache single user"""
+        """Cache single user with tenant isolation"""
+        tenant_id = user_data.get("tenant_id") or self.tenant_id
+        if not tenant_id:
+            raise ValueError("tenant_id required for caching users")
+
         self._conn.execute(
-            "INSERT OR REPLACE INTO users (id, data, cached_at) VALUES (?, ?, ?)",
-            (user_data["id"], json.dumps(user_data), datetime.utcnow())
+            "INSERT OR REPLACE INTO users (id, tenant_id, data, cached_at) VALUES (?, ?, ?, ?)",
+            (user_data["id"], tenant_id, json.dumps(user_data), datetime.utcnow())
         )
         self._conn.commit()
 
-        self._memory_cache[f"user:{user_data['id']}"] = CacheEntry(
-            key=f"user:{user_data['id']}",
+        cache_key = f"user:{tenant_id}:{user_data['id']}"
+        self._memory_cache[cache_key] = CacheEntry(
+            key=cache_key,
             value=user_data,
             cached_at=datetime.utcnow(),
             ttl=self.ttl
         )
 
     async def get_user(self, user_id: str) -> Optional[Dict[str, Any]]:
-        """Get cached user by ID"""
-        cache_key = f"user:{user_id}"
+        """Get cached user by ID with tenant isolation"""
+        if not self.tenant_id:
+            raise ValueError("tenant_id required - cache not initialized with tenant context")
+
+        cache_key = f"user:{self.tenant_id}:{user_id}"
         if cache_key in self._memory_cache:
             entry = self._memory_cache[cache_key]
             if not entry.is_expired():
                 return entry.value
 
-        cursor = self._conn.execute("SELECT data FROM users WHERE id = ?", (user_id,))
+        cursor = self._conn.execute(
+            "SELECT data FROM users WHERE id = ? AND tenant_id = ?",
+            (user_id, self.tenant_id)
+        )
         row = cursor.fetchone()
         if row:
             user_data = json.loads(row["data"])
@@ -696,8 +819,15 @@ class CloudDataCache:
         return None
 
     async def get_users(self) -> List[Dict[str, Any]]:
-        """Get all cached users"""
-        cursor = self._conn.execute("SELECT data FROM users")
+        """Get all cached users for current tenant (TENANT ISOLATED)"""
+        if not self.tenant_id:
+            raise ValueError("tenant_id required - cache not initialized with tenant context")
+
+        # CRITICAL: Filter by tenant_id to prevent cross-tenant data leakage
+        cursor = self._conn.execute(
+            "SELECT data FROM users WHERE tenant_id = ?",
+            (self.tenant_id,)
+        )
         rows = cursor.fetchall()
 
         users = []
@@ -705,7 +835,7 @@ class CloudDataCache:
             user_data = json.loads(row["data"])
             users.append(user_data)
 
-            cache_key = f"user:{user_data['id']}"
+            cache_key = f"user:{self.tenant_id}:{user_data['id']}"
             self._memory_cache[cache_key] = CacheEntry(
                 key=cache_key,
                 value=user_data,
@@ -722,15 +852,22 @@ class CloudDataCache:
         logger.info(f"Refreshed user cache: {user_id}")
 
     async def delete_user_from_cache(self, user_id: str):
-        """Delete user from cache"""
-        self._conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
+        """Delete user from cache (tenant-isolated)"""
+        if not self.tenant_id:
+            raise ValueError("tenant_id required - cache not initialized with tenant context")
+
+        # CRITICAL: Delete only from current tenant
+        self._conn.execute(
+            "DELETE FROM users WHERE id = ? AND tenant_id = ?",
+            (user_id, self.tenant_id)
+        )
         self._conn.commit()
 
-        cache_key = f"user:{user_id}"
+        cache_key = f"user:{self.tenant_id}:{user_id}"
         if cache_key in self._memory_cache:
             del self._memory_cache[cache_key]
 
-        logger.info(f"Deleted user from cache: {user_id}")
+        logger.info(f"Deleted user from cache: {user_id} (tenant: {self.tenant_id})")
 
     # ============================================================================
     # METADATA
@@ -758,7 +895,7 @@ class CloudDataCache:
         return None
 
     async def clear_all_cache(self):
-        """Clear all cached data"""
+        """Clear ALL cached data (all tenants) - USE WITH CAUTION"""
         self._conn.executescript("""
             DELETE FROM tenant;
             DELETE FROM agents;
@@ -773,7 +910,58 @@ class CloudDataCache:
         # Clear memory cache
         self._memory_cache.clear()
 
-        logger.info("Cleared all cache data")
+        logger.warning("Cleared ALL cache data for ALL tenants")
+
+    async def clear_tenant_cache(self, tenant_id: Optional[str] = None):
+        """
+        Clear cache for specific tenant (tenant switch scenario).
+
+        CRITICAL: Call this when user switches tenant to prevent data leakage.
+
+        Args:
+            tenant_id: Tenant ID to clear (defaults to self.tenant_id)
+
+        Example:
+            # User logs out or switches tenant
+            await cache.clear_tenant_cache()
+        """
+        tid = tenant_id or self.tenant_id
+        if not tid:
+            raise ValueError("tenant_id required")
+
+        # Delete from database
+        self._conn.execute("DELETE FROM agents WHERE tenant_id = ?", (tid,))
+        self._conn.execute("DELETE FROM tools WHERE tenant_id = ?", (tid,))
+        self._conn.execute("DELETE FROM mcp_servers WHERE tenant_id = ?", (tid,))
+        self._conn.execute("DELETE FROM groups WHERE tenant_id = ?", (tid,))
+        self._conn.execute("DELETE FROM users WHERE tenant_id = ?", (tid,))
+        self._conn.commit()
+
+        # Clear from memory cache
+        keys_to_delete = [
+            key for key in self._memory_cache.keys()
+            if f":{tid}:" in key or key.startswith(f"tenant:{tid}")
+        ]
+        for key in keys_to_delete:
+            del self._memory_cache[key]
+
+        logger.info(f"Cleared cache for tenant: {tid}")
+
+    def set_tenant(self, tenant_id: str):
+        """
+        Set current tenant context.
+
+        CRITICAL: Call this when switching tenant or on login.
+
+        Args:
+            tenant_id: New tenant ID to set as context
+
+        Example:
+            # After login
+            cache.set_tenant(auth_token.tenant_id)
+        """
+        self.tenant_id = tenant_id
+        logger.info(f"Set cache tenant context to: {tenant_id}")
 
 
 # ============================================================================
@@ -799,7 +987,7 @@ def get_cloud_cache() -> CloudDataCache:
     return _cloud_cache
 
 
-async def initialize_cloud_cache(cache_dir: str, ttl: int = 300) -> CloudDataCache:
+async def initialize_cloud_cache(cache_dir: str, ttl: int = 300, tenant_id: Optional[str] = None) -> CloudDataCache:
     """
     Initialize singleton cloud cache instance.
 
@@ -808,14 +996,19 @@ async def initialize_cloud_cache(cache_dir: str, ttl: int = 300) -> CloudDataCac
     Args:
         cache_dir: Directory to store cache database
         ttl: Time-to-live for cache entries (seconds)
+        tenant_id: Current tenant ID (can be set later via set_tenant)
 
     Example:
+        # On app startup (no tenant yet)
         cache = await initialize_cloud_cache("/home/user/.agentverse/cache")
+
+        # After login
+        cache.set_tenant(auth_token.tenant_id)
     """
     global _cloud_cache
-    _cloud_cache = CloudDataCache(cache_dir, ttl)
+    _cloud_cache = CloudDataCache(cache_dir, ttl, tenant_id)
     await _cloud_cache.initialize()
-    logger.info(f"Cloud cache initialized at {cache_dir}")
+    logger.info(f"Cloud cache initialized at {cache_dir}" + (f" for tenant {tenant_id}" if tenant_id else ""))
     return _cloud_cache
 
 
