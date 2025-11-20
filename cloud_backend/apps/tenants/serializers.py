@@ -7,7 +7,12 @@ from .models import Tenant, TenantSettings
 
 
 class TenantSerializer(serializers.ModelSerializer):
-    """Serializer for Tenant model"""
+    """
+    Serializer for Tenant model.
+
+    Used by superadmin for tenant management.
+    Includes contact info and company metadata for analytics.
+    """
 
     class Meta:
         model = Tenant
@@ -15,25 +20,41 @@ class TenantSerializer(serializers.ModelSerializer):
             'id',
             'name',
             'slug',
+            'schema_name',
+            # Contact info
             'email',
+            'admin_name',
             'phone',
+            # Company info
+            'company_size',
+            'industry',
+            # Subscription
             'license_type',
             'license_limits',
             'subscription_status',
+            'subscription_current_period_end',
+            'stripe_customer_id',
+            'stripe_subscription_id',
+            # Usage
             'storage_used_mb',
             'messages_this_month',
+            'last_usage_reset',
+            # Status
             'is_active',
             'is_trial',
             'trial_end_date',
+            # Metadata
             'created_at',
             'updated_at',
         ]
         read_only_fields = [
             'id',
+            'schema_name',
             'created_at',
             'updated_at',
             'storage_used_mb',
             'messages_this_month',
+            'last_usage_reset',
         ]
 
 

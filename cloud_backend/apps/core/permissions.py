@@ -72,3 +72,54 @@ class IsOwnerOrAdmin(permissions.BasePermission):
 
         # User can edit their own objects
         return obj.created_by == request.user.id
+
+
+class IsSuperAdmin(permissions.BasePermission):
+    """
+    Permission that ONLY allows superadmin users to access.
+
+    SECURITY CRITICAL: This permission is used for analytics endpoints that
+    expose tenant statistics and business metrics. Regular tenant admins
+    should NOT have access to these endpoints.
+
+    Superadmin:
+    - CAN access: TenantStats, GlobalPlatformStats, SupportTickets
+    - CAN see: Aggregate counts, subscription info, contact details
+    - CANNOT access: Actual tenant content (messages, documents, agent configs)
+
+    Usage:
+        class TenantStatsViewSet(viewsets.ReadOnlyModelViewSet):
+            permission_classes = [IsSuperAdmin]
+    """
+
+    def has_permission(self, request, view):
+        """
+        Check if user is a superadmin.
+
+        Superadmin is identified by:
+        1. is_superuser flag (Django admin superuser)
+        2. is_staff flag (can access Django admin)
+        3. Connection is on 'public' schema (not a tenant schema)
+        """
+        if not request.user or not request.user.is_authenticated:
+            return False
+
+        # Must be Django superuser
+        if not request.user.is_superuser:
+            return False
+
+        # Must be on public schema (superadmin operates outside tenant schemas)
+        from django.db import connection
+        current_schema = connection.schema_name
+
+        if current_schema != 'public':
+            # If on a tenant schema, deny access even if user is superuser
+            return False
+
+        return True
+
+    def has_object_permission(self, request, view, obj):
+        """
+        Superadmin has access to all objects in analytics models.
+        """
+        return self.has_permission(request, view)

@@ -38,9 +38,35 @@ class Tenant(TenantMixin):
     name = models.CharField(max_length=255, help_text="Organization name")
     slug = models.SlugField(max_length=100, unique=True, help_text="URL-safe identifier")
 
-    # Contact information
-    email = models.EmailField(help_text="Primary contact email")
+    # Contact information (Admin/Point of Contact)
+    email = models.EmailField(help_text="Primary admin contact email (visible to superadmin)")
+    admin_name = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text="Name of primary admin/point of contact (visible to superadmin)"
+    )
     phone = models.CharField(max_length=50, blank=True, null=True)
+
+    # Company information (for superadmin analytics)
+    company_size = models.CharField(
+        max_length=20,
+        choices=[
+            ('1-10', '1-10 employees'),
+            ('11-50', '11-50 employees'),
+            ('51-200', '51-200 employees'),
+            ('201-1000', '201-1000 employees'),
+            ('1001+', '1001+ employees'),
+        ],
+        blank=True,
+        null=True,
+        help_text="Company size (for analytics)"
+    )
+    industry = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        help_text="Industry/sector (for analytics)"
+    )
 
     # License information
     license_type = models.CharField(
