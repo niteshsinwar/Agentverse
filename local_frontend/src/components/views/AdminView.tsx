@@ -6,9 +6,9 @@
  * - Group Management
  * - Resource Permissions
  * - Settings
- * NON-FUNCTIONAL: UI demonstration only
  */
 
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   UsersIcon,
@@ -16,6 +16,18 @@ import {
   CubeIcon,
   ChartBarIcon,
 } from '@heroicons/react/24/outline';
+import {
+  fetchGroups,
+  fetchUsers,
+  fetchAgents,
+  fetchTools,
+  fetchMCPServers,
+  type Group,
+  type TenantUser,
+  type Agent,
+  type Tool,
+  type MCPServer,
+} from '../../lib/cloud/api';
 
 type AdminView = 'overview' | 'users' | 'groups' | 'resources' | 'settings';
 
@@ -26,51 +38,52 @@ interface AdminViewProps {
 
 export const AdminView: React.FC<AdminViewProps> = ({ adminTab, onTabChange }) => {
 
-  // Mock data
-  const mockUsers = [
-    { id: '1', name: 'John Doe', email: 'john@company.com', role: 'admin', status: 'active', groups: ['1', '2'], lastActive: '2 min ago' },
-    { id: '2', name: 'Jane Smith', email: 'jane@company.com', role: 'user', status: 'active', groups: ['1'], lastActive: '1 hour ago' },
-    { id: '3', name: 'Bob Wilson', email: 'bob@company.com', role: 'user', status: 'inactive', groups: ['2', '3'], lastActive: '2 days ago' },
-    { id: '4', name: 'Alice Johnson', email: 'alice@company.com', role: 'user', status: 'active', groups: ['3'], lastActive: '5 min ago' },
-    { id: '5', name: 'Charlie Brown', email: 'charlie@company.com', role: 'user', status: 'active', groups: ['1', '3'], lastActive: '30 min ago' },
-  ];
+  // State for real data from cloud backend
+  const [users, setUsers] = useState<TenantUser[]>([]);
+  const [groups, setGroups] = useState<Group[]>([]);
+  const [agents, setAgents] = useState<Agent[]>([]);
+  const [tools, setTools] = useState<Tool[]>([]);
+  const [mcpServers, setMCPServers] = useState<MCPServer[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const mockGroups = [
-    { id: '1', name: 'Engineering', description: 'Software development team', color: 'indigo', memberCount: 3 },
-    { id: '2', name: 'Data Science', description: 'ML and AI research', color: 'purple', memberCount: 2 },
-    { id: '3', name: 'Product', description: 'Product management', color: 'green', memberCount: 3 },
-    { id: '4', name: 'Design', description: 'UX/UI design team', color: 'pink', memberCount: 0 },
-  ];
+  // Fetch all data on component mount
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
 
-  const mockResources = [
-    {
-      id: '1',
-      name: 'GitHub MCP',
-      description: 'Access GitHub repositories and issues',
-      type: 'mcp' as const,
-      isProtected: true,
-      permissions: {
-        '1': { canView: true, canEdit: true, canDelete: true, canExecute: true },
-        '2': { canView: true, canEdit: false, canDelete: false, canExecute: true },
-      },
-      allowedUsers: ['1', '2'],
-      createdBy: 'System',
-      createdAt: '2024-01-15',
-    },
-    {
-      id: '2',
-      name: 'Filesystem MCP',
-      description: 'Read and write local files',
-      type: 'mcp' as const,
-      isProtected: false,
-      permissions: {
-        '1': { canView: true, canEdit: true, canDelete: true, canExecute: true },
-        '3': { canView: true, canEdit: true, canDelete: false, canExecute: true },
-      },
-      allowedUsers: ['1', '3'],
-      createdBy: 'Admin',
-      createdAt: '2024-02-01',
-    },
+        // Fetch all tenant data in parallel
+        const [usersData, groupsData, agentsData, toolsData, mcpServersData] = await Promise.all([
+          fetchUsers(),
+          fetchGroups(),
+          fetchAgents(),
+          fetchTools(),
+          fetchMCPServers(),
+        ]);
+
+        setUsers(usersData);
+        setGroups(groupsData);
+        setAgents(agentsData);
+        setTools(toolsData);
+        setMCPServers(mcpServersData);
+      } catch (err) {
+        console.error('Failed to load admin data:', err);
+        setError(err instanceof Error ? err.message : 'Failed to load data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, []);
+
+  // Combined resources list (agents + tools + mcp servers)
+  const allResources = [
+    ...agents.map((a) => ({ ...a, type: 'agent' as const })),
+    ...tools.map((t) => ({ ...t, type: 'tool' as const })),
+    ...mcpServers.map((m) => ({ ...m, type: 'mcp' as const })),
   ];
 
   const renderOverview = () => (
@@ -88,7 +101,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ adminTab, onTabChange }) =
           <div className="flex items-center justify-between mb-4">
             <UsersIcon className="w-8 h-8 text-sky-600 dark:text-sky-400" />
           </div>
-          <div className="text-3xl font-bold text-slate-900 dark:text-white mb-1">{mockUsers.length}</div>
+          <div className="text-3xl font-bold text-slate-900 dark:text-white mb-1">{users.length}</div>
           <div className="text-sm text-slate-600 dark:text-slate-400">Total Users</div>
         </div>
 
@@ -96,7 +109,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ adminTab, onTabChange }) =
           <div className="flex items-center justify-between mb-4">
             <UserGroupIcon className="w-8 h-8 text-green-600 dark:text-green-400" />
           </div>
-          <div className="text-3xl font-bold text-slate-900 dark:text-white mb-1">{mockGroups.length}</div>
+          <div className="text-3xl font-bold text-slate-900 dark:text-white mb-1">{groups.length}</div>
           <div className="text-sm text-slate-600 dark:text-slate-400">Active Groups</div>
         </div>
 
@@ -104,7 +117,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ adminTab, onTabChange }) =
           <div className="flex items-center justify-between mb-4">
             <CubeIcon className="w-8 h-8 text-sky-600 dark:text-sky-400" />
           </div>
-          <div className="text-3xl font-bold text-slate-900 dark:text-white mb-1">{mockResources.length}</div>
+          <div className="text-3xl font-bold text-slate-900 dark:text-white mb-1">{allResources.length}</div>
           <div className="text-sm text-slate-600 dark:text-slate-400">Resources</div>
         </div>
 
@@ -180,45 +193,53 @@ export const AdminView: React.FC<AdminViewProps> = ({ adminTab, onTabChange }) =
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
-            {mockUsers.map((user) => (
-              <tr key={user.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
-                <td className="px-6 py-4">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 brand-gradient rounded-full flex items-center justify-center text-white text-sm font-bold">
-                      {user.name.charAt(0)}
-                    </div>
-                    <div>
-                      <div className="font-medium text-slate-900 dark:text-white">{user.name}</div>
-                      <div className="text-sm text-slate-500 dark:text-slate-400">{user.email}</div>
-                    </div>
-                  </div>
-                </td>
-                <td className="px-6 py-4">
-                  <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                    user.role === 'admin' 
-                      ? 'bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300'
-                      : 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300'
-                  }`}>
-                    {user.role}
-                  </span>
-                </td>
-                <td className="px-6 py-4">
-                  <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                    user.status === 'active'
-                      ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
-                      : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
-                  }`}>
-                    {user.status}
-                  </span>
-                </td>
-                <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">{user.lastActive}</td>
-                <td className="px-6 py-4">
-                  <button className="text-sky-600 hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300 text-sm font-medium">
-                    Edit
-                  </button>
+            {users.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="px-6 py-12 text-center text-slate-500 dark:text-slate-400">
+                  No users found for this tenant
                 </td>
               </tr>
-            ))}
+            ) : (
+              users.map((user) => (
+                <tr key={user.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                  <td className="px-6 py-4">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 brand-gradient rounded-full flex items-center justify-center text-white text-sm font-bold">
+                        {user.name.charAt(0)}
+                      </div>
+                      <div>
+                        <div className="font-medium text-slate-900 dark:text-white">{user.name}</div>
+                        <div className="text-sm text-slate-500 dark:text-slate-400">{user.email}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                      user.role === 'admin'
+                        ? 'bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300'
+                        : 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300'
+                    }`}>
+                      {user.role}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                      user.status === 'active'
+                        ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+                        : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
+                    }`}>
+                      {user.status}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">{user.last_active || 'N/A'}</td>
+                  <td className="px-6 py-4">
+                    <button className="text-sky-600 hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300 text-sm font-medium">
+                      Edit
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
@@ -236,33 +257,53 @@ export const AdminView: React.FC<AdminViewProps> = ({ adminTab, onTabChange }) =
 
       {/* Groups Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {mockGroups.map((group) => (
-          <div key={group.id} className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 hover:shadow-lg transition-shadow">
-            <div className="flex items-start justify-between mb-4">
-              <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${
-                group.color === 'indigo' ? 'from-sky-500 to-cyan-600' :
-                group.color === 'purple' ? 'from-cyan-400 to-sky-500' :
-                group.color === 'green' ? 'from-emerald-400 to-emerald-600' :
-                'from-amber-400 to-amber-600'
-              } flex items-center justify-center text-white text-xl font-bold shadow-lg`}>
-                {group.name.charAt(0)}
-              </div>
-              <button className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
-                </svg>
-              </button>
-            </div>
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">{group.name}</h3>
-            <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">{group.description}</p>
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-slate-500 dark:text-slate-400">{group.memberCount} members</span>
-              <button className="text-sky-600 hover:text-sky-700 dark:text-sky-400 font-medium">
-                Manage →
-              </button>
-            </div>
+        {groups.length === 0 ? (
+          <div className="col-span-full text-center py-12">
+            <UserGroupIcon className="w-16 h-16 text-slate-300 dark:text-slate-600 mx-auto mb-4" />
+            <p className="text-slate-500 dark:text-slate-400 mb-4">
+              No groups found for this tenant
+            </p>
+            <button className="px-4 py-2 bg-gradient-to-r from-green-600 to-teal-600 text-white rounded-lg text-sm font-semibold hover:from-green-700 hover:to-teal-700 transition-all">
+              Create Your First Group
+            </button>
           </div>
-        ))}
+        ) : (
+          groups.map((group, index) => {
+            // Assign colors dynamically based on index
+            const colors = ['indigo', 'purple', 'green', 'pink', 'amber', 'cyan'];
+            const color = colors[index % colors.length];
+
+            return (
+              <div key={group.id} className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 hover:shadow-lg transition-shadow">
+                <div className="flex items-start justify-between mb-4">
+                  <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${
+                    color === 'indigo' ? 'from-sky-500 to-cyan-600' :
+                    color === 'purple' ? 'from-cyan-400 to-sky-500' :
+                    color === 'green' ? 'from-emerald-400 to-emerald-600' :
+                    color === 'pink' ? 'from-pink-400 to-pink-600' :
+                    color === 'amber' ? 'from-amber-400 to-amber-600' :
+                    'from-cyan-400 to-cyan-600'
+                  } flex items-center justify-center text-white text-xl font-bold shadow-lg`}>
+                    {group.name.charAt(0)}
+                  </div>
+                  <button className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                    </svg>
+                  </button>
+                </div>
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">{group.name}</h3>
+                <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">{group.description}</p>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-slate-500 dark:text-slate-400">{group.member_count || 0} members</span>
+                  <button className="text-sky-600 hover:text-sky-700 dark:text-sky-400 font-medium">
+                    Manage →
+                  </button>
+                </div>
+              </div>
+            );
+          })
+        )}
       </div>
     </div>
   );
@@ -278,46 +319,55 @@ export const AdminView: React.FC<AdminViewProps> = ({ adminTab, onTabChange }) =
 
       {/* Resources List */}
       <div className="space-y-4">
-        {mockResources.map((resource) => (
-          <div key={resource.id} className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6">
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <div className="flex items-center space-x-3 mb-2">
-                  <h3 className="text-lg font-semibold text-slate-900 dark:text-white">{resource.name}</h3>
-                  {resource.isProtected && (
-                    <span className="px-2 py-1 bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300 text-xs font-medium rounded-full">
-                      Protected
-                    </span>
-                  )}
-                  <span className="px-2 py-1 bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300 text-xs font-medium rounded-full uppercase">
-                    {resource.type}
-                  </span>
-                </div>
-                <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">{resource.description}</p>
-                
-                {/* Permission Pills */}
-                <div className="flex flex-wrap gap-2">
-                  {Object.entries(resource.permissions).map(([groupId, perms]) => {
-                    const permissionLabels = [];
-                    if (perms.canView) permissionLabels.push('View');
-                    if (perms.canEdit) permissionLabels.push('Edit');
-                    if (perms.canDelete) permissionLabels.push('Delete');
-                    if (perms.canExecute) permissionLabels.push('Execute');
-                    
-                    return (
-                      <span key={groupId} className="px-3 py-1 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-medium rounded-full">
-                        Group {groupId}: {permissionLabels.join(', ')}
-                      </span>
-                    );
-                  })}
-                </div>
-              </div>
-              <button className="ml-4 text-sky-600 hover:text-sky-700 dark:text-sky-400 text-sm font-medium">
-                Edit Permissions
-              </button>
-            </div>
+        {allResources.length === 0 ? (
+          <div className="text-center py-12">
+            <CubeIcon className="w-16 h-16 text-slate-300 dark:text-slate-600 mx-auto mb-4" />
+            <p className="text-slate-500 dark:text-slate-400 mb-4">
+              No resources found for this tenant
+            </p>
+            <p className="text-sm text-slate-400 dark:text-slate-500">
+              Resources include agents, tools, and MCP servers
+            </p>
           </div>
-        ))}
+        ) : (
+          allResources.map((resource) => (
+            <div key={resource.id} className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6">
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center space-x-3 mb-2">
+                    <h3 className="text-lg font-semibold text-slate-900 dark:text-white">{resource.name}</h3>
+                    {'is_protected' in resource && resource.is_protected && (
+                      <span className="px-2 py-1 bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300 text-xs font-medium rounded-full">
+                        Protected
+                      </span>
+                    )}
+                    <span className={`px-2 py-1 text-xs font-medium rounded-full uppercase ${
+                      resource.type === 'agent' ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300' :
+                      resource.type === 'tool' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' :
+                      'bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300'
+                    }`}>
+                      {resource.type}
+                    </span>
+                  </div>
+                  <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">{resource.description}</p>
+
+                  {/* Resource metadata */}
+                  <div className="flex flex-wrap gap-3 text-xs text-slate-500 dark:text-slate-400">
+                    {resource.created_by && (
+                      <span>Created by: {resource.created_by}</span>
+                    )}
+                    {resource.created_at && (
+                      <span>Created: {new Date(resource.created_at).toLocaleDateString()}</span>
+                    )}
+                  </div>
+                </div>
+                <button className="ml-4 text-sky-600 hover:text-sky-700 dark:text-sky-400 text-sm font-medium">
+                  Edit Permissions
+                </button>
+              </div>
+            </div>
+          ))
+        )}
       </div>
     </div>
   );
@@ -414,6 +464,49 @@ export const AdminView: React.FC<AdminViewProps> = ({ adminTab, onTabChange }) =
         return renderOverview();
     }
   };
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="flex flex-col h-full overflow-hidden">
+        <div className="flex-1 overflow-y-auto bg-gradient-to-br from-slate-50 via-violet-50/30 to-cyan-50/20 dark:from-slate-900 dark:via-violet-950/30 dark:to-cyan-950/20">
+          <div className="max-w-7xl mx-auto p-8 flex items-center justify-center min-h-96">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-sky-600 dark:border-sky-400 mx-auto mb-4"></div>
+              <p className="text-slate-600 dark:text-slate-400">Loading tenant data...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="flex flex-col h-full overflow-hidden">
+        <div className="flex-1 overflow-y-auto bg-gradient-to-br from-slate-50 via-violet-50/30 to-cyan-50/20 dark:from-slate-900 dark:via-violet-950/30 dark:to-cyan-950/20">
+          <div className="max-w-7xl mx-auto p-8 flex items-center justify-center min-h-96">
+            <div className="text-center max-w-md">
+              <div className="w-16 h-16 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">Failed to Load Data</h3>
+              <p className="text-slate-600 dark:text-slate-400 mb-4">{error}</p>
+              <button
+                onClick={() => window.location.reload()}
+                className="px-4 py-2 brand-gradient text-white rounded-lg text-sm font-semibold hover:opacity-90 transition-all"
+              >
+                Retry
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
