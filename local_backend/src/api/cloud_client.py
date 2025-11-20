@@ -114,7 +114,11 @@ class CloudAPIClient:
             await self._session.close()
 
     def _get_headers(self, include_auth: bool = True) -> Dict[str, str]:
-        """Get request headers with optional authentication"""
+        """
+        Get request headers with optional authentication.
+
+        CRITICAL: Includes X-Tenant-ID header for multi-tenancy isolation.
+        """
         headers = {
             "Content-Type": "application/json",
             "Accept": "application/json"
@@ -122,6 +126,10 @@ class CloudAPIClient:
 
         if include_auth and self.token:
             headers["Authorization"] = f"{self.token.token_type} {self.token.access_token}"
+
+            # CRITICAL: Pass tenant_id for multi-tenancy validation
+            if self.token.tenant_id:
+                headers["X-Tenant-ID"] = self.token.tenant_id
 
         return headers
 
