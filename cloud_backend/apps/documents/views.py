@@ -4,20 +4,24 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend
 from django.db import connection
+from apps.core.mixins import LicenseEnforcedViewSet
 from apps.tenants.models import Tenant
 from .models import Document
 from .serializers import DocumentSerializer
 
-class DocumentViewSet(viewsets.ModelViewSet):
+class DocumentViewSet(LicenseEnforcedViewSet, viewsets.ModelViewSet):
     """
     ViewSet for Document CRUD operations.
 
-    SECURITY: Documents are tenant-isolated. Explicit filtering prevents cross-tenant access.
+    SECURITY:
+    - Documents are tenant-isolated. Explicit filtering prevents cross-tenant access.
+    - License limits enforced: Free tier limited to 10 documents, Pro limited to 1000, Enterprise unlimited.
     """
     serializer_class = DocumentSerializer
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['group', 'uploaded_by', 'file_type']
+    license_limit_key = 'max_documents'  # Enforce license limit
 
     def get_queryset(self):
         """Filter documents by current tenant"""

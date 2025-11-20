@@ -1,18 +1,22 @@
 from rest_framework import viewsets
 from django.db import connection
 from apps.core.permissions import IsAdminOrReadOnly
+from apps.core.mixins import LicenseEnforcedViewSet
 from apps.tenants.models import Tenant
 from .models import Agent
 from .serializers import AgentSerializer
 
-class AgentViewSet(viewsets.ModelViewSet):
+class AgentViewSet(LicenseEnforcedViewSet, viewsets.ModelViewSet):
     """
     ViewSet for Agent CRUD operations.
 
-    SECURITY: Agents are tenant-isolated. Explicit filtering prevents cross-tenant access.
+    SECURITY:
+    - Agents are tenant-isolated. Explicit filtering prevents cross-tenant access.
+    - License limits enforced: Free tier limited to 4 agents, Pro/Enterprise unlimited.
     """
     serializer_class = AgentSerializer
     permission_classes = [IsAdminOrReadOnly]
+    license_limit_key = 'max_agents'  # Enforce license limit
 
     def get_queryset(self):
         """

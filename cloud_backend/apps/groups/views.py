@@ -1,19 +1,23 @@
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
 from django.db import connection
+from apps.core.mixins import LicenseEnforcedViewSet
 from apps.tenants.models import Tenant
 from .models import Group
 from .serializers import GroupSerializer
 
-class GroupViewSet(viewsets.ModelViewSet):
+class GroupViewSet(LicenseEnforcedViewSet, viewsets.ModelViewSet):
     """
     ViewSet for Group CRUD operations.
 
-    SECURITY: Groups are tenant-isolated. Explicit filtering prevents cross-tenant access.
-    User confirmed: "group object also come under tenant"
+    SECURITY:
+    - Groups are tenant-isolated. Explicit filtering prevents cross-tenant access.
+    - User confirmed: "group object also come under tenant"
+    - License limits enforced: Free tier limited to 2 groups, Pro/Enterprise unlimited.
     """
     serializer_class = GroupSerializer
     permission_classes = [IsAuthenticated]
+    license_limit_key = 'max_groups'  # Enforce license limit
 
     def get_queryset(self):
         """Filter groups by current tenant"""
