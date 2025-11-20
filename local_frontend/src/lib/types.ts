@@ -76,9 +76,24 @@ export interface McpServer {
   enabled: boolean;
 }
 
+/**
+ * Application Settings
+ * General application configuration settings
+ */
 export interface Settings {
-  [key: string]: any;
+  theme?: 'light' | 'dark' | 'system';
+  language?: string;
+  notifications?: boolean;
+  autoSave?: boolean;
+  // Allow additional string keys but with constrained value types
+  [key: string]: string | boolean | number | undefined;
 }
+
+/**
+ * Tenant Settings (from cloud backend)
+ * See: local_frontend/src/lib/api/tenants.ts for full definition
+ */
+export type { TenantSettings } from './api/tenants';
 
 // ============================================================================
 // API REQUEST/RESPONSE TYPES

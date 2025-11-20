@@ -228,12 +228,16 @@ class HttpClient {
     return operation();
   }
 
-  // HTTP methods
-  async get<T = any>(endpoint: string, config?: RequestConfig): Promise<T> {
+  // HTTP methods (Type-safe - no default `any` types)
+  async get<T>(endpoint: string, config?: RequestConfig): Promise<T> {
     return this.request<T>(endpoint, { ...config, method: 'GET' });
   }
 
-  async post<T = any>(endpoint: string, data?: any, config?: RequestConfig): Promise<T> {
+  async post<T>(
+    endpoint: string,
+    data?: Record<string, unknown>,
+    config?: RequestConfig
+  ): Promise<T> {
     return this.request<T>(endpoint, {
       ...config,
       method: 'POST',
@@ -241,7 +245,11 @@ class HttpClient {
     });
   }
 
-  async put<T = any>(endpoint: string, data?: any, config?: RequestConfig): Promise<T> {
+  async put<T>(
+    endpoint: string,
+    data?: Record<string, unknown>,
+    config?: RequestConfig
+  ): Promise<T> {
     return this.request<T>(endpoint, {
       ...config,
       method: 'PUT',
@@ -249,7 +257,11 @@ class HttpClient {
     });
   }
 
-  async patch<T = any>(endpoint: string, data?: any, config?: RequestConfig): Promise<T> {
+  async patch<T>(
+    endpoint: string,
+    data?: Record<string, unknown>,
+    config?: RequestConfig
+  ): Promise<T> {
     return this.request<T>(endpoint, {
       ...config,
       method: 'PATCH',
@@ -257,12 +269,12 @@ class HttpClient {
     });
   }
 
-  async delete<T = any>(endpoint: string, config?: RequestConfig): Promise<T> {
+  async delete<T>(endpoint: string, config?: RequestConfig): Promise<T> {
     return this.request<T>(endpoint, { ...config, method: 'DELETE' });
   }
 
   // File upload
-  async upload<T = any>(
+  async upload<T>(
     endpoint: string,
     formData: FormData,
     config?: Omit<RequestConfig, 'body'> & {
