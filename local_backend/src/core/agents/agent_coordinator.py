@@ -94,13 +94,62 @@ class AgentOrchestrator:
         return self._agents[key]
 
     def group_roster(self, group_id: str) -> List[Tuple[str, str, str]]:
-        """Return list of (key, name, description) for members of a group."""
-        members = session_store.list_group_agents(group_id)
+        """
+        Return list of (username, name, description) for ALL members of a group.
+
+        UNIFORM DESIGN: Returns both human users and AI agents in same format.
+
+        Format: (username, display_name, description)
+        - For agents: (agent_id, agent_name, agent_description)
+        - For humans: (username, full_name, role/bio)
+
+        Example output:
+        [
+            ("john_doe", "John Doe", "Product Manager"),
+            ("filesystem_agent", "File Manager", "Handles file operations")
+        ]
+        """
         out: List[Tuple[str, str, str]] = []
-        for key in members:
+
+        # 1. Add AI agents to roster
+        agent_members = session_store.list_group_agents(group_id)
+        for key in agent_members:
             spec = self.specs.get(key)
             if spec:
                 out.append((key, spec.name, spec.description))
+
+        # 2. Add human users to roster (if cloud mode enabled)
+        if self._cloud_mode:
+            try:
+                from src.core.cache import get_cloud_cache
+                cache = get_cloud_cache()
+
+                # Get group data from cache (has members list)
+                import asyncio
+                group_data = asyncio.run(cache.get_group(group_id))
+
+                if group_data and group_data.get("members"):
+                    # Get all cached users
+                    users_data = asyncio.run(cache.get_users())
+                    users_dict = {user["id"]: user for user in users_data}
+
+                    # Add human members to roster
+                    for user_id in group_data["members"]:
+                        user = users_dict.get(user_id)
+                        if user:
+                            username = user.get("username", user.get("email", user_id))
+                            full_name = user.get("full_name") or user.get("first_name", "") + " " + user.get("last_name", "")
+                            full_name = full_name.strip() or username
+
+                            # Use role or bio as description
+                            description = user.get("bio") or user.get("role") or "Team member"
+
+                            out.append((username, full_name, description))
+
+            except Exception as e:
+                print(f"⚠️  Failed to load human members from cloud cache: {e}")
+                # Continue with agent-only roster
+
         return out
 
     async def agent_call(self, group_id: str, caller_key: str, target_key: str, prompt: str, depth: int = 2) -> str:
