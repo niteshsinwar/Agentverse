@@ -188,7 +188,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 GRAPPELLI_ADMIN_TITLE = 'AgentVerse Cloud Admin'
 GRAPPELLI_AUTOCOMPLETE_LIMIT = 20
 GRAPPELLI_SWITCH_USER = True  # Allow switching users for testing
-GRAPPELLI_SWITCH_USER_ORIGINAL = True
+GRAPPELLI_SWITCH_USER_ORIGINAL = lambda user: user.is_superuser
 GRAPPELLI_SWITCH_USER_TARGET = lambda user: user.is_superuser  # Only superusers can switch
 
 # REST Framework

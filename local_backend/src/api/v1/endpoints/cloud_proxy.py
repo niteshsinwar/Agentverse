@@ -5,7 +5,7 @@ These endpoints allow the local backend to communicate with the Django cloud bac
 They handle authentication, caching, and syncing between local and cloud.
 """
 
-from fastapi import APIRouter, HTTPException, Depends, status
+from fastapi import APIRouter, HTTPException, Depends, status, Request
 from pydantic import BaseModel, EmailStr
 from typing import Optional, Dict, Any
 import logging
@@ -21,6 +21,7 @@ router = APIRouter(prefix="/cloud", tags=["cloud-proxy"])
 
 class LoginRequest(BaseModel):
     """Login request model"""
+    tenant_id: str
     email: EmailStr
     password: str
 
@@ -59,7 +60,7 @@ async def login(credentials: LoginRequest):
 
     Example:
         POST /api/v1/cloud/auth/login
-        {"email": "admin@example.com", "password": "password123"}
+        {"tenant_id": "uuid-here", "email": "admin@example.com", "password": "password123"}
     """
     try:
         # Get cloud client
@@ -70,8 +71,8 @@ async def login(credentials: LoginRequest):
         cloud_client = get_cloud_client()
 
         # Login to cloud
-        logger.info(f"Logging in user: {credentials.email}")
-        result = await cloud_client.login(credentials.email, credentials.password)
+        logger.info(f"Logging in user: {credentials.email} for tenant: {credentials.tenant_id}")
+        result = await cloud_client.login(credentials.tenant_id, credentials.email, credentials.password)
 
         # Store token in settings (for auto-sync on future requests)
         settings = get_settings()
@@ -166,6 +167,57 @@ async def refresh_token(refresh_req: RefreshRequest):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=str(e)
+        )
+
+
+@router.get("/auth/me")
+async def get_current_user(request: Request):
+    """
+    Get current user profile from cloud backend.
+
+    Requires JWT token in Authorization header.
+
+    Example:
+        GET /api/v1/cloud/auth/me
+        Headers: Authorization: Bearer <access_token>
+    """
+    try:
+        from src.api.cloud_client import get_cloud_client
+
+        authorization = request.headers.get("Authorization")
+        if not authorization or not authorization.startswith("Bearer "):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Missing or invalid authorization header"
+            )
+
+        access_token = authorization.split(" ")[1]
+        cloud_client = get_cloud_client()
+
+        # Set token for this request
+        from src.api.cloud_client import AuthToken
+        from datetime import datetime, timedelta
+        cloud_client.token = AuthToken(
+            access_token=access_token,
+            refresh_token="",  # Not needed for /me endpoint
+            token_type="Bearer"
+        )
+
+        # Fetch user profile from cloud
+        logger.info("Fetching user profile from cloud")
+        response = await cloud_client._request(
+            method="GET",
+            endpoint="/auth/me",
+            include_auth=True
+        )
+
+        return response
+
+    except Exception as e:
+        logger.error(f"Failed to fetch user profile: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Failed to fetch user profile: {str(e)}"
         )
 
 

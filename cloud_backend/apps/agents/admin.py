@@ -3,6 +3,7 @@ Django Admin for Agents
 """
 
 from django.contrib import admin
+from django.utils.html import format_html
 from apps.core.admin import TenantFilteredAdmin
 from .models import Agent
 
@@ -20,11 +21,24 @@ class AgentAdmin(TenantFilteredAdmin):
         'name',
         'llm_provider',
         'llm_model',
-        'tenant',
+        'get_tenant_display',
         'is_active',
         'created_at',
         'updated_at',
     )
+
+    def get_tenant_display(self, obj):
+        """Display tenant with colored badge"""
+        if not obj.tenant:
+            return format_html('<span style="color: gray;">No tenant</span>')
+
+        return format_html(
+            '<span style="background-color: #6c757d; color: white; padding: 2px 8px; '
+            'border-radius: 3px; font-size: 11px;">{}</span>',
+            obj.tenant.name
+        )
+    get_tenant_display.short_description = 'Tenant'
+    get_tenant_display.admin_order_field = 'tenant'
 
     list_filter = (
         'tenant',

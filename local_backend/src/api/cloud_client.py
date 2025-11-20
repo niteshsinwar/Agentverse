@@ -250,41 +250,44 @@ class CloudAPIClient:
     # AUTHENTICATION
     # ============================================================================
 
-    async def login(self, email: str, password: str) -> AuthToken:
+    async def login(self, tenant_id: str, email: str, password: str) -> Dict[str, Any]:
         """
         Login user and get JWT token.
 
         Args:
+            tenant_id: Tenant ID
             email: User email
             password: User password
 
         Returns:
-            AuthToken with access_token, refresh_token, and metadata
+            Dict with access_token, refresh_token, user, tenant_id, and metadata
 
         Example:
-            token = await client.login("user@example.com", "password")
-            print(f"Logged in as: {token.user_role}")
+            response = await client.login("tenant-uuid", "user@example.com", "password")
+            print(f"Logged in as: {response['user_role']}")
         """
         response = await self._request(
             method="POST",
             endpoint="/auth/login",
             include_auth=False,
-            json_data={"email": email, "password": password}
+            json_data={"tenant_id": tenant_id, "email": email, "password": password}
         )
 
-        # Parse token response
+        # Parse token response and store in client
         self.token = AuthToken(
             access_token=response["access_token"],
             refresh_token=response["refresh_token"],
             token_type=response.get("token_type", "Bearer"),
             expires_at=datetime.utcnow() + timedelta(seconds=response.get("expires_in", 3600)),
             tenant_id=response.get("tenant_id"),
-            user_id=response.get("user_id"),
+            user_id=response.get("user", {}).get("id"),
             user_role=response.get("user_role")
         )
 
         logger.info(f"Logged in successfully: tenant={self.token.tenant_id}, user={self.token.user_id}")
-        return self.token
+
+        # Return the raw response dict for the API endpoint
+        return response
 
     async def validate_token(self) -> Dict[str, Any]:
         """

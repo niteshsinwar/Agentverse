@@ -34,6 +34,7 @@ class TenantAdmin(admin.ModelAdmin):
     list_display = (
         'name',
         'slug',
+        'get_user_count',
         'license_type',
         'subscription_status',
         'is_active',
@@ -41,6 +42,22 @@ class TenantAdmin(admin.ModelAdmin):
         'storage_usage',
         'created_at',
     )
+
+    def get_user_count(self, obj):
+        """Display number of users in this tenant"""
+        from django.utils.html import format_html
+        count = obj.memberships.filter(is_active=True).count()
+
+        if count == 0:
+            return format_html('<span style="color: gray;">0 users</span>')
+
+        return format_html(
+            '<span style="background-color: #17a2b8; color: white; padding: 2px 8px; '
+            'border-radius: 3px; font-size: 11px;">{} users</span>',
+            count
+        )
+    get_user_count.short_description = 'Users'
+    get_user_count.admin_order_field = 'memberships__count'
 
     list_filter = (
         'license_type',
