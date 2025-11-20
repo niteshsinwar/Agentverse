@@ -72,99 +72,21 @@ def broadcast_message_deleted(sender, instance, **kwargs):
 
 
 # ============================================================================
-# Cloud Sync Signals - Broadcast config changes to local backends
+# REMOVED: Cloud Sync Signals
 # ============================================================================
-
-def broadcast_tenant_update(tenant_id, event_type, data):
-    """
-    Helper function to broadcast tenant-specific updates.
-
-    Args:
-        tenant_id: Tenant UUID
-        event_type: Event type (agent_updated, tool_updated, etc.)
-        data: Serialized model data
-    """
-    try:
-        sync_channel_name = f'sync_{tenant_id}'
-
-        async_to_sync(channel_layer.group_send)(
-            sync_channel_name,
-            {
-                'type': event_type,
-                event_type.replace('_updated', ''): data  # agent_updated -> agent: data
-            }
-        )
-
-        logger.info(f"Broadcasted {event_type} to tenant {tenant_id}")
-
-    except Exception as e:
-        logger.error(f"Error broadcasting tenant update: {e}")
-
-
-@receiver(post_save, sender='agents.Agent')
-def broadcast_agent_update(sender, instance, created, **kwargs):
-    """Broadcast agent config update to local backends"""
-    from apps.agents.serializers import AgentSerializer
-
-    # Get tenant ID
-    tenant = instance.get_tenant() if hasattr(instance, 'get_tenant') else None
-    if not tenant:
-        return
-
-    serializer = AgentSerializer(instance)
-    broadcast_tenant_update(
-        tenant_id=str(tenant.id),
-        event_type='agent_updated',
-        data=serializer.data
-    )
-
-
-@receiver(post_save, sender='tools.Tool')
-def broadcast_tool_update(sender, instance, created, **kwargs):
-    """Broadcast tool update to local backends"""
-    from apps.tools.serializers import ToolSerializer
-
-    tenant = instance.get_tenant() if hasattr(instance, 'get_tenant') else None
-    if not tenant:
-        return
-
-    serializer = ToolSerializer(instance)
-    broadcast_tenant_update(
-        tenant_id=str(tenant.id),
-        event_type='tool_updated',
-        data=serializer.data
-    )
-
-
-@receiver(post_save, sender='mcp.MCPServer')
-def broadcast_mcp_update(sender, instance, created, **kwargs):
-    """Broadcast MCP server update to local backends"""
-    from apps.mcp.serializers import MCPServerSerializer
-
-    tenant = instance.get_tenant() if hasattr(instance, 'get_tenant') else None
-    if not tenant:
-        return
-
-    serializer = MCPServerSerializer(instance)
-    broadcast_tenant_update(
-        tenant_id=str(tenant.id),
-        event_type='mcp_updated',
-        data=serializer.data
-    )
-
-
-@receiver(post_save, sender='groups.Group')
-def broadcast_group_update(sender, instance, created, **kwargs):
-    """Broadcast group update to local backends"""
-    from apps.groups.serializers import GroupSerializer
-
-    tenant = instance.get_tenant() if hasattr(instance, 'get_tenant') else None
-    if not tenant:
-        return
-
-    serializer = GroupSerializer(instance)
-    broadcast_tenant_update(
-        tenant_id=str(tenant.id),
-        event_type='group_updated',
-        data=serializer.data
-    )
+#
+# NOTE: Agent, Tool, MCP, Group, TenantSettings, and Document signal handlers
+# are now centralized in apps/core/signals.py to avoid duplicate broadcasts.
+#
+# This file now only handles Message-specific signals.
+#
+# See: /cloud_backend/apps/core/signals.py for:
+#   - Agent create/update/delete broadcasts
+#   - Tool create/update/delete broadcasts
+#   - MCPServer create/update/delete broadcasts
+#   - Group create/update/delete broadcasts (to group members)
+#   - TenantSettings create/update/delete broadcasts
+#   - Document create/update/delete broadcasts (to group members)
+#
+# All broadcasts use proper tenant scoping via instance.tenant (ForeignKey field)
+# ============================================================================

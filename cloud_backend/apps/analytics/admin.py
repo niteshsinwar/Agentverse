@@ -3,12 +3,18 @@ Django Admin for Analytics & Usage Logs
 """
 
 from django.contrib import admin
+from apps.core.admin import TenantFilteredAdmin
 from .models import UsageLog
 
 
 @admin.register(UsageLog)
-class UsageLogAdmin(admin.ModelAdmin):
-    """Admin interface for Usage Log model"""
+class UsageLogAdmin(TenantFilteredAdmin):
+    """
+    Admin interface for Usage Log model.
+
+    SECURITY: Inherits from TenantFilteredAdmin to enforce tenant isolation.
+    Admins can only view usage logs for their own tenant.
+    """
 
     list_display = (
         'action',

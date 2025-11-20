@@ -55,9 +55,9 @@ def login(request):
             status=status.HTTP_401_UNAUTHORIZED
         )
 
-    # Get user from tenant
+    # Get user by email (users are in SHARED_APPS, not tenant-specific)
     try:
-        user = User.objects.get(email=email, tenant=tenant)
+        user = User.objects.get(email=email)
     except User.DoesNotExist:
         return Response(
             {'error': 'Invalid credentials'},
@@ -77,8 +77,29 @@ def login(request):
             status=status.HTTP_403_FORBIDDEN
         )
 
+    # Verify user has access to this tenant via TenantMembership
+    from apps.tenants.models import TenantMembership
+    try:
+        membership = TenantMembership.objects.get(
+            user=user,
+            tenant=tenant,
+            is_active=True
+        )
+        # Update user's role from membership (tenant-specific role)
+        user_role = membership.role
+    except TenantMembership.DoesNotExist:
+        return Response(
+            {'error': 'User does not have access to this tenant'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+
     # Generate JWT tokens
     refresh = RefreshToken.for_user(user)
+
+    # Add tenant_id to JWT claims for multi-tenant support
+    refresh['tenant_id'] = str(tenant.id)
+    refresh['user_role'] = user_role
+
     access_token = str(refresh.access_token)
     refresh_token = str(refresh)
 
@@ -87,9 +108,6 @@ def login(request):
     user.last_login_ip = get_client_ip(request)
     user.save(update_fields=['last_login_at', 'last_login_ip'])
 
-    # Get tenant info
-    tenant = user.tenant
-
     # Prepare response
     response_data = {
         'access_token': access_token,
@@ -97,8 +115,8 @@ def login(request):
         'token_type': 'Bearer',
         'expires_in': 900,  # 15 minutes (from settings.SIMPLE_JWT)
         'user': UserSerializer(user).data,
-        'tenant_id': str(tenant.id) if tenant else None,
-        'user_role': user.role,
+        'tenant_id': str(tenant.id),
+        'user_role': user_role,  # Use role from TenantMembership (tenant-specific)
     }
 
     return Response(response_data, status=status.HTTP_200_OK)
