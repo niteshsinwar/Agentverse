@@ -3,22 +3,25 @@ Django Admin for Messages
 """
 
 from django.contrib import admin
+from apps.core.admin import TenantFilteredAdmin
 from .models import Message
 
 
 @admin.register(Message)
-class MessageAdmin(admin.ModelAdmin):
-    """Admin interface for Message model"""
+class MessageAdmin(TenantFilteredAdmin):
+    """Admin interface for Message model - SECURITY: Tenant-filtered"""
 
     list_display = (
         'sender_type',
         'sender_id',
         'content_preview',
         'group',
+        'tenant',
         'created_at',
     )
 
     list_filter = (
+        'tenant',
         'sender_type',
         'created_at',
     )
@@ -30,13 +33,14 @@ class MessageAdmin(admin.ModelAdmin):
 
     readonly_fields = (
         'id',
+        'tenant',
         'created_at',
         'updated_at',
     )
 
     fieldsets = (
         ('Message Info', {
-            'fields': ('group', 'sender_type', 'sender_id', 'content')
+            'fields': ('tenant', 'group', 'sender_type', 'sender_id', 'content')
         }),
         ('Metadata', {
             'fields': ('metadata', 'id', 'created_at', 'updated_at'),
@@ -52,3 +56,4 @@ class MessageAdmin(admin.ModelAdmin):
         """Display content preview"""
         return obj.content[:100] + '...' if len(obj.content) > 100 else obj.content
     content_preview.short_description = 'Content'
+    # Security handled by TenantFilteredAdmin mixin

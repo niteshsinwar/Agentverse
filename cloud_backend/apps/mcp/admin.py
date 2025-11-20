@@ -3,15 +3,17 @@ Django Admin for MCP Servers
 """
 
 from django.contrib import admin
+from apps.core.admin import TenantFilteredAdmin
 from .models import MCPServer
 
 
 @admin.register(MCPServer)
-class MCPServerAdmin(admin.ModelAdmin):
-    """Admin interface for MCP Server model"""
+class MCPServerAdmin(TenantFilteredAdmin):
+    """Admin interface for MCP Server model - SECURITY: Tenant-filtered"""
 
     list_display = (
         'name',
+        'tenant',
         'command',
         'is_active',
         'created_at',
@@ -19,6 +21,7 @@ class MCPServerAdmin(admin.ModelAdmin):
     )
 
     list_filter = (
+        'tenant',
         'is_active',
         'created_at',
     )
@@ -31,13 +34,14 @@ class MCPServerAdmin(admin.ModelAdmin):
 
     readonly_fields = (
         'id',
+        'tenant',
         'created_at',
         'updated_at',
     )
 
     fieldsets = (
         ('Basic Info', {
-            'fields': ('name', 'description', 'is_active')
+            'fields': ('tenant', 'name', 'description', 'is_active')
         }),
         ('Command Configuration', {
             'fields': ('command', 'args', 'env'),
@@ -52,9 +56,4 @@ class MCPServerAdmin(admin.ModelAdmin):
     ordering = ('-created_at',)
     date_hierarchy = 'created_at'
     list_per_page = 25
-
-    def save_model(self, request, obj, form, change):
-        """Auto-set created_by to current user if not set"""
-        if not obj.created_by:
-            obj.created_by = request.user.id
-        super().save_model(request, obj, form, change)
+    # Security handled by TenantFilteredAdmin mixin

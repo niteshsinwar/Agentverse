@@ -3,21 +3,24 @@ Django Admin for Tools
 """
 
 from django.contrib import admin
+from apps.core.admin import TenantFilteredAdmin
 from .models import Tool
 
 
 @admin.register(Tool)
-class ToolAdmin(admin.ModelAdmin):
-    """Admin interface for Tool model"""
+class ToolAdmin(TenantFilteredAdmin):
+    """Admin interface for Tool model - SECURITY: Tenant-filtered"""
 
     list_display = (
         'name',
+        'tenant',
         'is_active',
         'created_at',
         'updated_at',
     )
 
     list_filter = (
+        'tenant',
         'is_active',
         'created_at',
     )
@@ -29,13 +32,14 @@ class ToolAdmin(admin.ModelAdmin):
 
     readonly_fields = (
         'id',
+        'tenant',
         'created_at',
         'updated_at',
     )
 
     fieldsets = (
         ('Basic Info', {
-            'fields': ('name', 'description', 'is_active')
+            'fields': ('tenant', 'name', 'description', 'is_active')
         }),
         ('Code', {
             'fields': ('code', 'dependencies'),
@@ -50,9 +54,4 @@ class ToolAdmin(admin.ModelAdmin):
     ordering = ('-created_at',)
     date_hierarchy = 'created_at'
     list_per_page = 25
-
-    def save_model(self, request, obj, form, change):
-        """Auto-set created_by to current user if not set"""
-        if not obj.created_by:
-            obj.created_by = request.user.id
-        super().save_model(request, obj, form, change)
+    # Security handled by TenantFilteredAdmin mixin

@@ -3,13 +3,12 @@ Django Admin for Agents
 """
 
 from django.contrib import admin
-from django.db import connection
-from apps.tenants.models import Tenant
+from apps.core.admin import TenantFilteredAdmin
 from .models import Agent
 
 
 @admin.register(Agent)
-class AgentAdmin(admin.ModelAdmin):
+class AgentAdmin(TenantFilteredAdmin):
     """
     Admin interface for Agent model
 
@@ -63,37 +62,4 @@ class AgentAdmin(admin.ModelAdmin):
     ordering = ('-created_at',)
     date_hierarchy = 'created_at'
     list_per_page = 25
-
-    def get_queryset(self, request):
-        """
-        Filter agents by current tenant.
-
-        CRITICAL SECURITY FIX: Prevents viewing/editing cross-tenant data.
-        """
-        qs = super().get_queryset(request)
-        schema_name = connection.schema_name
-
-        # Superadmin in public schema can see all
-        if schema_name == 'public' and request.user.is_superuser:
-            return qs
-
-        # Filter by current tenant
-        if schema_name != 'public':
-            try:
-                tenant = Tenant.objects.get(schema_name=schema_name)
-                return qs.filter(tenant=tenant)
-            except Tenant.DoesNotExist:
-                return qs.none()
-
-        return qs.none()
-
-    def save_model(self, request, obj, form, change):
-        """Auto-set tenant and created_by on create"""
-        if not change:  # Creating new object
-            schema_name = connection.schema_name
-            if schema_name != 'public':
-                tenant = Tenant.objects.get(schema_name=schema_name)
-                obj.tenant = tenant
-            if not obj.created_by:
-                obj.created_by = request.user.id
-        super().save_model(request, obj, form, change)
+    # Security handled by TenantFilteredAdmin mixin

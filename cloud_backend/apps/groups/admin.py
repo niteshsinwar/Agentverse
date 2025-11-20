@@ -3,15 +3,17 @@ Django Admin for Groups
 """
 
 from django.contrib import admin
+from apps.core.admin import TenantFilteredAdmin
 from .models import Group
 
 
 @admin.register(Group)
-class GroupAdmin(admin.ModelAdmin):
-    """Admin interface for Group model"""
+class GroupAdmin(TenantFilteredAdmin):
+    """Admin interface for Group model - SECURITY: Tenant-filtered"""
 
     list_display = (
         'name',
+        'tenant',
         'member_count',
         'agent_count',
         'is_active',
@@ -19,6 +21,7 @@ class GroupAdmin(admin.ModelAdmin):
     )
 
     list_filter = (
+        'tenant',
         'is_active',
         'created_at',
     )
@@ -30,13 +33,14 @@ class GroupAdmin(admin.ModelAdmin):
 
     readonly_fields = (
         'id',
+        'tenant',
         'created_at',
         'updated_at',
     )
 
     fieldsets = (
         ('Basic Info', {
-            'fields': ('name', 'description', 'is_active')
+            'fields': ('tenant', 'name', 'description', 'is_active')
         }),
         ('Members & Agents', {
             'fields': ('members', 'assigned_agents'),
@@ -61,9 +65,4 @@ class GroupAdmin(admin.ModelAdmin):
         """Display agent count"""
         return len(obj.assigned_agents) if obj.assigned_agents else 0
     agent_count.short_description = 'Agents'
-
-    def save_model(self, request, obj, form, change):
-        """Auto-set created_by to current user if not set"""
-        if not obj.created_by:
-            obj.created_by = request.user.id
-        super().save_model(request, obj, form, change)
+    # Security handled by TenantFilteredAdmin mixin

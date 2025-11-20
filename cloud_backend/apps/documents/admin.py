@@ -3,23 +3,26 @@ Django Admin for Documents
 """
 
 from django.contrib import admin
+from apps.core.admin import TenantFilteredAdmin
 from .models import Document
 
 
 @admin.register(Document)
-class DocumentAdmin(admin.ModelAdmin):
-    """Admin interface for Document model"""
+class DocumentAdmin(TenantFilteredAdmin):
+    """Admin interface for Document model - SECURITY: Tenant-filtered"""
 
     list_display = (
         'filename',
         'file_type',
         'file_size_display',
         'group',
+        'tenant',
         'embeddings_indexed',
         'created_at',
     )
 
     list_filter = (
+        'tenant',
         'file_type',
         'embeddings_indexed',
         'created_at',
@@ -33,6 +36,7 @@ class DocumentAdmin(admin.ModelAdmin):
 
     readonly_fields = (
         'id',
+        'tenant',
         'file_size_display',
         'created_at',
         'updated_at',
@@ -40,7 +44,7 @@ class DocumentAdmin(admin.ModelAdmin):
 
     fieldsets = (
         ('Document Info', {
-            'fields': ('filename', 'file_type', 'file_size_display', 'group')
+            'fields': ('tenant', 'filename', 'file_type', 'file_size_display', 'group')
         }),
         ('Storage', {
             'fields': ('storage_path',)
@@ -72,3 +76,4 @@ class DocumentAdmin(admin.ModelAdmin):
             return f"{size_bytes / (1024 * 1024 * 1024):.2f} GB"
 
     file_size_display.short_description = 'File Size'
+    # Security handled by TenantFilteredAdmin mixin
