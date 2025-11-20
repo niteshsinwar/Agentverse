@@ -10,6 +10,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.exceptions import TokenError
 from django.contrib.auth import authenticate
 from django.utils import timezone
+from apps.tenants.models import Tenant
 from .models import User
 from .serializers import LoginSerializer, TokenSerializer, UserSerializer
 
@@ -21,7 +22,11 @@ def login(request):
     Login endpoint - Returns JWT tokens.
 
     POST /api/v1/auth/login
-    Body: {"email": "user@example.com", "password": "password123"}
+    Body: {
+        "tenant_id": "uuid",
+        "email": "user@example.com",
+        "password": "password123"
+    }
 
     Returns:
         {
@@ -37,13 +42,30 @@ def login(request):
     serializer = LoginSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
 
+    tenant_id = serializer.validated_data['tenant_id']
     email = serializer.validated_data['email']
     password = serializer.validated_data['password']
 
-    # Authenticate user
-    user = authenticate(request, username=email, password=password)
+    # Verify tenant exists
+    try:
+        tenant = Tenant.objects.get(id=tenant_id)
+    except Tenant.DoesNotExist:
+        return Response(
+            {'error': 'Invalid tenant'},
+            status=status.HTTP_401_UNAUTHORIZED
+        )
 
-    if not user:
+    # Get user from tenant
+    try:
+        user = User.objects.get(email=email, tenant=tenant)
+    except User.DoesNotExist:
+        return Response(
+            {'error': 'Invalid credentials'},
+            status=status.HTTP_401_UNAUTHORIZED
+        )
+
+    # Check password
+    if not user.check_password(password):
         return Response(
             {'error': 'Invalid credentials'},
             status=status.HTTP_401_UNAUTHORIZED

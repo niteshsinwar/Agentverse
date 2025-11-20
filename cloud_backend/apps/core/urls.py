@@ -1,11 +1,14 @@
 """
-Core App URLs - Health check and system status
+Core app URL configuration
 """
 
-from django.urls import path
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
 from . import views
 
+router = DefaultRouter()
+router.register(r'permissions', views.PermissionViewSet, basename='permission')
+
 urlpatterns = [
-    path('', views.health_check, name='health-check'),
-    path('status/', views.system_status, name='system-status'),
+    path('', include(router.urls)),
 ]

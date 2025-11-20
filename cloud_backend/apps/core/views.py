@@ -1,74 +1,100 @@
 """
-Core Views - Health check, system status, and landing page
+Core ViewSets and Views
 """
 
-from django.http import JsonResponse
-from django.shortcuts import render
-from django.conf import settings
+from rest_framework import viewsets, status
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.response import Response
+from rest_framework.exceptions import PermissionDenied
 from django.db import connection
-import redis
+from django.http import HttpResponse
+from apps.tenants.models import Tenant
+from .models import Permission
+from .serializers import PermissionSerializer
 
 
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def landing_page(request):
+    """Landing page for AgentVerse Cloud"""
+    return HttpResponse("""
+        <html>
+            <head><title>AgentVerse Cloud</title></head>
+            <body style="font-family: sans-serif; padding: 50px; text-align: center;">
+                <h1>🚀 AgentVerse Cloud Backend</h1>
+                <p>Multi-tenant AI agent collaboration platform</p>
+                <p><a href="/admin/">Admin Panel</a> | <a href="/health/">Health Check</a></p>
+            </body>
+        </html>
+    """)
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
 def health_check(request):
-    """
-    Simple health check endpoint.
-
-    Returns 200 if system is up.
-    """
-    return JsonResponse({
+    """Health check endpoint"""
+    return Response({
         'status': 'healthy',
         'service': 'agentverse-cloud',
-        'version': '1.0.0',
-    })
+        'database': 'connected'
+    }, status=status.HTTP_200_OK)
 
 
-def system_status(request):
+class PermissionViewSet(viewsets.ModelViewSet):
     """
-    Detailed system status with service checks.
+    ViewSet for Permission CRUD.
 
-    Checks:
-    - Database connection
-    - Redis connection
-    - Current tenant
+    Only admins can create/update/delete permissions.
+    Users can view their own permissions.
     """
-    status_data = {
-        'database': 'unknown',
-        'redis': 'unknown',
-        'tenant': connection.schema_name if hasattr(connection, 'schema_name') else 'public',
-    }
+    serializer_class = PermissionSerializer
+    permission_classes = [IsAuthenticated]
 
-    # Check database
-    try:
-        connection.ensure_connection()
-        status_data['database'] = 'connected'
-    except Exception as e:
-        status_data['database'] = f'error: {str(e)}'
+    def get_queryset(self):
+        """Filter permissions by tenant"""
+        schema_name = connection.schema_name
 
-    # Check Redis
-    try:
-        redis_client = redis.from_url(settings.CELERY_BROKER_URL)
-        redis_client.ping()
-        status_data['redis'] = 'connected'
-    except Exception as e:
-        status_data['redis'] = f'error: {str(e)}'
+        if schema_name == 'public':
+            return Permission.objects.none()
 
-    return JsonResponse(status_data)
+        try:
+            tenant = Tenant.objects.get(schema_name=schema_name)
+        except Tenant.DoesNotExist:
+            return Permission.objects.none()
 
+        queryset = Permission.objects.filter(tenant=tenant)
 
-def landing_page(request):
-    """
-    Landing page for AgentVerse Cloud Backend.
+        # Non-admins can only see their own permissions
+        if hasattr(self.request.user, 'is_admin') and not self.request.user.is_admin():
+            queryset = queryset.filter(
+                subject_type='user',
+                subject_id=self.request.user.id
+            )
 
-    Shows system information and links to:
-    - Django Admin Interface
-    - API Documentation
-    - Health Check
-    - WebSocket Endpoints
-    """
-    context = {
-        'title': 'AgentVerse Cloud Backend',
-        'version': '1.0.0',
-        'admin_url': '/admin/',
-        'health_url': '/health/',
-    }
-    return render(request, 'landing.html', context)
+        return queryset
+
+    def perform_create(self, serializer):
+        """Auto-set tenant and granted_by"""
+        # Check if user is admin
+        if hasattr(self.request.user, 'is_admin') and not self.request.user.is_admin():
+            raise PermissionDenied("Only admins can create permissions")
+
+        schema_name = connection.schema_name
+        tenant = Tenant.objects.get(schema_name=schema_name)
+        serializer.save(
+            tenant=tenant,
+            granted_by=self.request.user.id
+        )
+
+    def perform_update(self, serializer):
+        """Check admin permission"""
+        if hasattr(self.request.user, 'is_admin') and not self.request.user.is_admin():
+            raise PermissionDenied("Only admins can update permissions")
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        """Check admin permission"""
+        if hasattr(self.request.user, 'is_admin') and not self.request.user.is_admin():
+            raise PermissionDenied("Only admins can delete permissions")
+        instance.delete()

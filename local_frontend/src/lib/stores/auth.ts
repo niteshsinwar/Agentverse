@@ -1,11 +1,11 @@
 /**
  * Authentication Store
  * Manages user authentication state, account type, and role
- * NON-FUNCTIONAL: UI demonstration only
  */
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { cloudAuth } from '../cloud/auth';
 
 export type AccountType = 'individual' | 'enterprise';
 export type UserRole = 'user' | 'admin';
@@ -18,6 +18,8 @@ export interface User {
   accountType: AccountType;
   role: UserRole;
   company?: string;
+  tenant_id: string;
+  tenant_name?: string;
   joinedAt: string;
 }
 
@@ -34,8 +36,8 @@ export interface AuthState {
 
 export interface AuthActions {
   // Authentication
-  login: (email: string, password: string, accountType: AccountType, isAdmin?: boolean) => void;
-  logout: () => void;
+  login: (tenant_id: string, email: string, password: string) => Promise<void>;
+  logout: () => Promise<void>;
   setCurrentUser: (user: User | null) => void;
   
   // UI Actions
@@ -68,26 +70,44 @@ export const useAuthStore = create<AuthStore>()(
       ...initialState,
 
       // Authentication Actions
-      login: (email, _password, accountType, isAdmin = false) => {
-        // Mock login - create user object
-        const user: User = {
-          id: `user_${Date.now()}`,
-          name: email.split('@')[0].charAt(0).toUpperCase() + email.split('@')[0].slice(1),
-          email,
-          accountType,
-          role: isAdmin ? 'admin' : 'user',
-          company: accountType === 'enterprise' ? email.split('@')[1] : undefined,
-          joinedAt: new Date().toISOString(),
-        };
+      login: async (tenant_id, email, password) => {
+        try {
+          // Call cloud auth service
+          const response = await cloudAuth.login({ tenant_id, email, password });
 
-        set({
-          isAuthenticated: true,
-          currentUser: user,
-          authPortalOpen: false,
-        });
+          // Fetch user profile
+          const userProfile = await cloudAuth.me();
+
+          // Map to local User interface
+          const user: User = {
+            id: userProfile.id,
+            name: userProfile.name,
+            email: userProfile.email,
+            accountType: 'enterprise', // Default to enterprise for cloud users
+            role: userProfile.role,
+            tenant_id: tenant_id,
+            tenant_name: userProfile.tenant_name,
+            joinedAt: new Date().toISOString(),
+          };
+
+          set({
+            isAuthenticated: true,
+            currentUser: user,
+            authPortalOpen: false,
+          });
+        } catch (error) {
+          console.error('Login failed:', error);
+          throw error;
+        }
       },
 
-      logout: () => {
+      logout: async () => {
+        try {
+          await cloudAuth.logout();
+        } catch (error) {
+          console.error('Logout failed:', error);
+        }
+
         set({
           isAuthenticated: false,
           currentUser: null,

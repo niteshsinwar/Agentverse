@@ -61,8 +61,9 @@ class UserCreateSerializer(serializers.ModelSerializer):
 
 
 class LoginSerializer(serializers.Serializer):
-    """Serializer for login request"""
+    """Serializer for login request - requires tenant_id for multi-tenant auth"""
 
+    tenant_id = serializers.UUIDField(required=True)
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True)
 

@@ -12,6 +12,7 @@ export interface AuthTokens {
 }
 
 export interface LoginCredentials {
+  tenant_id: string;
   email: string;
   password: string;
 }
@@ -21,6 +22,18 @@ export interface UserProfile {
   email: string;
   name: string;
   role: 'admin' | 'user';
+  tenant_id?: string;
+  tenant_name?: string;
+}
+
+export interface LoginResponse {
+  access_token: string;
+  refresh_token: string;
+  token_type: string;
+  expires_in: number;
+  user: UserProfile;
+  tenant_id: string;
+  user_role: string;
 }
 
 class CloudAuthService {
@@ -33,9 +46,9 @@ class CloudAuthService {
   }
 
   /**
-   * Login with email and password
+   * Login with tenant_id, email and password
    */
-  async login(credentials: LoginCredentials): Promise<AuthTokens> {
+  async login(credentials: LoginCredentials): Promise<LoginResponse> {
     const config = cloudConfig();
     const url = `${config.baseUrl}${CLOUD_ENDPOINTS.auth.login}`;
 
@@ -48,14 +61,19 @@ class CloudAuthService {
     });
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ detail: 'Login failed' }));
-      throw new Error(error.detail || 'Login failed');
+      const error = await response.json().catch(() => ({ error: 'Login failed' }));
+      throw new Error(error.error || error.detail || 'Login failed');
     }
 
-    const tokens: AuthTokens = await response.json();
-    this.setTokens(tokens);
+    const loginResponse: LoginResponse = await response.json();
 
-    return tokens;
+    // Store tokens
+    this.accessToken = loginResponse.access_token;
+    this.refreshToken = loginResponse.refresh_token;
+    localStorage.setItem('cloud_access_token', loginResponse.access_token);
+    localStorage.setItem('cloud_refresh_token', loginResponse.refresh_token);
+
+    return loginResponse;
   }
 
   /**
@@ -70,7 +88,9 @@ class CloudAuthService {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${this.accessToken}`,
+          'Content-Type': 'application/json',
         },
+        body: JSON.stringify({ refresh_token: this.refreshToken }),
       });
     } catch (error) {
       console.error('Logout request failed:', error);
@@ -95,7 +115,7 @@ class CloudAuthService {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ refresh: this.refreshToken }),
+      body: JSON.stringify({ refresh_token: this.refreshToken }),
     });
 
     if (!response.ok) {
@@ -103,11 +123,13 @@ class CloudAuthService {
       throw new Error('Token refresh failed');
     }
 
-    const { access } = await response.json();
-    this.accessToken = access;
-    localStorage.setItem('cloud_access_token', access);
+    const { access_token, refresh_token } = await response.json();
+    this.accessToken = access_token;
+    this.refreshToken = refresh_token;
+    localStorage.setItem('cloud_access_token', access_token);
+    localStorage.setItem('cloud_refresh_token', refresh_token);
 
-    return access;
+    return access_token;
   }
 
   /**

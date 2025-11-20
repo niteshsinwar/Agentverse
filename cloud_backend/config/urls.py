@@ -51,6 +51,9 @@ tenant_patterns = [
     # Messages API
     path('api/v1/messages/', include('apps.messages.urls')),
 
+    # Core API (Permissions)
+    path('api/v1/core/', include('apps.core.urls')),
+
     # Documents API
     path('api/v1/documents/', include('apps.documents.urls')),
 
