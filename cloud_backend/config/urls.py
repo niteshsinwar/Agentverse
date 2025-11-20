@@ -18,6 +18,9 @@ urlpatterns = [
     # Landing page
     path('', core_views.landing_page, name='landing'),
 
+    # Grappelli URLs (modern admin UI) - must be before admin
+    path('grappelli/', include('grappelli.urls')),
+
     # Admin panel (Cloud Frontend)
     path('admin/', admin.site.urls),
 

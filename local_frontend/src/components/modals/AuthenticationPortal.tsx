@@ -3,44 +3,37 @@ import { AnimatePresence, motion } from 'framer-motion';
 import {
   EnvelopeIcon,
   LockClosedIcon,
-  UserIcon,
   BuildingOffice2Icon,
 } from '@heroicons/react/24/outline';
-import clsx from 'clsx';
 import { BrandLogo } from '@/components/shared/BrandLogo';
-import { useAuthStore, type AccountType } from '@/lib/stores/auth';
+import { useAuthStore } from '@/lib/stores/auth';
 
 interface AuthenticationPortalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-type AuthMode = 'login' | 'register';
-
 export const AuthenticationPortal: React.FC<AuthenticationPortalProps> = ({ isOpen, onClose }) => {
   const { login } = useAuthStore();
 
-  const [mode, setMode] = useState<AuthMode>('login');
-  const [accountType, setAccountType] = useState<AccountType>('individual');
-  const [isAdmin, setIsAdmin] = useState(false);
   const [tenantId, setTenantId] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   const resetForm = () => {
     setTenantId('');
     setEmail('');
     setPassword('');
-    setIsAdmin(false);
-    setAccountType('individual');
-    setMode('login');
     setError('');
+    setIsLoading(false);
   };
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setError('');
+    setIsLoading(true);
 
     try {
       await login(tenantId, email, password);
@@ -48,13 +41,8 @@ export const AuthenticationPortal: React.FC<AuthenticationPortalProps> = ({ isOp
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Authentication failed');
-    }
-  };
-
-  const handleAccountTypeChange = (type: AccountType) => {
-    setAccountType(type);
-    if (type !== 'enterprise') {
-      setIsAdmin(false);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -141,96 +129,17 @@ export const AuthenticationPortal: React.FC<AuthenticationPortalProps> = ({ isOp
                   <div className="relative z-10 flex h-full flex-col gap-10 overflow-y-auto">
                     <div className="space-y-2 text-left">
                       <p className="text-xs font-semibold uppercase tracking-[0.35em] text-slate-500 dark:text-slate-400">
-                        Autonomous Readiness
+                        Secure Access
                       </p>
                       <h2 className="text-2xl font-semibold text-slate-900 dark:text-white">
-                        Authenticate your command stack
+                        Sign in to your workspace
                       </h2>
                       <p className="text-sm text-slate-500 dark:text-slate-300">
-                        Choose your access mode and confirm workspace identity to proceed.
+                        Enter your tenant credentials to access your command center.
                       </p>
                     </div>
 
                     <form onSubmit={handleSubmit} className="space-y-6">
-                      <div className="flex rounded-full brand-glass p-1 text-sm font-semibold">
-                        <button
-                          type="button"
-                          onClick={() => setMode('login')}
-                          className={clsx(
-                            'flex-1 rounded-full px-4 py-2 transition-all duration-200',
-                            mode === 'login'
-                              ? 'brand-gradient text-white shadow-lg shadow-indigo-500/30'
-                              : 'text-slate-500 hover:text-slate-800 dark:text-slate-300 dark:hover:text-white'
-                          )}
-                        >
-                          Sign in
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setMode('register')}
-                          className={clsx(
-                            'flex-1 rounded-full px-4 py-2 transition-all duration-200',
-                            mode === 'register'
-                              ? 'brand-gradient text-white shadow-lg shadow-indigo-500/30'
-                              : 'text-slate-500 hover:text-slate-800 dark:text-slate-300 dark:hover:text-white'
-                          )}
-                        >
-                          Request access
-                        </button>
-                      </div>
-
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        <button
-                          type="button"
-                          onClick={() => handleAccountTypeChange('individual')}
-                          className={clsx(
-                            'group flex items-start gap-3 rounded-2xl border px-4 py-4 text-left transition-all duration-200',
-                            accountType === 'individual'
-                              ? 'border-transparent brand-gradient text-white shadow-xl shadow-indigo-500/30'
-                              : 'border-slate-200 bg-white/70 text-slate-600 hover:border-slate-400 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-300 dark:hover:border-slate-500 dark:hover:text-white'
-                          )}
-                        >
-                          <span
-                            className={clsx(
-                              'flex h-10 w-10 items-center justify-center rounded-xl text-base transition-colors',
-                              accountType === 'individual'
-                                ? 'bg-white/15 text-white'
-                                : 'bg-slate-200/60 text-slate-600 dark:bg-slate-800 dark:text-slate-200'
-                            )}
-                          >
-                            <UserIcon className="h-5 w-5" />
-                          </span>
-                          <span className="flex flex-col">
-                            <span className="text-sm font-semibold">Individual</span>
-                            <span className="text-xs opacity-80">Personal workspace with full visibility.</span>
-                          </span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleAccountTypeChange('enterprise')}
-                          className={clsx(
-                            'group flex items-start gap-3 rounded-2xl border px-4 py-4 text-left transition-all duration-200',
-                            accountType === 'enterprise'
-                              ? 'border-transparent brand-gradient text-white shadow-xl shadow-indigo-500/30'
-                              : 'border-slate-200 bg-white/70 text-slate-600 hover:border-slate-400 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-300 dark:hover:border-slate-500 dark:hover:text-white'
-                          )}
-                        >
-                          <span
-                            className={clsx(
-                              'flex h-10 w-10 items-center justify-center rounded-xl text-base transition-colors',
-                              accountType === 'enterprise'
-                                ? 'bg-white/15 text-white'
-                                : 'bg-slate-200/60 text-slate-600 dark:bg-slate-800 dark:text-slate-200'
-                            )}
-                          >
-                            <BuildingOffice2Icon className="h-5 w-5" />
-                          </span>
-                          <span className="flex flex-col">
-                            <span className="text-sm font-semibold">Enterprise</span>
-                            <span className="text-xs opacity-80">Team-wide orchestration with audit controls.</span>
-                          </span>
-                        </button>
-                      </div>
 
                       {error && (
                         <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-900/20 dark:text-red-300">
@@ -250,15 +159,18 @@ export const AuthenticationPortal: React.FC<AuthenticationPortalProps> = ({ isOp
                               required
                               value={tenantId}
                               onChange={(event) => setTenantId(event.target.value)}
-                              placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                              placeholder="acme"
                               className="flex-1 bg-transparent text-sm font-medium text-slate-700 placeholder:text-slate-400/70 outline-none dark:text-slate-100"
                             />
                           </div>
+                          <p className="text-xs text-slate-400 dark:text-slate-500">
+                            Your organization's unique identifier (e.g., acme, techstart)
+                          </p>
                         </div>
 
                         <div className="space-y-2">
                           <label className="text-xs font-semibold uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">
-                            Work Email
+                            Email
                           </label>
                           <div className="brand-field flex items-center gap-3 rounded-2xl px-4 py-3">
                             <EnvelopeIcon className="h-5 w-5 text-indigo-400 dark:text-indigo-300" />
@@ -276,14 +188,14 @@ export const AuthenticationPortal: React.FC<AuthenticationPortalProps> = ({ isOp
 
                         <div className="space-y-2">
                           <label className="text-xs font-semibold uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">
-                            Secure Passkey
+                            Password
                           </label>
                           <div className="brand-field flex items-center gap-3 rounded-2xl px-4 py-3">
                             <LockClosedIcon className="h-5 w-5 text-indigo-400 dark:text-indigo-300" />
                             <input
                               type="password"
                               required
-                              autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                              autoComplete="current-password"
                               value={password}
                               onChange={(event) => setPassword(event.target.value)}
                               placeholder="••••••••"
@@ -291,28 +203,26 @@ export const AuthenticationPortal: React.FC<AuthenticationPortalProps> = ({ isOp
                             />
                           </div>
                         </div>
-
-                        {accountType === 'enterprise' && (
-                          <label className="flex items-center justify-between rounded-2xl border border-slate-200/70 bg-white/70 px-4 py-3 text-xs font-medium text-slate-600 transition hover:border-slate-300 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-300 dark:hover:border-slate-500 dark:hover:text-white">
-                            <span>Enable admin console</span>
-                            <input
-                              type="checkbox"
-                              checked={isAdmin}
-                              onChange={(event) => setIsAdmin(event.target.checked)}
-                              className="h-4 w-4 rounded border-slate-300 text-indigo-500 focus:ring-indigo-500 dark:border-slate-600 dark:bg-slate-800"
-                            />
-                          </label>
-                        )}
                       </div>
 
                       <button
                         type="submit"
-                        className="brand-cta group relative flex w-full items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-semibold shadow-2xl transition-all duration-200 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-indigo-500"
+                        disabled={isLoading || !tenantId || !email || !password}
+                        className="brand-cta group relative flex w-full items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-semibold shadow-2xl transition-all duration-200 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
                       >
-                        {mode === 'login' ? 'Enter command center' : 'Request activation'}
-                        <span aria-hidden="true" className="text-base transition-transform duration-200 group-hover:translate-x-1">
-                          →
-                        </span>
+                        {isLoading ? (
+                          <>
+                            <span className="animate-spin">⏳</span>
+                            Signing in...
+                          </>
+                        ) : (
+                          <>
+                            Sign in
+                            <span aria-hidden="true" className="text-base transition-transform duration-200 group-hover:translate-x-1">
+                              →
+                            </span>
+                          </>
+                        )}
                       </button>
                     </form>
 

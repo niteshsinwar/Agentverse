@@ -42,6 +42,9 @@ if not USE_SQLITE:
     SHARED_APPS.append('django_tenants')
 
 SHARED_APPS += [
+    # Admin UI Enhancement - must be before django.contrib.admin
+    'grappelli',
+
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -180,6 +183,13 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Grappelli Admin UI Configuration
+GRAPPELLI_ADMIN_TITLE = 'AgentVerse Cloud Admin'
+GRAPPELLI_AUTOCOMPLETE_LIMIT = 20
+GRAPPELLI_SWITCH_USER = True  # Allow switching users for testing
+GRAPPELLI_SWITCH_USER_ORIGINAL = True
+GRAPPELLI_SWITCH_USER_TARGET = lambda user: user.is_superuser  # Only superusers can switch
 
 # REST Framework
 REST_FRAMEWORK = {
