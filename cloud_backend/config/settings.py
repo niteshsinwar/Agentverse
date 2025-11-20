@@ -58,7 +58,7 @@ SHARED_APPS += [
     'django_celery_results',
 
     # Shared apps (available to all tenants)
-    'apps.core',  # Core utilities
+    'apps.core.apps.CoreConfig',  # Core utilities (signals enabled)
     'apps.tenants',  # Tenant management
     'apps.users',  # Users (shared across tenants) - MOVED FROM TENANT_APPS
 ]
@@ -93,6 +93,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'apps.core.middleware.execution_context.ExecutionContextMiddleware',  # Execution context tracking
 ]
 
 ROOT_URLCONF = 'config.urls'
@@ -256,6 +257,14 @@ CORS_ALLOW_HEADERS = [
     'user-agent',
     'x-csrftoken',
     'x-requested-with',
+    # Multi-tenancy header
+    'x-tenant-id',
+    # Execution context headers (for WebSocket routing and analytics)
+    'x-device-id',
+    'x-execution-id',
+    'x-initiator-user-id',
+    'x-initiator-device-id',
+    'x-call-depth',
 ]
 CORS_PREFLIGHT_MAX_AGE = 86400  # 24 hours
 

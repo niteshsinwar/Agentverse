@@ -88,17 +88,25 @@ class CloudAPIClient:
         mcp_servers = await client.fetch_mcp_servers()
     """
 
-    def __init__(self, config: CloudConfig, token: Optional[AuthToken] = None):
+    def __init__(
+        self,
+        config: CloudConfig,
+        token: Optional[AuthToken] = None,
+        device_id: Optional[str] = None
+    ):
         """
         Initialize cloud API client.
 
         Args:
             config: Cloud backend configuration
             token: Optional JWT token (if already authenticated)
+            device_id: Device ID for WebSocket routing (CRITICAL)
         """
         self.config = config
         self.token = token
+        self.device_id = device_id  # CRITICAL: Required for WebSocket routing
         self._session: Optional[aiohttp.ClientSession] = None
+        self._execution_context = None  # Current execution context (if in agent chain)
 
     async def _get_session(self) -> aiohttp.ClientSession:
         """Get or create aiohttp session"""
@@ -113,11 +121,24 @@ class CloudAPIClient:
         if self._session and not self._session.closed:
             await self._session.close()
 
+    def set_execution_context(self, execution_context):
+        """
+        Set current execution context (for agent chains).
+
+        Args:
+            execution_context: ExecutionContext instance or None
+        """
+        self._execution_context = execution_context
+
     def _get_headers(self, include_auth: bool = True) -> Dict[str, str]:
         """
         Get request headers with optional authentication.
 
-        CRITICAL: Includes X-Tenant-ID header for multi-tenancy isolation.
+        CRITICAL Headers:
+        - X-Tenant-ID: Multi-tenancy isolation
+        - X-Device-ID: WebSocket routing (REQUIRED for real-time updates)
+        - X-Execution-ID: Execution chain tracking
+        - X-Initiator-User-ID: User who started the chain
         """
         headers = {
             "Content-Type": "application/json",
@@ -130,6 +151,18 @@ class CloudAPIClient:
             # CRITICAL: Pass tenant_id for multi-tenancy validation
             if self.token.tenant_id:
                 headers["X-Tenant-ID"] = self.token.tenant_id
+
+        # CRITICAL: Pass device_id for WebSocket routing
+        # Cloud backend uses this to route messages back to correct device
+        if self.device_id:
+            headers["X-Device-ID"] = self.device_id
+
+        # Pass execution context headers (if in agent chain)
+        if self._execution_context:
+            headers["X-Execution-ID"] = self._execution_context.execution_id
+            headers["X-Initiator-User-ID"] = self._execution_context.initiator_user_id
+            headers["X-Initiator-Device-ID"] = self._execution_context.initiator_device_id
+            headers["X-Call-Depth"] = str(self._execution_context.depth)
 
         return headers
 
@@ -675,19 +708,31 @@ def get_cloud_client() -> CloudAPIClient:
     return _cloud_client
 
 
-def initialize_cloud_client(config: CloudConfig, token: Optional[AuthToken] = None) -> CloudAPIClient:
+def initialize_cloud_client(
+    config: CloudConfig,
+    token: Optional[AuthToken] = None,
+    device_id: Optional[str] = None
+) -> CloudAPIClient:
     """
     Initialize singleton cloud API client.
 
     Called on startup with config from settings.
 
+    Args:
+        config: Cloud backend configuration
+        token: Optional JWT token
+        device_id: Device ID for WebSocket routing (CRITICAL)
+
     Example:
+        from src.core.device_manager import get_device_manager
+
+        device_id = get_device_manager().get_device_id()
         config = CloudConfig(base_url="https://api.agentverse.com")
-        client = initialize_cloud_client(config)
+        client = initialize_cloud_client(config, device_id=device_id)
     """
     global _cloud_client
-    _cloud_client = CloudAPIClient(config, token)
-    logger.info(f"Cloud client initialized: {config.base_url}")
+    _cloud_client = CloudAPIClient(config, token, device_id)
+    logger.info(f"Cloud client initialized: {config.base_url} (device: {device_id[:8]}...)" if device_id else f"Cloud client initialized: {config.base_url}")
     return _cloud_client
 
 

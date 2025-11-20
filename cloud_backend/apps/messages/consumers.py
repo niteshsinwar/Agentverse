@@ -29,6 +29,13 @@ class MessageConsumer(AsyncWebsocketConsumer):
         self.room_group_name = f'messages_{self.group_id}'
         self.user = self.scope.get('user')
 
+        # Extract device_id from query params (e.g., ws://...?device_id=abc123)
+        query_string = self.scope.get('query_string', b'').decode()
+        self.device_id = None
+        if query_string:
+            params = dict(param.split('=') for param in query_string.split('&') if '=' in param)
+            self.device_id = params.get('device_id')
+
         # Authenticate user (from JWT middleware)
         if not self.user or not self.user.is_authenticated:
             logger.warning(f"Unauthenticated WebSocket connection attempt for group {self.group_id}")
@@ -42,11 +49,19 @@ class MessageConsumer(AsyncWebsocketConsumer):
             await self.close(code=4003)
             return
 
-        # Join room group
+        # Join room group (all users in the group receive messages)
         await self.channel_layer.group_add(
             self.room_group_name,
             self.channel_name
         )
+
+        # Also join device-specific channel if device_id provided (for future device-specific routing)
+        if self.device_id:
+            self.device_channel_name = f'device_{self.device_id}'
+            await self.channel_layer.group_add(
+                self.device_channel_name,
+                self.channel_name
+            )
 
         # Accept connection
         await self.accept()
@@ -56,7 +71,8 @@ class MessageConsumer(AsyncWebsocketConsumer):
             'type': 'connection',
             'status': 'connected',
             'group_id': self.group_id,
-            'user_id': str(self.user.id)
+            'user_id': str(self.user.id),
+            'device_id': self.device_id
         }))
 
         # Broadcast user joined
@@ -66,11 +82,15 @@ class MessageConsumer(AsyncWebsocketConsumer):
                 'type': 'user_presence',
                 'action': 'joined',
                 'user_id': str(self.user.id),
-                'user_name': self.user.name
+                'user_name': self.user.name,
+                'device_id': self.device_id
             }
         )
 
-        logger.info(f"User {self.user.email} connected to group {self.group_id}")
+        logger.info(
+            f"User {self.user.email} connected to group {self.group_id} "
+            f"(device: {self.device_id[:8] if self.device_id else 'N/A'}...)"
+        )
 
     async def disconnect(self, close_code):
         """Leave room group on disconnect"""
@@ -83,15 +103,23 @@ class MessageConsumer(AsyncWebsocketConsumer):
                         'type': 'user_presence',
                         'action': 'left',
                         'user_id': str(self.user.id),
-                        'user_name': self.user.name
+                        'user_name': self.user.name,
+                        'device_id': getattr(self, 'device_id', None)
                     }
                 )
 
-            # Leave group
+            # Leave group channel
             await self.channel_layer.group_discard(
                 self.room_group_name,
                 self.channel_name
             )
+
+            # Leave device-specific channel if joined
+            if hasattr(self, 'device_channel_name'):
+                await self.channel_layer.group_discard(
+                    self.device_channel_name,
+                    self.channel_name
+                )
 
         logger.info(f"User disconnected from group {self.group_id} (code: {close_code})")
 
@@ -211,6 +239,13 @@ class CloudSyncConsumer(AsyncWebsocketConsumer):
         """Accept connection for tenant-specific sync channel"""
         self.user = self.scope.get('user')
 
+        # Extract device_id from query params
+        query_string = self.scope.get('query_string', b'').decode()
+        self.device_id = None
+        if query_string:
+            params = dict(param.split('=') for param in query_string.split('&') if '=' in param)
+            self.device_id = params.get('device_id')
+
         # Authenticate
         if not self.user or not self.user.is_authenticated:
             await self.close(code=4001)
@@ -225,28 +260,48 @@ class CloudSyncConsumer(AsyncWebsocketConsumer):
         self.tenant_id = str(tenant.id) if tenant else 'public'
         self.sync_channel_name = f'sync_{self.tenant_id}'
 
-        # Join sync channel
+        # Join tenant-wide sync channel (all users in tenant receive CRUD updates)
         await self.channel_layer.group_add(
             self.sync_channel_name,
             self.channel_name
         )
 
+        # Also join device-specific channel if device_id provided
+        if self.device_id:
+            self.device_channel_name = f'device_{self.device_id}'
+            await self.channel_layer.group_add(
+                self.device_channel_name,
+                self.channel_name
+            )
+
         await self.accept()
 
         await self.send(text_data=json.dumps({
             'type': 'sync_connected',
-            'tenant_id': self.tenant_id
+            'tenant_id': self.tenant_id,
+            'device_id': self.device_id
         }))
 
-        logger.info(f"User {self.user.email} connected to sync channel {self.tenant_id}")
+        logger.info(
+            f"User {self.user.email} connected to sync channel {self.tenant_id} "
+            f"(device: {self.device_id[:8] if self.device_id else 'N/A'}...)"
+        )
 
     async def disconnect(self, close_code):
         """Leave sync channel"""
         if hasattr(self, 'sync_channel_name'):
+            # Leave tenant sync channel
             await self.channel_layer.group_discard(
                 self.sync_channel_name,
                 self.channel_name
             )
+
+            # Leave device-specific channel if joined
+            if hasattr(self, 'device_channel_name'):
+                await self.channel_layer.group_discard(
+                    self.device_channel_name,
+                    self.channel_name
+                )
 
     async def receive(self, text_data):
         """Handle incoming sync requests"""
@@ -294,6 +349,38 @@ class CloudSyncConsumer(AsyncWebsocketConsumer):
         await self.send(text_data=json.dumps({
             'type': 'group_updated',
             'group': event['group']
+        }))
+
+    async def agent_deleted(self, event):
+        """Broadcast agent deletion"""
+        await self.send(text_data=json.dumps({
+            'type': 'agent_deleted',
+            'agent_id': event['agent_id'],
+            'agent_name': event['agent_name']
+        }))
+
+    async def tool_deleted(self, event):
+        """Broadcast tool deletion"""
+        await self.send(text_data=json.dumps({
+            'type': 'tool_deleted',
+            'tool_id': event['tool_id'],
+            'tool_name': event['tool_name']
+        }))
+
+    async def mcp_deleted(self, event):
+        """Broadcast MCP server deletion"""
+        await self.send(text_data=json.dumps({
+            'type': 'mcp_deleted',
+            'mcp_id': event['mcp_id'],
+            'mcp_name': event['mcp_name']
+        }))
+
+    async def group_deleted(self, event):
+        """Broadcast group deletion"""
+        await self.send(text_data=json.dumps({
+            'type': 'group_deleted',
+            'group_id': event['group_id'],
+            'group_name': event['group_name']
         }))
 
     @database_sync_to_async
