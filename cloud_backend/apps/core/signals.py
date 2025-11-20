@@ -188,32 +188,72 @@ def mcp_deleted(sender, instance, **kwargs):
 # Group Signals
 # ============================================================================
 
+def broadcast_to_group_members(group_instance, event_type, data):
+    """
+    Broadcast event only to members of a specific group.
+
+    Args:
+        group_instance: Group model instance
+        event_type: Event type (e.g., 'group_updated', 'group_deleted')
+        data: Event data
+    """
+    channel_layer = get_channel_layer()
+
+    # Get group members
+    members = group_instance.members if isinstance(group_instance.members, list) else []
+
+    # Broadcast to each member's channels
+    for user_id in members:
+        # Send to user-specific channel (if they're connected)
+        user_channel_name = f'user_{user_id}_{group_instance.tenant_id}'
+
+        try:
+            async_to_sync(channel_layer.group_send)(
+                user_channel_name,
+                {
+                    'type': event_type,
+                    **data
+                }
+            )
+        except Exception as e:
+            logger.debug(f"Could not send to user channel {user_channel_name}: {e}")
+
+    # Also broadcast to tenant-wide sync for admin visibility
+    broadcast_to_tenant_sync(
+        tenant_id=str(group_instance.tenant_id),
+        event_type=event_type,
+        data=data
+    )
+
+
 @receiver(post_save, sender='groups.Group')
 def group_saved(sender, instance, created, **kwargs):
-    """Broadcast group create/update to tenant"""
+    """Broadcast group create/update to group members and admins"""
     from apps.groups.serializers import GroupSerializer
 
     try:
         group_data = GroupSerializer(instance).data
 
-        broadcast_to_tenant_sync(
-            tenant_id=str(instance.tenant_id),
+        # Broadcast to group members + tenant admins
+        broadcast_to_group_members(
+            group_instance=instance,
             event_type='group_updated',
             data={'group': group_data}
         )
 
         action = 'created' if created else 'updated'
-        logger.info(f"Group {action}: {instance.name} (tenant: {instance.tenant_id})")
+        logger.info(f"Group {action}: {instance.name} (tenant: {instance.tenant_id}, members: {len(instance.members)})")
     except Exception as e:
         logger.error(f"Failed to broadcast group_saved: {e}")
 
 
 @receiver(post_delete, sender='groups.Group')
 def group_deleted(sender, instance, **kwargs):
-    """Broadcast group deletion to tenant"""
+    """Broadcast group deletion to former members and admins"""
     try:
-        broadcast_to_tenant_sync(
-            tenant_id=str(instance.tenant_id),
+        # Broadcast to former group members + tenant admins
+        broadcast_to_group_members(
+            group_instance=instance,
             event_type='group_deleted',
             data={
                 'group_id': str(instance.id),

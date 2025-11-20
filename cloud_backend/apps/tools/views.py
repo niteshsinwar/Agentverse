@@ -1,22 +1,23 @@
-from rest_framework import viewsets
+from rest_framework import viewsets, permissions
 from django.db import connection
-from apps.core.permissions import IsAdminOrReadOnly
-from apps.core.mixins import LicenseEnforcedViewSet
+from apps.core.mixins import PermissionFilteredViewSet, LicenseEnforcedViewSet
 from apps.tenants.models import Tenant
 from .models import Tool
 from .serializers import ToolSerializer
 
-class ToolViewSet(LicenseEnforcedViewSet, viewsets.ModelViewSet):
+class ToolViewSet(PermissionFilteredViewSet, LicenseEnforcedViewSet, viewsets.ModelViewSet):
     """
     ViewSet for Tool CRUD operations.
 
     SECURITY:
-    - Tools are tenant-isolated. Explicit filtering prevents cross-tenant access.
+    - Tools are tenant-isolated.
+    - Permission enforcement: Users must have Permission to view/create/update/delete resources Explicit filtering prevents cross-tenant access.
     - License limits enforced: Free tier limited to 7 tools, Pro/Enterprise unlimited.
     """
     serializer_class = ToolSerializer
-    permission_classes = [IsAdminOrReadOnly]
+    permission_classes = [permissions.IsAuthenticated]
     license_limit_key = 'max_tools'  # Enforce license limit
+    permission_resource_type = 'tool'  # Enforce permission model
 
     def get_queryset(self):
         """Filter tools by current tenant"""

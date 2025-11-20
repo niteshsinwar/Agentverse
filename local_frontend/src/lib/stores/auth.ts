@@ -10,6 +10,17 @@ import { cloudAuth } from '../cloud/auth';
 export type AccountType = 'individual' | 'enterprise';
 export type UserRole = 'user' | 'admin';
 
+export interface Permission {
+  id: string;
+  resource_type: 'agent' | 'tool' | 'mcp_server' | 'group' | 'message' | 'document';
+  resource_id?: string;  // null = applies to all resources of this type
+  can_view: boolean;
+  can_create: boolean;
+  can_update: boolean;
+  can_delete: boolean;
+  can_execute: boolean;
+}
+
 export interface User {
   id: string;
   name: string;
@@ -20,6 +31,7 @@ export interface User {
   company?: string;
   tenant_id: string;
   tenant_name?: string;
+  permissions?: Permission[];
   joinedAt: string;
 }
 
@@ -49,7 +61,14 @@ export interface AuthActions {
   isEnterpriseUser: () => boolean;
   isAdmin: () => boolean;
   canManageUsers: () => boolean;
-  
+
+  // Permission checks
+  canCreate: (resourceType: string) => boolean;
+  canUpdate: (resourceType: string, resourceId?: string) => boolean;
+  canDelete: (resourceType: string, resourceId?: string) => boolean;
+  canView: (resourceType: string, resourceId?: string) => boolean;
+  canExecute: (resourceType: string, resourceId?: string) => boolean;
+
   // Reset
   reset: () => void;
 }
@@ -136,6 +155,92 @@ export const useAuthStore = create<AuthStore>()(
       canManageUsers: () => {
         const { currentUser } = get();
         return currentUser?.accountType === 'enterprise' && currentUser?.role === 'admin';
+      },
+
+      // Permission Checks
+      canCreate: (resourceType: string) => {
+        const { currentUser } = get();
+
+        // Admins can create anything
+        if (currentUser?.role === 'admin') return true;
+
+        // Check user permissions
+        const hasPermission = currentUser?.permissions?.some(
+          (p) =>
+            p.resource_type === resourceType &&
+            !p.resource_id && // General permission (applies to all)
+            p.can_create
+        );
+
+        return hasPermission || false;
+      },
+
+      canUpdate: (resourceType: string, resourceId?: string) => {
+        const { currentUser } = get();
+
+        // Admins can update anything
+        if (currentUser?.role === 'admin') return true;
+
+        // Check user permissions
+        const hasPermission = currentUser?.permissions?.some(
+          (p) =>
+            p.resource_type === resourceType &&
+            (!p.resource_id || p.resource_id === resourceId) && // Specific or general permission
+            p.can_update
+        );
+
+        return hasPermission || false;
+      },
+
+      canDelete: (resourceType: string, resourceId?: string) => {
+        const { currentUser } = get();
+
+        // Admins can delete anything
+        if (currentUser?.role === 'admin') return true;
+
+        // Check user permissions
+        const hasPermission = currentUser?.permissions?.some(
+          (p) =>
+            p.resource_type === resourceType &&
+            (!p.resource_id || p.resource_id === resourceId) &&
+            p.can_delete
+        );
+
+        return hasPermission || false;
+      },
+
+      canView: (resourceType: string, resourceId?: string) => {
+        const { currentUser } = get();
+
+        // Admins can view anything
+        if (currentUser?.role === 'admin') return true;
+
+        // Check user permissions
+        const hasPermission = currentUser?.permissions?.some(
+          (p) =>
+            p.resource_type === resourceType &&
+            (!p.resource_id || p.resource_id === resourceId) &&
+            p.can_view
+        );
+
+        return hasPermission || false;
+      },
+
+      canExecute: (resourceType: string, resourceId?: string) => {
+        const { currentUser } = get();
+
+        // Admins can execute anything
+        if (currentUser?.role === 'admin') return true;
+
+        // Check user permissions
+        const hasPermission = currentUser?.permissions?.some(
+          (p) =>
+            p.resource_type === resourceType &&
+            (!p.resource_id || p.resource_id === resourceId) &&
+            p.can_execute
+        );
+
+        return hasPermission || false;
       },
 
       // Reset

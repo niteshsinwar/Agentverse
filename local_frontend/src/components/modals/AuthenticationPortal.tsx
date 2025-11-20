@@ -23,22 +23,32 @@ export const AuthenticationPortal: React.FC<AuthenticationPortalProps> = ({ isOp
   const [mode, setMode] = useState<AuthMode>('login');
   const [accountType, setAccountType] = useState<AccountType>('individual');
   const [isAdmin, setIsAdmin] = useState(false);
+  const [tenantId, setTenantId] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
 
   const resetForm = () => {
+    setTenantId('');
     setEmail('');
     setPassword('');
     setIsAdmin(false);
     setAccountType('individual');
     setMode('login');
+    setError('');
   };
 
-  const handleSubmit = (event: React.FormEvent) => {
+  const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    login(email, password, accountType, accountType === 'enterprise' && isAdmin);
-    resetForm();
-    onClose();
+    setError('');
+
+    try {
+      await login(tenantId, email, password);
+      resetForm();
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Authentication failed');
+    }
   };
 
   const handleAccountTypeChange = (type: AccountType) => {
@@ -222,7 +232,30 @@ export const AuthenticationPortal: React.FC<AuthenticationPortalProps> = ({ isOp
                         </button>
                       </div>
 
+                      {error && (
+                        <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-900/20 dark:text-red-300">
+                          {error}
+                        </div>
+                      )}
+
                       <div className="space-y-4">
+                        <div className="space-y-2">
+                          <label className="text-xs font-semibold uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">
+                            Tenant ID
+                          </label>
+                          <div className="brand-field flex items-center gap-3 rounded-2xl px-4 py-3">
+                            <BuildingOffice2Icon className="h-5 w-5 text-indigo-400 dark:text-indigo-300" />
+                            <input
+                              type="text"
+                              required
+                              value={tenantId}
+                              onChange={(event) => setTenantId(event.target.value)}
+                              placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                              className="flex-1 bg-transparent text-sm font-medium text-slate-700 placeholder:text-slate-400/70 outline-none dark:text-slate-100"
+                            />
+                          </div>
+                        </div>
+
                         <div className="space-y-2">
                           <label className="text-xs font-semibold uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">
                             Work Email

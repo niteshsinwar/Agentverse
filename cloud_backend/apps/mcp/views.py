@@ -1,12 +1,11 @@
-from rest_framework import viewsets
+from rest_framework import viewsets, permissions
 from django.db import connection
-from apps.core.permissions import IsAdminOrReadOnly
-from apps.core.mixins import LicenseEnforcedViewSet
+from apps.core.mixins import PermissionFilteredViewSet, LicenseEnforcedViewSet
 from apps.tenants.models import Tenant
 from .models import MCPServer
 from .serializers import MCPServerSerializer
 
-class MCPServerViewSet(LicenseEnforcedViewSet, viewsets.ModelViewSet):
+class MCPServerViewSet(PermissionFilteredViewSet, LicenseEnforcedViewSet, viewsets.ModelViewSet):
     """
     ViewSet for MCP Server CRUD operations.
 
@@ -15,8 +14,9 @@ class MCPServerViewSet(LicenseEnforcedViewSet, viewsets.ModelViewSet):
     - License limits enforced: Free tier limited to 3 MCP servers, Pro/Enterprise unlimited.
     """
     serializer_class = MCPServerSerializer
-    permission_classes = [IsAdminOrReadOnly]
+    permission_classes = [permissions.IsAuthenticated]
     license_limit_key = 'max_mcp_servers'  # Enforce license limit
+    permission_resource_type = 'mcp_server'  # Enforce permission model
 
     def get_queryset(self):
         """Filter MCP servers by current tenant"""
