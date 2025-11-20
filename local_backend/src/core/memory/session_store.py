@@ -72,15 +72,45 @@ CREATE INDEX IF NOT EXISTS idx_telemetry_timestamp ON telemetry_events(timestamp
 """
 
 def _create_connection(db_path: str = DEFAULT_DB_PATH) -> sqlite3.Connection:
-    os.makedirs(os.path.dirname(db_path), exist_ok=True)
-    cxn = sqlite3.connect(db_path, check_same_thread=False)
-    cxn.execute("PRAGMA foreign_keys=ON")
-    return cxn
+    """
+    Create database connection with proper error handling.
+
+    Args:
+        db_path: Path to SQLite database file
+
+    Returns:
+        sqlite3.Connection: Database connection
+
+    Raises:
+        RuntimeError: If database initialization fails
+    """
+    try:
+        # Ensure directory exists
+        db_dir = os.path.dirname(db_path)
+        if db_dir:
+            os.makedirs(db_dir, exist_ok=True)
+
+        # Create connection
+        cxn = sqlite3.connect(db_path, check_same_thread=False)
+        cxn.execute("PRAGMA foreign_keys=ON")
+
+        return cxn
+    except Exception as e:
+        raise RuntimeError(f"Failed to initialize database at {db_path}: {e}") from e
 
 
-_cxn: sqlite3.Connection = _create_connection()
-_cxn.executescript(SCHEMA)
-_cxn.commit()
+try:
+    _cxn: sqlite3.Connection = _create_connection()
+    _cxn.executescript(SCHEMA)
+    _cxn.commit()
+except RuntimeError as e:
+    # Log error and re-raise with helpful message
+    import logging
+    logging.error(f"Database initialization failed: {e}")
+    raise RuntimeError(
+        f"Failed to initialize session database. "
+        f"Ensure the data directory is writable and SQLite is available."
+    ) from e
 
 # Export connection for other modules that expect _db_conn
 _db_conn: sqlite3.Connection = _cxn

@@ -134,17 +134,23 @@ class CloudWebSocketClient:
         Connect to cloud WebSocket server.
 
         Establishes connection and starts listening for sync events.
+
+        SECURITY: Token sent via Authorization header instead of URL query parameter
+        to prevent exposure in logs, browser history, and proxy logs.
         """
         try:
-            # Build WebSocket URL with JWT token
-            sync_endpoint = f"{self.ws_url}/ws/sync/?token={self.access_token}"
+            # Build WebSocket URL (NO token in URL for security)
+            sync_endpoint = f"{self.ws_url}/ws/sync/"
 
             logger.info(f"Connecting to cloud WebSocket: {sync_endpoint}")
 
-            # Connect with timeout
+            # Connect with timeout and Authorization header
             self.ws = await asyncio.wait_for(
                 websockets.connect(
                     sync_endpoint,
+                    extra_headers={
+                        "Authorization": f"Bearer {self.access_token}"
+                    },
                     ping_interval=30,  # Send ping every 30s to keep connection alive
                     ping_timeout=10,   # Wait 10s for pong
                 ),

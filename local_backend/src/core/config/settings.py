@@ -91,7 +91,13 @@ class Settings(BaseSettings):
     llm_fallback_provider: Optional[str] = None
 
     # Security Settings
-    secret_key: str = "dev-key-change-in-production"
+    # CRITICAL: SECRET_KEY must be set in environment variables for security
+    # Generate with: python -c "import secrets; print(secrets.token_urlsafe(32))"
+    secret_key: str = Field(
+        ...,
+        min_length=32,
+        description="Secret key for JWT tokens and encryption (REQUIRED)"
+    )
     session_timeout_hours: int = 24
 
     # Cloud Backend Configuration (Django SaaS)
@@ -253,13 +259,13 @@ def get_settings() -> Settings:
             # We need to merge the overrides with the base settings
             settings_dict = {}
 
-            # Get all field values from base settings
-            for field_name in base_settings.__fields__:
+            # Get all field values from base settings (Pydantic v2 compatible)
+            for field_name in base_settings.model_fields:
                 settings_dict[field_name] = getattr(base_settings, field_name)
 
             # Apply overrides
             for key, value in overrides.items():
-                if key in base_settings.__fields__:
+                if key in base_settings.model_fields:
                     settings_dict[key] = value
 
             # Create new settings instance with merged values
