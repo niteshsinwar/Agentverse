@@ -1,18 +1,22 @@
 """
 Signal Handlers for WebSocket Broadcasting
 
-Broadcasts CRUD operations to all users in tenant via WebSocket.
+Broadcasts CRUD operations to users via WebSocket.
 
 Models monitored:
-- Agent: Agent configurations
-- Tool: Tool configurations
-- MCPServer: MCP server configurations
-- Group: Group metadata
+- Agent: Agent configurations (broadcast to all tenant users)
+- Tool: Tool configurations (broadcast to all tenant users)
+- MCPServer: MCP server configurations (broadcast to all tenant users)
+- Group: Group metadata (broadcast to group members + admins)
+- TenantSettings: Tenant settings (broadcast to all tenant users)
+- Document: Documents (broadcast to group members only)
 
 Architecture:
 - Any CRUD operation on these models triggers signal
-- Signal broadcasts to tenant-wide sync channel
-- All local backends in tenant receive update
+- Signals broadcast to appropriate channels based on scoping:
+  * Tenant-wide: sync_{tenant_id} (agents, tools, MCP, settings)
+  * Group-specific: user_{user_id}_{tenant_id} (groups, documents)
+- All connected users receive real-time updates
 - Local backends update their cache in real-time
 
 Author: AgentVerse Team
@@ -264,3 +268,132 @@ def group_deleted(sender, instance, **kwargs):
         logger.info(f"Group deleted: {instance.name} (tenant: {instance.tenant_id})")
     except Exception as e:
         logger.error(f"Failed to broadcast group_deleted: {e}")
+
+
+# ============================================================================
+# TenantSettings Signals
+# ============================================================================
+
+@receiver(post_save, sender='tenants.TenantSettings')
+def tenant_settings_saved(sender, instance, created, **kwargs):
+    """
+    Broadcast tenant settings update to ALL users in tenant.
+
+    Settings are tenant-wide configuration that affects all users.
+    Admin-only modification, but all users should see updates in real-time.
+    """
+    from apps.tenants.serializers import TenantSettingsSerializer
+
+    try:
+        settings_data = TenantSettingsSerializer(instance).data
+
+        # Broadcast to ALL users in tenant (settings affect everyone)
+        broadcast_to_tenant_sync(
+            tenant_id=str(instance.tenant_id),
+            event_type='settings_updated',
+            data={'settings': settings_data}
+        )
+
+        action = 'created' if created else 'updated'
+        logger.info(f"TenantSettings {action}: {instance.tenant.name}")
+    except Exception as e:
+        logger.error(f"Failed to broadcast tenant_settings_saved: {e}")
+
+
+@receiver(post_delete, sender='tenants.TenantSettings')
+def tenant_settings_deleted(sender, instance, **kwargs):
+    """Broadcast tenant settings deletion to all users in tenant"""
+    try:
+        broadcast_to_tenant_sync(
+            tenant_id=str(instance.tenant_id),
+            event_type='settings_deleted',
+            data={
+                'settings_id': str(instance.id),
+                'tenant_name': instance.tenant.name
+            }
+        )
+
+        logger.info(f"TenantSettings deleted for tenant: {instance.tenant.name}")
+    except Exception as e:
+        logger.error(f"Failed to broadcast tenant_settings_deleted: {e}")
+
+
+# ============================================================================
+# Document Signals
+# ============================================================================
+
+def broadcast_to_document_group(document_instance, event_type, data):
+    """
+    Broadcast document event to members of the document's group.
+
+    Documents are group+tenant scoped - only group members should receive updates.
+    """
+    from apps.groups.models import Group
+
+    try:
+        # Fetch the group to get members list
+        group = Group.objects.get(id=document_instance.group, tenant=document_instance.tenant)
+
+        # Create a pseudo group instance for broadcast_to_group_members
+        class GroupProxy:
+            def __init__(self, members, tenant_id):
+                self.members = members
+                self.tenant_id = tenant_id
+
+        proxy = GroupProxy(members=group.members, tenant_id=document_instance.tenant_id)
+
+        # Broadcast to group members
+        broadcast_to_group_members(
+            group_instance=proxy,
+            event_type=event_type,
+            data=data
+        )
+    except Group.DoesNotExist:
+        logger.warning(f"Group {document_instance.group} not found for document broadcast")
+    except Exception as e:
+        logger.error(f"Failed to broadcast to document group: {e}")
+
+
+@receiver(post_save, sender='documents.Document')
+def document_saved(sender, instance, created, **kwargs):
+    """
+    Broadcast document create/update to group members.
+
+    Documents are group-specific - only members of the group should see updates.
+    """
+    from apps.documents.serializers import DocumentSerializer
+
+    try:
+        document_data = DocumentSerializer(instance).data
+
+        # Broadcast to group members only
+        broadcast_to_document_group(
+            document_instance=instance,
+            event_type='document_updated',
+            data={'document': document_data}
+        )
+
+        action = 'created' if created else 'updated'
+        logger.info(f"Document {action}: {instance.filename} (group: {instance.group}, tenant: {instance.tenant_id})")
+    except Exception as e:
+        logger.error(f"Failed to broadcast document_saved: {e}")
+
+
+@receiver(post_delete, sender='documents.Document')
+def document_deleted(sender, instance, **kwargs):
+    """Broadcast document deletion to group members"""
+    try:
+        # Broadcast to group members
+        broadcast_to_document_group(
+            document_instance=instance,
+            event_type='document_deleted',
+            data={
+                'document_id': str(instance.id),
+                'filename': instance.filename,
+                'group_id': str(instance.group)
+            }
+        )
+
+        logger.info(f"Document deleted: {instance.filename} (group: {instance.group}, tenant: {instance.tenant_id})")
+    except Exception as e:
+        logger.error(f"Failed to broadcast document_deleted: {e}")

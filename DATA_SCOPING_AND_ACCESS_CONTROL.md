@@ -7,14 +7,14 @@
 **Your Requirement:**
 - ✅ Admin-only access
 - ✅ Tenant-specific (not group-specific)
-- ❌ Real-time propagation to all users (NOT YET IMPLEMENTED)
+- ✅ Real-time propagation to all users
 
 **Current Status:**
 - ✅ Model exists: `apps/tenants/models.py::TenantSettings`
-- ❌ **No ViewSet**: Cannot be modified via API
-- ❌ **No Serializer**: Cannot be accessed via API
-- ❌ **No Signals**: Changes don't broadcast to WebSocket
-- ❌ **No URLs**: No endpoint exists
+- ✅ **ViewSet**: `apps/tenants/views.py::TenantSettingsViewSet` (admin-only for write)
+- ✅ **Serializer**: `apps/tenants/serializers.py::TenantSettingsSerializer`
+- ✅ **Signals**: Broadcasts to `sync_{tenant_id}` on create/update/delete
+- ✅ **URLs**: `/api/v1/tenants/settings/` endpoints active
 
 **Data Structure:**
 ```python
@@ -228,8 +228,8 @@ Message:
 - ✅ Model: `apps/documents/models.py::Document`
 - ✅ ViewSet: `apps/documents/views.py::DocumentViewSet`
 - ✅ Tenant + Group filtering: `Document.objects.filter(tenant=tenant, group=group_id)`
-- ❌ **No signals**: Document CRUD doesn't broadcast to WebSocket
-- ✅ Permission enforcement: `PermissionFilteredViewSet` applied (if added)
+- ✅ **Signals**: Broadcasts to group members on create/update/delete
+- ✅ Permission enforcement: `PermissionFilteredViewSet` applied
 
 **Data Structure:**
 ```python
@@ -244,9 +244,9 @@ Document:
 
 **Scoping:** ✅ CORRECT - Group + Tenant
 
-**Real-time:** ❌ NOT IMPLEMENTED
-- **Missing**: Signal handlers for document create/update/delete
-- **Missing**: WebSocket event handlers
+**Real-time:** ✅ IMPLEMENTED
+- ✅ Signal handlers broadcast to group members only (via `user_{user_id}_{tenant_id}` channels)
+- ✅ Also broadcasts to tenant admins for visibility
 
 ---
 
@@ -254,45 +254,36 @@ Document:
 
 | Resource | Scoping | Admin-Only Modify | Real-time to All Users | Real-time to Group Members | Status |
 |----------|---------|-------------------|------------------------|---------------------------|--------|
-| **Settings** | Tenant only | ❌ NOT ENFORCED | ❌ NO API/SIGNALS | N/A | **INCOMPLETE** |
-| **MCP** | Tenant only | ✅ Permission enforced | ✅ Yes | N/A | **COMPLETE** |
-| **Tool** | Tenant only | ✅ Permission enforced | ✅ Yes | N/A | **COMPLETE** |
-| **Agent** | Tenant only (should support group?) | ✅ Permission enforced | ✅ Yes | N/A | **NEEDS CLARIFICATION** |
-| **User** | Tenant + Group membership | ✅ Permission enforced | ✅ Yes | N/A | **COMPLETE** |
-| **Group** | Tenant only | ✅ Permission enforced | ✅ Admins | ✅ Members | **COMPLETE** |
-| **Message** | Group + Tenant | ❌ No permission check | N/A | ✅ Yes | **MOSTLY COMPLETE** |
-| **Document** | Group + Tenant | ✅ Permission enforced | N/A | ❌ NO SIGNALS | **INCOMPLETE** |
+| **Settings** | Tenant only | ✅ Admin-only enforced | ✅ Yes | N/A | **✅ COMPLETE** |
+| **MCP** | Tenant only | ✅ Permission enforced | ✅ Yes | N/A | **✅ COMPLETE** |
+| **Tool** | Tenant only | ✅ Permission enforced | ✅ Yes | N/A | **✅ COMPLETE** |
+| **Agent** | Tenant only (should support group?) | ✅ Permission enforced | ✅ Yes | N/A | **⚠️ NEEDS CLARIFICATION** |
+| **User** | Tenant + Group membership | ✅ Permission enforced | ✅ Yes | N/A | **✅ COMPLETE** |
+| **Group** | Tenant only | ✅ Permission enforced | ✅ Admins | ✅ Members | **✅ COMPLETE** |
+| **Message** | Group + Tenant | ❌ No permission check | N/A | ✅ Yes | **⚠️ MOSTLY COMPLETE** |
+| **Document** | Group + Tenant | ✅ Permission enforced | N/A | ✅ Yes | **✅ COMPLETE** |
 
 ---
 
 ## 🔧 What Needs to Be Implemented
 
-### CRITICAL:
+### ✅ COMPLETED (This Session):
 
-1. **TenantSettings API + Real-time Sync**
-   ```python
-   # Need to create:
-   - apps/tenants/serializers.py → TenantSettingsSerializer
-   - apps/tenants/views.py → TenantSettingsViewSet (admin-only)
-   - apps/tenants/urls.py → /api/v1/tenants/settings/
-   - apps/core/signals.py → Add signal for TenantSettings
-   ```
+1. **✅ TenantSettings API + Real-time Sync** - IMPLEMENTED
+   - ✅ Created `apps/tenants/serializers.py` with TenantSettingsSerializer
+   - ✅ Created `apps/tenants/views.py` with TenantSettingsViewSet (admin-only)
+   - ✅ Updated `apps/tenants/urls.py` with `/api/v1/tenants/settings/` endpoints
+   - ✅ Added signal handlers in `apps/core/signals.py` for real-time sync
+   - ✅ Admin-only modification enforced via `IsAdminUser` permission
+   - ✅ Changes broadcast to `sync_{tenant_id}` (all users receive updates)
 
-   **Behavior:**
-   - Only admins can modify (use `IsAdminUser` permission)
-   - Changes broadcast to `sync_{tenant_id}` (ALL users receive)
-   - Frontend updates settings immediately
+2. **✅ Document Real-time Sync** - IMPLEMENTED
+   - ✅ Added signal handlers in `apps/core/signals.py`
+   - ✅ Broadcasts to group members only via `broadcast_to_document_group()`
+   - ✅ Also notifies tenant admins for visibility
+   - ✅ Handles document create/update/delete events
 
-2. **Document Real-time Sync**
-   ```python
-   # Add to apps/core/signals.py:
-   @receiver(post_save, sender='documents.Document')
-   def document_saved(sender, instance, created, **kwargs):
-       # Broadcast to group members only (like messages)
-       broadcast_to_group(group_id=instance.group, ...)
-   ```
-
-### NICE TO HAVE:
+### NICE TO HAVE (Future):
 
 3. **Agent Group Association** (if needed)
    ```python

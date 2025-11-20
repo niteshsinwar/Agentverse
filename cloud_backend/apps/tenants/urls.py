@@ -1,14 +1,15 @@
 """
-Tenants URLs - Tenant management (super admin only)
+Tenants URLs - Tenant management and settings
 """
 
-from django.urls import path
-from django.http import JsonResponse
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from .views import TenantViewSet, TenantSettingsViewSet
 
-def tenant_list(request):
-    """Placeholder for tenant list - implement later"""
-    return JsonResponse({'message': 'Tenant management - implement ViewSet'})
+router = DefaultRouter()
+router.register(r'info', TenantViewSet, basename='tenant')
+router.register(r'settings', TenantSettingsViewSet, basename='tenant-settings')
 
 urlpatterns = [
-    path('', tenant_list, name='tenant-list'),
+    path('', include(router.urls)),
 ]

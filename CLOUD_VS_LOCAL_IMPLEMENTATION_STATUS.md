@@ -226,32 +226,38 @@ cloud_sync_handler.py:
 ### 1. "Did admin can only access settings?"
 
 **Cloud Backend:**
-- ⏳ **NOT IMPLEMENTED** - TenantSettings has no API yet
-- Need to create:
-  - `TenantSettingsSerializer`
-  - `TenantSettingsViewSet` with `permission_classes = [IsAdminUser]`
-  - Signal handlers for real-time sync
+- ✅ **IMPLEMENTED** - TenantSettings API now active
+- ✅ Created `apps/tenants/serializers.py::TenantSettingsSerializer`
+- ✅ Created `apps/tenants/views.py::TenantSettingsViewSet` with admin-only permissions
+- ✅ Admin-only modification enforced via `IsAdminUser` permission class
+- ✅ All authenticated users can read settings
+- ✅ Endpoints: `/api/v1/tenants/settings/` and `/api/v1/tenants/settings/current/`
 
 **Local Backend:**
 - ❌ **NO ADMIN CHECKS** - Anyone can modify settings
 - Settings are in `.env` and `config/settings.json`
 - No API authentication/authorization
+- Note: This may be intentional for single-user desktop app
 
-**Status:** ❌ NOT ENFORCED in either backend
+**Status:** ✅ ENFORCED in cloud backend, ❌ Not applicable to local backend
 
 ---
 
 ### 2. "Did those setting config propagated to all user in real time?"
 
 **Cloud Backend:**
-- ❌ **NO SIGNALS** - TenantSettings changes don't broadcast
-- Need to add signal handlers to broadcast to `sync_{tenant_id}`
+- ✅ **IMPLEMENTED** - TenantSettings changes now broadcast
+- ✅ Signal handlers added to `apps/core/signals.py`
+- ✅ Broadcasts to `sync_{tenant_id}` channel
+- ✅ All users in tenant receive settings updates immediately
+- ✅ Handles create/update/delete events
 
 **Local Backend:**
 - ❌ **NO REAL-TIME SYNC** - Settings changes require app restart
 - Settings loaded at startup from files
+- Note: Local backend syncs FROM cloud, not peer-to-peer
 
-**Status:** ❌ NOT IMPLEMENTED in either backend
+**Status:** ✅ IMPLEMENTED in cloud backend, ❌ Not applicable to local backend (single-user)
 
 ---
 
@@ -293,50 +299,40 @@ cloud_sync_handler.py:
 - ✅ **Messages:** `tenant + group` ForeignKeys ✅
 - ✅ **Documents:** `tenant + group` ForeignKeys ✅
 - ✅ Messages: Real-time sync to group members ✅
-- ❌ Documents: NO real-time sync signals ❌
+- ✅ **Documents: Real-time sync IMPLEMENTED** ✅
+  - ✅ Signal handlers added to `apps/core/signals.py`
+  - ✅ Broadcasts to group members only via `broadcast_to_document_group()`
+  - ✅ Also notifies tenant admins for visibility
 
 **Local Backend:**
 - ❌ **Messages:** In-memory, no tenant/group persistence
 - ❌ **Documents:** SQLite, no tenant/group scoping
 
-**Status:** ✅ CLOUD MOSTLY CORRECT (needs document signals), ❌ LOCAL DIFFERENT
+**Status:** ✅ CLOUD FULLY CORRECT, ❌ LOCAL DIFFERENT (single-user design)
 
 ---
 
 ## 🚨 Critical Action Items
 
-### Cloud Backend (High Priority):
+### ✅ Cloud Backend - COMPLETED (This Session):
 
-1. **Create TenantSettings API** (Admin-only)
-   ```python
-   # apps/tenants/serializers.py
-   class TenantSettingsSerializer(serializers.ModelSerializer):
-       class Meta:
-           model = TenantSettings
-           fields = '__all__'
-           read_only_fields = ['tenant']
+1. **✅ Created TenantSettings API** (Admin-only)
+   - ✅ Implemented `apps/tenants/serializers.py::TenantSettingsSerializer`
+   - ✅ Implemented `apps/tenants/views.py::TenantSettingsViewSet`
+   - ✅ Admin-only modification via `IsAdminUser` permission
+   - ✅ All authenticated users can read
+   - ✅ URLs configured at `/api/v1/tenants/settings/`
 
-   # apps/tenants/views.py
-   class TenantSettingsViewSet(viewsets.ModelViewSet):
-       permission_classes = [IsAdminUser]  # Admin-only!
+2. **✅ Added TenantSettings signals**
+   - ✅ Implemented in `apps/core/signals.py`
+   - ✅ Broadcasts to `sync_{tenant_id}` on create/update/delete
+   - ✅ All users in tenant receive settings updates
 
-       def get_queryset(self):
-           return TenantSettings.objects.filter(tenant=get_current_tenant())
-   ```
-
-2. **Add TenantSettings signals**
-   ```python
-   # apps/core/signals.py
-   @receiver(post_save, sender='tenants.TenantSettings')
-   def settings_updated(sender, instance, **kwargs):
-       broadcast_to_tenant_sync(
-           tenant_id=str(instance.tenant_id),
-           event_type='settings_updated',
-           data={'settings': TenantSettingsSerializer(instance).data}
-       )
-   ```
-
-3. **Add Document signals** (already have template from agents/tools)
+3. **✅ Added Document signals**
+   - ✅ Implemented in `apps/core/signals.py`
+   - ✅ Broadcasts to group members only via `broadcast_to_document_group()`
+   - ✅ Handles create/update/delete events
+   - ✅ Also notifies tenant admins for visibility
 
 ---
 
